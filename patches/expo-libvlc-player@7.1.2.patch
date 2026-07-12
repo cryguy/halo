@@ -271,6 +271,36 @@ index 89b541de6e4dc0597cce00bbe363f8847f95da00..176200c6a850cf836d4cb955f84d4f41
              val video = getVideoSize()
              val bitmap = Bitmap.createBitmap(video.width, video.height, Bitmap.Config.ARGB_8888)
  
+diff --git a/android/src/main/java/expo/modules/libvlcplayer/managers/PictureInPictureManager.kt b/android/src/main/java/expo/modules/libvlcplayer/managers/PictureInPictureManager.kt
+index 0a28df790c314dd3660a9b2e18266e0276f3b1e6..d994b053699fa34fad6d3121d90b8631e3d7349e 100644
+--- a/android/src/main/java/expo/modules/libvlcplayer/managers/PictureInPictureManager.kt
++++ b/android/src/main/java/expo/modules/libvlcplayer/managers/PictureInPictureManager.kt
+@@ -180,7 +180,11 @@ class PictureInPictureManager(
+                 .setAutoEnterEnabled(pictureInPicture)
+                 .build()
+
+-        activity.setPictureInPictureParams(params)
++        try {
++            activity.setPictureInPictureParams(params)
++        } catch (_: IllegalStateException) {
++            // PiP may be supported by the device but disabled for this activity.
++        }
+     }
+
+     fun setPipActions() {
+@@ -259,7 +263,11 @@ class PictureInPictureManager(
+                 .setAutoEnterEnabled(pictureInPicture && isPlaying)
+                 .build()
+
+-        activity.setPictureInPictureParams(params)
++        try {
++            activity.setPictureInPictureParams(params)
++        } catch (_: IllegalStateException) {
++            // Player initialization must not fail when PiP is unavailable.
++        }
+     }
+
+     fun layoutForPipEnter() {
 diff --git a/build/LibVlcPlayer.types.d.ts b/build/LibVlcPlayer.types.d.ts
 index 1c74fec288ed6219cf46b64d8c082c58911b44d1..27e506b3375bad9c4930d80e4b725d9a9145577f 100644
 --- a/build/LibVlcPlayer.types.d.ts
