@@ -1,12 +1,17 @@
 package moe.ditto.halo
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.After
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
@@ -18,15 +23,42 @@ import org.junit.runner.RunWith
  * Compose semantics (content descriptions + text), asserting playback and the
  * core/view ownership invariants without a single hard-coded coordinate.
  *
- * Requires: the fixture server on the host + `adb reverse tcp:18787 tcp:18787`
- * (the app loads http://127.0.0.1:18787/media/... which the reverse tunnel maps
- * to the host). Auth is the local stub, so Login → Gate → Player needs no IdP.
+ * Requires: the OIDC fixture server on the host plus
+ * `adb reverse tcp:18787 tcp:18787`. Discovery is real; the unfinished Android
+ * OIDC request host parks on the debug-only gate shortcut, so playback tests do
+ * not need an identity provider.
  */
 @RunWith(AndroidJUnit4::class)
 class PlayerOwnershipInstrumentedTest {
+    private val launchIntent = Intent(
+        ApplicationProvider.getApplicationContext<Context>(),
+        MainActivity::class.java,
+    ).apply {
+        putExtra("serverUrl", "http://127.0.0.1:18787")
+        putExtra("resetSession", true)
+    }
 
-    @get:Rule
-    val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0)
+    val rule = createEmptyComposeRule()
+
+    @get:Rule(order = 1)
+    val activityRule = ActivityScenarioRule<MainActivity>(launchIntent)
+
+    @After
+    fun leavePlayerShellCleanly() {
+        val gateNodes = rule.onAllNodes(hasContentDescription("Gate"))
+            .fetchSemanticsNodes()
+        if (gateNodes.isEmpty()) return
+
+        // Gate awaits the same decoder wind-down used by the real player screen
+        // before removing the SurfaceView, so ActivityScenarioRule can close it.
+        rule.onNodeWithContentDescription("Gate").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(hasContentDescription("Player shell"))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+    }
 
     private fun gotoPlayer() {
         rule.onNodeWithContentDescription("Continue").performClick()

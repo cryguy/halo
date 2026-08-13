@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import moe.ditto.halo.auth.AuthEvent
 import moe.ditto.halo.auth.KtorLocalAuthGateway
 import moe.ditto.halo.auth.LocalAuthenticator
+import moe.ditto.halo.auth.LoginCredentialsPrefill
 import moe.ditto.halo.auth.LoginPhase
 import moe.ditto.halo.auth.LoginPresenter
 import moe.ditto.halo.auth.SessionController
@@ -74,7 +75,6 @@ import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloTheme
 import moe.ditto.halo.ui.HaloType
 import moe.ditto.halo.ui.haloImageLoader
-import moe.ditto.halo.ui.rememberResponsive
 
 private enum class ShellScreen {
     Login,
@@ -83,6 +83,12 @@ private enum class ShellScreen {
     Gate,
     Player,
 }
+
+private val DebugLocalCredentials = LoginCredentialsPrefill(
+    serverUrl = "http://127.0.0.1:18790",
+    username = "admin",
+    password = "fixture-pass",
+)
 
 @Composable
 internal fun HaloApp(dependencies: PlatformDependencies) {
@@ -192,6 +198,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                         graph = sessionGraph,
                         playback = playback,
                         playerSurface = dependencies.nativePlayerSurface,
+                        onSignOut = { sessionController.signOut() },
                         // Null in a shipped build, which removes the row entirely
                         // rather than hiding a live one behind a flag.
                         onOpenDebugGate = if (dependencies.diagnosticsEnabled) {
@@ -260,7 +267,15 @@ private fun LoginScreen(
     onOpenGate: () -> Unit,
 ) {
     val presenter = remember {
-        LoginPresenter(dependencies.authConfigSource, dependencies.nativeHostRequests, localAuthenticator).also {
+        LoginPresenter(
+            authConfigSource = dependencies.authConfigSource,
+            nativeHostRequests = dependencies.nativeHostRequests,
+            localAuthenticator = localAuthenticator,
+            // Reset mode belongs to automation, which supplies its own fixture credentials.
+            localCredentialsPrefill = DebugLocalCredentials.takeIf {
+                dependencies.diagnosticsEnabled && !dependencies.resetPersistedSession
+            },
+        ).also {
             it.editServerUrl(initialServerUrl)
         }
     }
@@ -278,7 +293,6 @@ private fun LoginScreen(
         }
     }
 
-    val responsive = rememberResponsive()
     Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -303,10 +317,6 @@ private fun LoginScreen(
                     "Your Halo server decides whether the native host starts OIDC or reveals local credentials."
                 },
                 style = HaloType.Body.copy(color = HaloColors.TextDim, textAlign = TextAlign.Center),
-            )
-            Text(
-                text = "${responsive.deviceClass} · shortest edge ${responsive.shortestEdge.value.toInt()}dp",
-                style = HaloType.Caption,
             )
             HaloTextField(
                 value = state.serverUrl,
@@ -535,6 +545,7 @@ private fun PlayerShellScreen(
     // surface height forces drawableSize changes without touching the core.
     val surfaceHeights = remember { listOf(180, 320, 120) }
     var surfaceHeightIndex by remember { mutableStateOf(0) }
+    var leavingPlayerShell by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     // The fixture server (fixtures/fixture_server.py) serves these over HTTP
     // with Range support; the local variants read the same files directly.
@@ -573,7 +584,19 @@ private fun PlayerShellScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Player shell", style = HaloType.Title)
-            HaloButton(label = "Gate", onClick = onBack, compact = true)
+            HaloButton(
+                label = "Gate",
+                compact = true,
+                onClick = {
+                    if (!leavingPlayerShell) {
+                        leavingPlayerShell = true
+                        scope.launch {
+                            playback.windDownForExit()
+                            onBack()
+                        }
+                    }
+                },
+            )
         }
         nativePlayerSurface.Content(
             Modifier

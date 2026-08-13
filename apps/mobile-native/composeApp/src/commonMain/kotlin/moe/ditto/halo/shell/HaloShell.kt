@@ -9,11 +9,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,11 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,17 +51,17 @@ import moe.ditto.halo.PlaybackHost
 import moe.ditto.halo.SignedInGraph
 import moe.ditto.halo.browse.episodeTag
 import moe.ditto.halo.screens.DetailScreen
+import moe.ditto.halo.screens.DownloadsScreen
 import moe.ditto.halo.screens.HomeScreen
 import moe.ditto.halo.screens.LibraryScreen
 import moe.ditto.halo.screens.MetaRef
 import moe.ditto.halo.screens.PlayerScreen
 import moe.ditto.halo.screens.SearchScreen
+import moe.ditto.halo.screens.SettingsScreen
 import moe.ditto.halo.screens.StreamsScreen
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloDimensions
 import moe.ditto.halo.ui.HaloIcons
-import moe.ditto.halo.ui.HaloSpacing
-import moe.ditto.halo.ui.HaloType
 import moe.ditto.halo.ui.LocalHazeState
 import moe.ditto.halo.ui.glassSource
 import moe.ditto.halo.ui.glassSurface
@@ -89,6 +84,7 @@ internal fun HaloShell(
     /** The app's one playback owner; the player route drives it, nothing else does. */
     playback: PlaybackHost,
     playerSurface: NativePlayerSurface,
+    onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
     /**
      * Opens the diagnostics harness from Settings. Null in a shipped build,
@@ -187,13 +183,13 @@ internal fun HaloShell(
                         onBack = { navController.popBackStack() },
                     )
                 }
-                composable<DownloadsRoute> { PlaceholderScreen("Downloads") }
+                composable<DownloadsRoute> { DownloadsScreen() }
                 composable<SettingsRoute> {
-                    PlaceholderScreen("Settings") {
-                        if (onOpenDebugGate != null) {
-                            DebugGateRow(onOpenDebugGate)
-                        }
-                    }
+                    SettingsScreen(
+                        graph = graph,
+                        onSignOut = onSignOut,
+                        onOpenDebugGate = onOpenDebugGate,
+                    )
                 }
             }
             HaloTabBar(navController, Modifier.align(Alignment.BottomCenter))
@@ -362,52 +358,5 @@ private fun NavHostController.switchTab(route: Any) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
-    }
-}
-
-/**
- * Entry into the diagnostics harness. It lives under Settings because that is
- * the one tab a debug affordance can sit in without displacing product content.
- */
-@Composable
-private fun DebugGateRow(onClick: () -> Unit) {
-    Text(
-        text = "Debug gate",
-        style = HaloType.Callout.copy(color = HaloColors.Accent),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(vertical = HaloSpacing.Md),
-    )
-}
-
-/**
- * Stand-in until the real screens land. Deliberately scrollable and taller than
- * the viewport so the bottom-padding contract above is visible rather than
- * theoretical.
- */
-@Composable
-private fun PlaceholderScreen(name: String, header: @Composable () -> Unit = {}) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = HaloSpacing.Md),
-    ) {
-        Text(
-            text = name,
-            style = HaloType.LargeTitle,
-            modifier = Modifier.padding(vertical = HaloSpacing.Md),
-        )
-        header()
-        repeat(24) { index ->
-            Text(
-                text = "$name row ${index + 1}",
-                style = HaloType.Body,
-                modifier = Modifier.padding(vertical = HaloSpacing.Sm),
-            )
-        }
-        Spacer(Modifier.height(HaloDimensions.TabBarSpace))
     }
 }

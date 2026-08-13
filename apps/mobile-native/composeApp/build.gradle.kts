@@ -1,9 +1,82 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.TaskAction
+
+abstract class ValidateReleaseSigningTask : DefaultTask() {
+    @get:Input
+    abstract val validationProblems: ListProperty<String>
+
+    @TaskAction
+    fun validateSigning() {
+        val problems = validationProblems.get()
+        check(problems.isEmpty()) {
+            buildString {
+                appendLine("Release signing is not configured:")
+                problems.forEach { appendLine("- $it") }
+                append("Configure Halo release signing in Gradle user properties or environment variables.")
+            }
+        }
+    }
+}
+
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     kotlin("plugin.compose")
     id("org.jetbrains.compose")
     id("com.android.application")
+}
+
+val releaseStoreFile = providers.gradleProperty("haloReleaseStoreFile")
+    .orElse(providers.environmentVariable("HALO_RELEASE_STORE_FILE"))
+    .orElse(providers.gradleProperty("lastMusicReleaseStoreFile"))
+    .orElse(providers.environmentVariable("LAST_MUSIC_RELEASE_STORE_FILE"))
+val releaseStorePassword = providers.gradleProperty("haloReleaseStorePassword")
+    .orElse(providers.environmentVariable("HALO_RELEASE_STORE_PASSWORD"))
+    .orElse(providers.gradleProperty("lastMusicReleaseStorePassword"))
+    .orElse(providers.environmentVariable("LAST_MUSIC_RELEASE_STORE_PASSWORD"))
+val releaseKeyAlias = providers.gradleProperty("haloReleaseKeyAlias")
+    .orElse(providers.environmentVariable("HALO_RELEASE_KEY_ALIAS"))
+    .orElse(providers.gradleProperty("lastMusicReleaseKeyAlias"))
+    .orElse(providers.environmentVariable("LAST_MUSIC_RELEASE_KEY_ALIAS"))
+val releaseKeyPassword = providers.gradleProperty("haloReleaseKeyPassword")
+    .orElse(providers.environmentVariable("HALO_RELEASE_KEY_PASSWORD"))
+    .orElse(providers.gradleProperty("lastMusicReleaseKeyPassword"))
+    .orElse(providers.environmentVariable("LAST_MUSIC_RELEASE_KEY_PASSWORD"))
+
+val releaseStoreFileValue = releaseStoreFile.orNull
+val releaseStorePasswordValue = releaseStorePassword.orNull
+val releaseKeyAliasValue = releaseKeyAlias.orNull
+val releaseKeyPasswordValue = releaseKeyPassword.orNull
+val releaseSigningProblems = buildList {
+    if (releaseStoreFileValue.isNullOrBlank()) {
+        add("release store file is missing or blank")
+    } else if (!file(releaseStoreFileValue).isFile) {
+        add("release store file must point to an existing regular file")
+    }
+    if (releaseStorePasswordValue.isNullOrBlank()) add("release store password is missing or blank")
+    if (releaseKeyAliasValue.isNullOrBlank()) add("release key alias is missing or blank")
+    if (releaseKeyPasswordValue.isNullOrBlank()) add("release key password is missing or blank")
+}
+val releaseSigningReady = releaseSigningProblems.isEmpty()
+
+val validateReleaseSigning = tasks.register<ValidateReleaseSigningTask>("validateReleaseSigning") {
+    validationProblems.set(releaseSigningProblems)
+}
+val releaseArtifactTaskPatterns = listOf(
+    Regex("^assemble[A-Za-z0-9]*Release$"),
+    Regex("^bundle[A-Za-z0-9]*Release$"),
+    Regex("^package[A-Za-z0-9]*Release(?:Bundle|UniversalApk)?$"),
+    Regex("^sign[A-Za-z0-9]*ReleaseBundle$"),
+    Regex("^makeApkFromBundleFor[A-Za-z0-9]*Release$"),
+    Regex("^extractApks(?:FromBundle)?For[A-Za-z0-9]*Release$"),
+    Regex("^zipApksFor[A-Za-z0-9]*Release$"),
+)
+tasks.configureEach {
+    if (releaseArtifactTaskPatterns.any { it.matches(name) }) {
+        dependsOn(validateReleaseSigning)
+    }
 }
 
 kotlin {
@@ -57,6 +130,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.9.3")
+            implementation("androidx.browser:browser:1.8.0")
             implementation("androidx.core:core-ktx:1.13.1")
             implementation("io.ktor:ktor-client-okhttp:3.5.1")
             // Prebuilt libmpv (mpv-android lineage): provenance-checked but
@@ -70,8 +144,9 @@ kotlin {
         androidInstrumentedTest.dependencies {
             implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
             implementation("org.jetbrains.compose.ui:ui-test-junit4:1.11.1")
-            implementation("androidx.test.ext:junit:1.2.1")
-            implementation("androidx.test:runner:1.6.2")
+            implementation("androidx.test.ext:junit:1.3.0")
+            implementation("androidx.test:runner:1.7.0")
+            implementation("androidx.test.espresso:espresso-core:3.7.0")
         }
     }
 }
@@ -98,9 +173,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("release") {
+                storeFile = file(releaseStoreFile.get())
+                storePassword = releaseStorePassword.get()
+                keyAlias = releaseKeyAlias.get()
+                keyPassword = releaseKeyPassword.get()
+            }
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             isDefault = true
+        }
+        getByName("release") {
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

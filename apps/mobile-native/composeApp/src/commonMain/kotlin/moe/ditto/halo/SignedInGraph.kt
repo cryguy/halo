@@ -15,6 +15,7 @@ import moe.ditto.halo.cache.QueryCache
 import moe.ditto.halo.storage.KeyValueStore
 import moe.ditto.halo.storage.SearchHistoryStore
 import moe.ditto.halo.storage.SubtitleChoiceStore
+import moe.ditto.halo.sync.AccountRepository
 import moe.ditto.halo.sync.LibraryRepository
 import moe.ditto.halo.sync.SettingsRepository
 import moe.ditto.halo.sync.WatchStateRepository
@@ -59,6 +60,7 @@ internal class SignedInGraph(
     val cache = QueryCache(scope, clock)
 
     val addons = AddonsRepository(client, cache)
+    val account = AccountRepository(client, cache)
     val browse = BrowseRepository(client, cache, addons)
     val library = LibraryRepository(client, cache, clock)
     val watchStates = WatchStateRepository(client, cache, clock)

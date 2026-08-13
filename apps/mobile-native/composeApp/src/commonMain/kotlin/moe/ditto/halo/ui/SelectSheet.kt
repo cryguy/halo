@@ -51,6 +51,7 @@ data class SelectOption(
     val label: String,
     val detail: String? = null,
     val selected: Boolean = false,
+    val destructive: Boolean = false,
 )
 
 private val SheetCorner = HaloRadius.Xl + 4.dp
@@ -242,7 +243,11 @@ private fun SheetOptionRow(option: SelectOption, onClick: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(
                     text = option.label,
-                    color = if (option.selected) Color.White else Color.White.copy(alpha = 0.9f),
+                    color = when {
+                        option.destructive -> HaloColors.Danger
+                        option.selected -> Color.White
+                        else -> Color.White.copy(alpha = 0.9f)
+                    },
                     fontSize = 15.5.sp,
                     fontWeight = if (option.selected) FontWeight.Bold else FontWeight.Medium,
                 )

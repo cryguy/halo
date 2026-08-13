@@ -258,7 +258,7 @@ internal class AndroidNativePlayerSurface(
 }
 
 internal class AndroidNativeHostDiagnostics(
-    private val authHost: AndroidStubAuthHost,
+    private val authHost: AndroidOidcAuthHost,
     private val host: AndroidMpvPlayerHost,
 ) : NativeHostDiagnostics {
     override fun snapshot(): NativeHostSnapshot = NativeHostSnapshot(

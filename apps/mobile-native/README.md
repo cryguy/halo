@@ -11,9 +11,11 @@ Standalone Gradle project — deliberately not part of the pnpm workspace
 ## Current state
 
 The proven engine/boundary layer, the auth and sync subsystems on top of it,
-and the beginnings of the product shell. A signed-in session lands on the tab
-shell; the diagnostics gate is debug-only scaffolding reached from a row in
-Settings, and is absent from a build that is not debuggable.
+and a native product shell matching the original app's visual language. A
+signed-in session lands on the four-tab shell. Home, Search, Library, and
+Settings use live repositories; Downloads uses an honest empty state until a
+native download engine exists. The diagnostics gate is debug-only scaffolding
+reached from Settings and is absent from a build that is not debuggable.
 
 - Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.11.1, Ktor 3.5.1
 - Targets: `iosArm64`, `iosSimulatorArm64`, `androidTarget` (Android kept
@@ -24,18 +26,18 @@ Settings, and is absent from a build that is not debuggable.
   (`MPVCore` + `MPVPlayerHost`, MoltenVK `wid` embed with the live-resize
   patch), and OIDC auth (`ASWebAuthenticationSession` + PKCE + hand-built
   `/token/` POST that preserves the trailing slash)
-- Local-mode auth in common code (`auth/`): Ktor login/refresh against the
-  Halo API, persisted sessions behind an owned `SecureStorage` (Keychain on
-  iOS; Android is plaintext prefs until a Keystore pass), expiry-band
-  single-flight refresh, offline session restore, and the sign-out rule —
-  only a definitive 401 from refresh ends a session, never a network failure
+- Local-mode auth in common code (`auth/`): Ktor discovery/login/refresh against
+  the Halo API, persisted sessions behind an owned `SecureStorage` (Keychain on
+  iOS; AES-GCM with a non-exportable Android Keystore key on Android),
+  expiry-band single-flight refresh, offline session restore, and the sign-out
+  rule: only a definitive 401 from refresh ends a session, never a network failure
 - Android mirror hosts over a thin owned `MpvCore` JNI adapter
   (`dev.jdtech.mpv` prebuilt is emulator-only; the shipping build will be an
   owned reproducible libmpv build like iOS's)
 - Compose Multiplatform UI layer: design-system components (poster card and
   grid, catalog row, hero scrim, segmented control, search fields, select
-  sheet) over Coil image loading and Haze backdrop blur, and a four-tab shell
-  on a type-safe navigation graph
+  sheet) over Coil image loading and Haze backdrop blur, plus a four-tab shell
+  on a type-safe navigation graph with repository-backed Settings
 - Common tests (auth discovery, login state machine, player lifecycle, API
   decoding, cache, sync repositories, device-local stores, responsive
   classification), iOS host-bridge tests, nine XCUITest suites (ownership,

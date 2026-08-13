@@ -21,7 +21,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         let window = UIWindow(frame: UIScreen.main.bounds)
         let env = ProcessInfo.processInfo.environment
-        let initialServerUrl = env["HALO_SERVER_URL"] ?? "https://halo.ditto.moe"
+        let initialServerUrl = env["HALO_SERVER_URL"] ?? "https://halo.mags.fyi"
         // Media bases seed the player shell's harness fields. The local base has
         // no portable default (it names files on the machine running the tests),
         // so it is env-only and blank otherwise.

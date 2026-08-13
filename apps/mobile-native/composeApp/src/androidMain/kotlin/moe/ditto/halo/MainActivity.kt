@@ -1,11 +1,15 @@
 package moe.ditto.halo
 
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import kotlinx.coroutines.flow.emptyFlow
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import moe.ditto.halo.auth.AndroidSecureStorage
+import moe.ditto.halo.auth.KtorAndroidOidcWire
+import moe.ditto.halo.auth.KtorAuthConfigSource
 import moe.ditto.halo.storage.AndroidPreferencesStore
 import java.io.File
 
@@ -23,22 +27,30 @@ import java.io.File
 class MainActivity : ComponentActivity() {
 
     private lateinit var playerHost: AndroidMpvPlayerHost
-    private lateinit var authHost: AndroidStubAuthHost
+    private lateinit var authHost: AndroidOidcAuthHost
+    private lateinit var authHttpClient: HttpClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        authHost = AndroidStubAuthHost()
+        authHttpClient = HttpClient(OkHttp)
+        val secureStorage = AndroidSecureStorage(applicationContext)
+        authHost = AndroidOidcAuthHost(
+            activity = this,
+            storage = secureStorage,
+            wire = KtorAndroidOidcWire(authHttpClient),
+        )
         playerHost = AndroidMpvPlayerHost(applicationContext)
 
-        // Automation can override the prefilled server; auth is stubbed to local
-        // so the value only seeds the login field.
-        val serverUrl = intent?.getStringExtra("serverUrl") ?: "http://10.0.2.2:18787"
+        // Automation may point at a fixture. With no override, using the shared
+        // default preserves the last-successful-server prefill rule in HaloApp.
+        val serverUrl = intent?.getStringExtra("serverUrl")
+            ?: PlatformDependencies.DefaultServerUrl
 
         val dependencies = PlatformDependencies(
-            authConfigSource = authHost,
+            authConfigSource = KtorAuthConfigSource(authHttpClient),
             nativeHostRequests = authHost,
-            secureStorage = AndroidSecureStorage(applicationContext),
+            secureStorage = secureStorage,
             keyValueStore = AndroidPreferencesStore(applicationContext),
             // cacheDir, not filesDir: Android's auto-backup skips it and the
             // system may reclaim it, which suits re-fetchable poster art.
@@ -50,7 +62,8 @@ class MainActivity : ComponentActivity() {
                 (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0,
             playerPort = AndroidPlayerPort(playerHost),
             playerEvents = playerHost.playerEvents,
-            authEvents = emptyFlow(),
+            oidcSessionPort = authHost,
+            authEvents = authHost.events,
             nativePlayerSurface = AndroidNativePlayerSurface(playerHost),
             nativeHostDiagnostics = AndroidNativeHostDiagnostics(authHost, playerHost),
             initialServerUrl = serverUrl,
@@ -60,5 +73,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             HaloApp(dependencies)
         }
+
+        authHost.handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        authHost.handleIntent(intent)
+    }
+
+    override fun onDestroy() {
+        authHost.close()
+        authHttpClient.close()
+        super.onDestroy()
     }
 }
