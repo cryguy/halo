@@ -152,9 +152,11 @@ internal fun RailSelectableRow(
             }
         }
 
+        // Download, not a tick: a tick already means "watched" everywhere else
+        // in the app, and two meanings for one glyph is worse than a busier one.
         if (onDisk) {
             Icon(
-                imageVector = HaloIcons.CheckCircle,
+                imageVector = HaloIcons.Download,
                 contentDescription = "Downloaded",
                 tint = HaloColors.Success,
                 modifier = Modifier.size(15.dp),

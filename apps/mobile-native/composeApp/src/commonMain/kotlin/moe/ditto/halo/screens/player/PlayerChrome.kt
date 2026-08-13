@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,7 +78,6 @@ private val TrackFill = Color.White.copy(alpha = 0.16f)
 private val BufferedFill = Color.White.copy(alpha = 0.30f)
 private val DurationText = Color.White.copy(alpha = 0.55f)
 private val PreviewBorder = Color.White.copy(alpha = 0.14f)
-private val PreviewFrame = Color(0xFF0B0D12)
 
 private val ScrimTopHeight = 128.dp
 private val ScrimBottomHeight = 186.dp
@@ -621,9 +621,12 @@ private fun ScrubPreview(
                     y = -30.dp.roundToPx(),
                 )
             }
-            .size(width = PreviewWidth, height = PreviewHeight)
+            // Required, not plain size: the card is a child of the 34dp-tall
+            // hit area for the track, so ordinary size constraints would clamp
+            // it to that height instead of letting it stand above the bar.
+            .requiredSize(width = PreviewWidth, height = PreviewHeight)
             .clip(RoundedCornerShape(10.dp))
-            .background(PreviewFrame)
+            .placeholderStripes()
             .border(1.dp, PreviewBorder, RoundedCornerShape(10.dp)),
     ) {
         Text(

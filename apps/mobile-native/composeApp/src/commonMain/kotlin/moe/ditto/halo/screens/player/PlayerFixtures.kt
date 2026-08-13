@@ -42,6 +42,8 @@ internal object PlayerFixtures {
         FixtureAddonSubtitle("a-ktx", "Kitsunekko", "Japanese · fansub, styled", "ASS", onDisk = false),
     )
 
+    const val SeasonTitle = "Season 2"
+
     val Episodes = listOf(
         FixtureEpisode(tag = "S02E01", name = "Ground Truth", progress = 1f, downloaded = true),
         FixtureEpisode(tag = "S02E02", name = "Ninety Seconds", progress = 1f, downloaded = true),

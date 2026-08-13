@@ -138,7 +138,7 @@ State/controller (`PlayerViewState.kt` + `PlayerScreenController.kt`, commonTest
   Speed tab (3-column grid 0.5–2× + note card). All fixture-driven; existing live setters
   (`setSubtitleScale`/`Delay`/`Font`, `selectAudioTrack`/`selectSubtitleTrack`) may be wired
   immediately since they already exist.
-- [ ] **1.3 Episode drawer** — bottom sheet, header, horizontal episode cards with progress bar,
+- [x] **1.3 Episode drawer** — bottom sheet, header, horizontal episode cards with progress bar,
   current-episode border, download ticks (fixture). Enter animation 240 ms per spec.
 - [ ] **1.4 Transient states** — buffering ring + percentage pill; gesture HUD pill + side wash
   (visuals only, no gestures yet); locked scrim + auto-hiding unlock pill; up-next card with
@@ -184,6 +184,20 @@ Notes from 1.2:
 - Em dashes in the design's UI copy were replaced with commas and colons, per the standing
   writing preference. Meaning is unchanged; say the word if the design's punctuation should
   win instead.
+
+Notes from 1.3:
+
+- Missing artwork is drawn as diagonal stripes (`placeholderStripes`), shared by the episode
+  thumbnails and the scrub preview. A blank rectangle is indistinguishable from an image that
+  failed to load, which is the wrong signal during design review. Both call sites drop it when
+  their real source arrives (2.10 for stills, D2 for frames).
+- The scrub preview needs `requiredSize`, not `size`: it is a child of the 34dp-tall hit area
+  for the transport track, so ordinary constraints clamped it to a third of its height. This
+  was invisible until it was seen on a device.
+- The "downloaded" marker is the download glyph, not a tick. A tick already means "watched"
+  elsewhere in the app, and the rail was using it for the wrong meaning.
+- Selecting an episode only closes the drawer for now. It cannot do more until a stream is
+  resolved for that episode, which is 2.10.
 - Verify each slice: compile + tests + APK on device; review states through the demo harness.
   Commit per slice (`feat(mobile-native): …`).
 

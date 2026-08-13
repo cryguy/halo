@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,7 @@ import moe.ditto.halo.ui.HaloType
 private const val ChromeFadeMillis = 180
 private const val BottomBarRiseMillis = 220
 private const val RailEnterMillis = 220
+private const val DrawerEnterMillis = 240
 private const val SeekStepSeconds = 10.0
 
 /**
@@ -229,6 +231,26 @@ internal fun PlayerScreen(
                     controller.showChrome()
                     scope.launch { playback.seekTo(secondsAt(fraction, state.durationSeconds)) }
                 },
+            )
+        }
+
+        AnimatedVisibility(
+            visible = controller.episodeDrawerOpen,
+            enter = fadeIn(tween(DrawerEnterMillis)) +
+                slideInVertically(tween(DrawerEnterMillis)) { height -> height / 6 },
+            exit = fadeOut(tween(DrawerEnterMillis)) +
+                slideOutVertically(tween(DrawerEnterMillis)) { height -> height / 6 },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            PlayerEpisodeDrawer(
+                metrics = metrics,
+                seasonTitle = PlayerFixtures.SeasonTitle,
+                episodes = PlayerFixtures.Episodes,
+                currentTag = PlayerFixtures.CurrentEpisode.tag,
+                onClose = controller::closeEpisodeDrawer,
+                // Choosing an episode has to resolve a stream for it before
+                // anything can play, so for now it only closes the drawer.
+                onSelectEpisode = { controller.closeEpisodeDrawer() },
             )
         }
 
