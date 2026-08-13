@@ -30,6 +30,52 @@ object HaloColors {
     val SheetTint = Color(red = 20f / 255f, green = 22f / 255f, blue = 30f / 255f, alpha = 0.72f)
     val OverlayPill = Color(red = 5f / 255f, green = 7f / 255f, blue = 12f / 255f, alpha = 0.82f)
     val Gold = Color(0xFFFFD479)
+
+    /** Secondary line under a title: dot-separated metadata, chip values. */
+    val TextMeta = Color(0xFFC7CDD9)
+}
+
+/**
+ * Colours that exist only inside the player. They are darker and more opaque
+ * than the app's glass system on purpose: the player's chrome sits over moving
+ * video rather than over the app canvas, so it has to stay legible against an
+ * arbitrary frame instead of blending with a known background.
+ *
+ * Kept apart from [HaloColors] so nothing outside the player reaches for them.
+ */
+object HaloPlayerColors {
+    /** Vertical wash behind the top bar. */
+    val ScrimTop = Color(red = 4f / 255f, green = 5f / 255f, blue = 8f / 255f, alpha = 0.72f)
+
+    /** Vertical wash behind the bottom bar; heavier, it carries more controls. */
+    val ScrimBottom = Color(red = 4f / 255f, green = 5f / 255f, blue = 8f / 255f, alpha = 0.82f)
+
+    /** Fill for chrome that floats on video: pills, chips, centre buttons. */
+    val ChromeGlass = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.45f)
+
+    /** The same fill where content must read through it, such as a badge row. */
+    val ChromeGlassStrong = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.55f)
+
+    /** Audio/subtitles/speed rail. */
+    val RailFill = Color(red = 18f / 255f, green = 20f / 255f, blue = 27f / 255f, alpha = 0.90f)
+
+    /** Episode drawer; a shade heavier than the rail because it covers more. */
+    val DrawerFill = Color(red = 18f / 255f, green = 20f / 255f, blue = 27f / 255f, alpha = 0.92f)
+
+    // A selected chip is tinted rather than filled, so the video stays readable
+    // behind it. The label lifts to a light blue instead of white.
+    val ChipActiveFill = Color(red = 10f / 255f, green = 132f / 255f, blue = 255f / 255f, alpha = 0.16f)
+    val ChipActiveBorder = Color(red = 10f / 255f, green = 132f / 255f, blue = 255f / 255f, alpha = 0.55f)
+    val ChipActiveLabel = Color(0xFF7EC0FF)
+
+    /** Engine strings: mpv messages, track ids, cache figures. */
+    val DiagnosticText = Color(0xFF6F7789)
+
+    /** Endpoint labels under a slider's scale. */
+    val TickLabel = Color(0xFF565E70)
+
+    /** Track of a switch in its off position. */
+    val SwitchOff = Color(0xFF424753)
 }
 
 object HaloSpacing {

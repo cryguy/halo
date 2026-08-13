@@ -106,6 +106,10 @@ kotlin {
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
             implementation("org.jetbrains.compose.material3:material3:1.9.0")
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
+            // Bundled JetBrains Mono, for the player's timecodes and engine
+            // strings. Compose's own resource pipeline rather than per-platform
+            // asset loading, so commonMain can name the font directly.
+            implementation("org.jetbrains.compose.components:components-resources:1.11.1")
             // System back, in common code: the player has to intercept it to
             // wind the engine down before its surface is taken away. Same
             // version as ui, and already on the graph via navigation-compose.
@@ -149,6 +153,13 @@ kotlin {
             implementation("androidx.test.espresso:espresso-core:3.7.0")
         }
     }
+}
+
+// The generated accessor class is internal and lives beside the code that uses
+// it, rather than defaulting to a package derived from the Android namespace.
+compose.resources {
+    publicResClass = false
+    packageOfResClass = "moe.ditto.halo.resources"
 }
 
 android {

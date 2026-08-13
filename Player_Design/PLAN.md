@@ -62,6 +62,13 @@ Judgment calls made on the user's behalf (flag if wrong):
 
 ## Verification commands (Windows, per slice)
 
+There is no `java` on PATH on this machine and the Gradle wrapper refuses to start without one,
+so every command below needs `JAVA_HOME` set first. JDK 17 (Gradle-provisioned, already present):
+
+```powershell
+$env:JAVA_HOME = "$env:USERPROFILE\.gradle\jdks\eclipse_adoptium-17-amd64-windows.2"
+```
+
 ```powershell
 # in apps/mobile-native
 .\gradlew.bat :composeApp:compileCommonMainKotlinMetadata   # common compiles
@@ -80,25 +87,29 @@ video. Emulator reaches it at `http://10.0.2.2:18790`; a device uses the LAN IP.
 
 ## Phase 0 — Groundwork
 
-- [ ] **0.1 Commit this plan into the repo** at `Player_Design/PLAN.md` (checklist lives with the
+- [x] **0.1 Commit this plan into the repo** at `Player_Design/PLAN.md` (checklist lives with the
   design bundle; keeps the doc available "anytime anywhere"). Also commit the `Player_Design/`
-  bundle itself if the user confirms it should be tracked.
-- [ ] **0.2 Record the departure** from Direction A strict parity in
+  bundle itself if the user confirms it should be tracked. **Done:** whole bundle tracked.
+- [x] **0.2 Record the departure** from Direction A strict parity in
   `apps/mobile-native/design-demos/direction-approved.md` (the player is the one screen with no
   parity reference; note the approved redesign and its source bundle).
-- [ ] **0.3 Icons** — add to `HaloIcons.kt`, following its raw-Material-path-data convention
+- [x] **0.3 Icons** — add to `HaloIcons.kt`, following its raw-Material-path-data convention
   (path strings verbatim from Material Icons source, no icon dependency): `Pause`,
   `PictureInPicture` (`picture_in_picture_alt`), `FitScreen`, `LockOpen`, `Lock`, `Brightness`
   (`brightness_5`), `VolumeUp`, `Replay10`, `Forward10`, `GridView`.
-- [ ] **0.4 Player colours** — add the player-only tokens to `HaloTheme.kt` (spec §Design tokens):
+- [x] **0.4 Player colours** — add the player-only tokens to `HaloTheme.kt` (spec §Design tokens):
   scrim top/bottom, chrome glass .45/.55, rail fill, drawer fill, chip-active fill/border/label
   `#7EC0FF`, meta `#C7CDD9`, diagnostic `#6F7789`, ticks `#565E70`, switch-off `#424753`.
   Group them (e.g. `HaloPlayerColors`) rather than flooding `HaloColors`.
-- [ ] **0.5 JetBrains Mono** — bundle `JetBrainsMono-Regular.ttf` (already in repo at
+- [x] **0.5 JetBrains Mono** — bundle `JetBrainsMono-Regular.ttf` (already in repo at
   `apps/desktop/fonts/`, OFL) via Compose resources; add a mono `TextStyle` helper (timecodes,
-  badges, percentages, engine messages; tabular figures).
-- Verify: metadata compile + `testDebugUnitTest` + APK still builds. Commit (one commit for 0.2,
-  one for 0.3–0.5 is fine).
+  badges, percentages, engine messages; tabular figures). **Done:** the module had no Compose
+  resource pipeline, so this set one up (`components-resources` dependency, `compose.resources`
+  block, `src/commonMain/composeResources/`). Only the regular weight exists in the repo, so
+  heavier weights synthesise. The font's runtime load is still unexercised: nothing renders
+  `monoStyle` until slice 1.1.
+- [x] Verify: metadata compile + `testDebugUnitTest` + APK still builds. Commit (one commit for
+  0.2, one for 0.3–0.5 is fine). **Done 2026-08-13:** iOS Kotlin compiles too, 252 tests pass.
 
 ## Phase 1 — Wired mockup (fixture-driven, all commonMain)
 
