@@ -75,8 +75,33 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
     var selectedAddonSubtitleId by mutableStateOf<String?>(null)
         private set
 
+    /** Controls are locked away; the scrim swallows everything but the pill. */
+    var locked by mutableStateOf(false)
+        private set
+
+    /** The unlock affordance, which hides itself so it is not burned into a frame. */
+    var unlockPillVisible by mutableStateOf(false)
+        private set
+
+    /** The in-app stand-in for the OS picture-in-picture handoff. */
+    var pictureInPicture by mutableStateOf(false)
+        private set
+
+    /** What a brightness or volume drag is currently showing, if anything. */
+    var hud by mutableStateOf<GestureHudValue?>(null)
+        private set
+
+    /** Non-null once the up-next countdown is running. */
+    var upNextSecondsRemaining by mutableStateOf<Int?>(null)
+        private set
+
     private var paused = false
     private var hideJob: Job? = null
+    private var unlockPillJob: Job? = null
+    private var hudJob: Job? = null
+    private var upNextJob: Job? = null
+    private var onAdvance: (() -> Unit)? = null
+    private var advanceClaimed = false
 
     /**
      * Chrome hides itself only when there is nothing to look at and nothing in
@@ -212,7 +237,144 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
     fun selectAddonSubtitle(id: String?) {
         selectedAddonSubtitleId = id
     }
+
+    // --- Locking ---------------------------------------------------------
+
+    /**
+     * Locking puts everything away at once: an accidental tap on a control is
+     * exactly what it exists to prevent, so leaving the chrome up would defeat
+     * it.
+     */
+    fun lock() {
+        locked = true
+        chromeVisible = false
+        rail = null
+        episodeDrawerOpen = false
+        hideJob?.cancel()
+        revealUnlockPill()
+    }
+
+    fun unlock() {
+        locked = false
+        unlockPillJob?.cancel()
+        unlockPillVisible = false
+        showChrome()
+    }
+
+    /**
+     * The unlock pill hides itself, and any tap on the locked scrim brings it
+     * back. It cannot stay up: the point of locking is a clean picture, and a
+     * static overlay is what burns into an OLED panel.
+     */
+    fun revealUnlockPill() {
+        if (!locked) return
+        unlockPillVisible = true
+        unlockPillJob?.cancel()
+        unlockPillJob = scope.launch {
+            delay(UnlockPillIdleMillis)
+            unlockPillVisible = false
+        }
+    }
+
+    // --- Picture in picture ----------------------------------------------
+
+    fun enterPictureInPicture() {
+        pictureInPicture = true
+        chromeVisible = false
+        rail = null
+        episodeDrawerOpen = false
+        hideJob?.cancel()
+    }
+
+    fun exitPictureInPicture() {
+        pictureInPicture = false
+        showChrome()
+    }
+
+    // --- Gesture readout -------------------------------------------------
+
+    /**
+     * Shows the brightness or volume readout and clears it shortly after the
+     * gesture stops feeding it, so it does not sit over the picture.
+     */
+    fun showHud(kind: GestureHudKind, value: Float) {
+        hud = GestureHudValue(kind, value.coerceIn(0f, 1f))
+        hudJob?.cancel()
+        hudJob = scope.launch {
+            delay(HudIdleMillis)
+            hud = null
+        }
+    }
+
+    // --- Up next ---------------------------------------------------------
+
+    /**
+     * Starts the countdown to the next episode.
+     *
+     * The countdown, `Play now` and `Cancel` all funnel through one claim, so
+     * whichever happens first wins and the other two become no-ops. Without
+     * that, tapping `Play now` on the final tick advances twice: once from the
+     * tap and once from the timer that was already in flight.
+     */
+    fun showUpNext(seconds: Int = UpNextSeconds, onAdvance: () -> Unit) {
+        if (upNextSecondsRemaining != null || advanceClaimed) return
+        this.onAdvance = onAdvance
+        upNextSecondsRemaining = seconds
+        upNextJob = scope.launch {
+            var remaining = seconds
+            while (remaining > 0) {
+                delay(1_000L)
+                remaining -= 1
+                upNextSecondsRemaining = remaining
+            }
+            advanceToNext()
+        }
+    }
+
+    /** `Play now`: takes the claim early and stops the countdown. */
+    fun advanceToNext() {
+        val advance = onAdvance
+        if (!claimAdvance()) return
+        upNextSecondsRemaining = null
+        advance?.invoke()
+    }
+
+    /** `Cancel`: takes the claim so the pending countdown cannot fire. */
+    fun dismissUpNext() {
+        claimAdvance()
+        upNextSecondsRemaining = null
+    }
+
+    private fun claimAdvance(): Boolean {
+        if (advanceClaimed) return false
+        advanceClaimed = true
+        upNextJob?.cancel()
+        upNextJob = null
+        onAdvance = null
+        return true
+    }
 }
+
+/** Which half of the screen a vertical drag was on, and so what it changes. */
+internal enum class GestureHudKind {
+    Brightness,
+    Volume,
+}
+
+/** [value] is 0..1; the readout renders it as a percentage and a meter. */
+internal data class GestureHudValue(val kind: GestureHudKind, val value: Float)
+
+/** How long the unlock affordance stays up after being asked for. */
+private const val UnlockPillIdleMillis = 3_000L
+
+/** How long a gesture readout outlives the gesture feeding it. */
+private const val HudIdleMillis = 500L
+
+/**
+ * The old player counted down from five. Eight is long enough to read the
+ * episode title and decide, which is the only reason the card exists.
+ */
+internal const val UpNextSeconds = 8
 
 /**
  * Delay limits, shared by the subtitle and audio steppers. Five seconds either

@@ -201,6 +201,152 @@ class PlayerScreenControllerTest {
     }
 
     @Test
+    fun lockingPutsEveryPanelAndTheChromeAway() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        controller.openRail(RailTab.Audio)
+
+        controller.lock()
+
+        assertTrue(controller.locked)
+        assertFalse(controller.chromeVisible, "a stray tap on a control is what locking prevents")
+        assertNull(controller.rail)
+        assertFalse(controller.episodeDrawerOpen)
+    }
+
+    @Test
+    fun theUnlockPillHidesItselfAndComesBackOnATap() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        controller.lock()
+        assertTrue(controller.unlockPillVisible)
+
+        advanceTimeBy(pastIdle)
+        assertFalse(controller.unlockPillVisible, "a static overlay burns into a panel")
+
+        controller.revealUnlockPill()
+        assertTrue(controller.unlockPillVisible)
+
+        advanceTimeBy(pastIdle)
+        assertFalse(controller.unlockPillVisible, "the timer should restart, not be spent")
+    }
+
+    @Test
+    fun theUnlockPillCannotBeSummonedWhileUnlocked() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+
+        controller.revealUnlockPill()
+
+        assertFalse(controller.unlockPillVisible)
+    }
+
+    @Test
+    fun unlockingBringsTheChromeBack() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        controller.lock()
+
+        controller.unlock()
+
+        assertFalse(controller.locked)
+        assertFalse(controller.unlockPillVisible)
+        assertTrue(controller.chromeVisible)
+    }
+
+    @Test
+    fun theGestureReadoutClearsItselfShortlyAfterTheGesture() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+
+        controller.showHud(GestureHudKind.Volume, 0.4f)
+        assertEquals(GestureHudValue(GestureHudKind.Volume, 0.4f), controller.hud)
+
+        advanceTimeBy(400L)
+        assertEquals(GestureHudValue(GestureHudKind.Volume, 0.4f), controller.hud)
+
+        advanceTimeBy(300L)
+        assertNull(controller.hud)
+    }
+
+    @Test
+    fun theGestureReadoutClampsItsValue() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+
+        controller.showHud(GestureHudKind.Brightness, 1.7f)
+
+        assertEquals(1f, controller.hud?.value)
+    }
+
+    @Test
+    fun theUpNextCountdownAdvancesExactlyOnce() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        var advances = 0
+
+        controller.showUpNext(onAdvance = { advances += 1 })
+        assertEquals(UpNextSeconds, controller.upNextSecondsRemaining)
+
+        advanceTimeBy(UpNextSeconds * 1_000L + 500L)
+
+        assertEquals(1, advances)
+    }
+
+    @Test
+    fun playNowBeatsTheCountdownAndTheCountdownCannotFireAfterIt() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        var advances = 0
+        controller.showUpNext(onAdvance = { advances += 1 })
+
+        // The exact race the old player had: tapping on the final tick, with a
+        // timer already in flight, advanced twice.
+        advanceTimeBy(7_500L)
+        controller.advanceToNext()
+        advanceTimeBy(5_000L)
+
+        assertEquals(1, advances)
+        assertNull(controller.upNextSecondsRemaining)
+    }
+
+    @Test
+    fun cancellingStopsTheCountdownFromEverAdvancing() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        var advances = 0
+        controller.showUpNext(onAdvance = { advances += 1 })
+
+        advanceTimeBy(3_000L)
+        controller.dismissUpNext()
+        advanceTimeBy(10_000L)
+
+        assertEquals(0, advances)
+        assertNull(controller.upNextSecondsRemaining)
+    }
+
+    @Test
+    fun aClaimedAdvanceCannotBeRestarted() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        var advances = 0
+        controller.showUpNext(onAdvance = { advances += 1 })
+        controller.advanceToNext()
+
+        // A second NaturalEnd, or a second tap, must not reopen the card.
+        controller.showUpNext(onAdvance = { advances += 1 })
+        advanceTimeBy(10_000L)
+
+        assertNull(controller.upNextSecondsRemaining)
+        assertEquals(1, advances)
+    }
+
+    @Test
+    fun enteringPictureInPictureClearsTheChromeAndPanels() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        controller.toggleEpisodeDrawer()
+
+        controller.enterPictureInPicture()
+        assertTrue(controller.pictureInPicture)
+        assertFalse(controller.chromeVisible)
+        assertFalse(controller.episodeDrawerOpen)
+
+        controller.exitPictureInPicture()
+        assertFalse(controller.pictureInPicture)
+        assertTrue(controller.chromeVisible)
+    }
+
+    @Test
     fun usingTheTransportBringsTheChromeBackAndRearmsTheTimer() = runTest {
         val controller = PlayerScreenController(backgroundScope)
         controller.toggleChrome()

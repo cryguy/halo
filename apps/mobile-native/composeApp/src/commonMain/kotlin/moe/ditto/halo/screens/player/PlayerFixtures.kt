@@ -1,5 +1,10 @@
 package moe.ditto.halo.screens.player
 
+import moe.ditto.halo.player.PlaybackStatus
+import moe.ditto.halo.player.PlayerState
+import moe.ditto.halo.player.PlayerTrack
+import moe.ditto.halo.player.PlayerTracks
+
 /**
  * Stand-in content for the parts of the player that have no real source yet.
  *
@@ -56,11 +61,40 @@ internal object PlayerFixtures {
     /** The episode the fixture session is playing. */
     val CurrentEpisode = Episodes[3]
 
+    /** What the up-next card offers. */
+    val NextEpisode = Episodes[4]
+
     /**
      * Sample line for the subtitle appearance preview. Long enough to wrap at
      * the largest scale, which is when wrapping is the thing being judged.
      */
     const val CaptionSample = "They kept the antenna pointed at nothing for eleven years."
+
+    /**
+     * A playback state for the scene harness, which has no engine behind it.
+     * Roughly forty-three per cent through a forty-seven minute episode, which
+     * puts the transport somewhere it has to lay out both timecodes and a
+     * partly filled bar.
+     */
+    val State = PlayerState(
+        status = PlaybackStatus.Playing,
+        positionSeconds = 1_230.0,
+        durationSeconds = 2_852.0,
+        tracks = PlayerTracks(
+            audio = listOf(
+                PlayerTrack(id = "1", label = "English", language = "Track 1 · 48 kHz"),
+                PlayerTrack(id = "2", label = "Japanese", language = "Track 2 · 48 kHz"),
+                PlayerTrack(id = "3", label = "Commentary", language = "Track 3 · director"),
+            ),
+            subtitles = listOf(
+                PlayerTrack(id = "4", label = "English — Signs & Songs", language = "Track 2 · styled"),
+                PlayerTrack(id = "5", label = "English (SDH)", language = "Track 3 · plain text"),
+                PlayerTrack(id = "6", label = "Japanese", language = "Track 4 · bitmap"),
+            ),
+            selectedAudioId = "1",
+            selectedSubtitleId = "4",
+        ),
+    )
 }
 
 internal data class FixtureEpisode(

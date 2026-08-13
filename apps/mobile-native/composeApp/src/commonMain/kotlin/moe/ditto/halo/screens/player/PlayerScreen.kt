@@ -11,11 +11,8 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.launch
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
@@ -39,8 +35,6 @@ import moe.ditto.halo.player.PlaybackStatus
 import moe.ditto.halo.player.PlayerState
 import moe.ditto.halo.player.PlayerTracks
 import moe.ditto.halo.ui.HaloColors
-import moe.ditto.halo.ui.HaloSpacing
-import moe.ditto.halo.ui.HaloType
 
 /** How far the bottom bar rises as it appears. */
 private const val ChromeFadeMillis = 180
@@ -57,12 +51,17 @@ private const val SeekStepSeconds = 10.0
  * the top bar, centre transport and bottom bar, which appear and disappear
  * together.
  *
- * The chrome that is here is real, but not all of it is connected yet. The
- * right rail, the episode drawer and the transient states (buffering, locked,
- * up next, picture in picture, the error card) are separate pieces of work, and
- * the values behind the speed and episode chips are still fixtures. What is live
- * is the transport: position, duration, play state, seeking, and the audio and
- * subtitle values the engine reports.
+ * Above the chrome sit the panels and the transient states, each a sibling
+ * rather than a child of it, so the chrome's own auto-hide cannot take one of
+ * them down with it.
+ *
+ * What is driven by the engine: position, duration, play state, seeking, the
+ * audio and subtitle track lists and the subtitle styling, and the error card.
+ * What is not, and is waiting on a capability rather than on this screen:
+ * playback rate, audio delay, fit mode, the buffering figures, the gesture
+ * readout, the up-next countdown's contents, and the show and episode names.
+ * Those are reachable from the debug player scene harness so they can be
+ * reviewed before the data behind them exists.
  */
 // BackHandler is still marked experimental in Compose 1.11; the opt-in is
 // scoped to this screen rather than turned on for the whole module, so a future
@@ -167,15 +166,13 @@ internal fun PlayerScreen(
                 episodeTag = PlayerFixtures.CurrentEpisode.tag,
                 episodeName = PlayerFixtures.EpisodeName,
                 streamBadges = PlayerFixtures.StreamBadges,
-                locked = false,
+                locked = controller.locked,
                 onBack = leave,
-                // Picture in picture, fit mode and lock each need something
-                // that does not exist yet (an OS handoff, an mpv panscan call,
-                // and the locked scrim). They are drawn now and connected in
-                // their own slices; a button that half-works would be worse.
-                onPictureInPicture = {},
+                onPictureInPicture = controller::enterPictureInPicture,
+                // Fit mode is the one utility control still waiting on
+                // something that does not exist: an mpv panscan call.
                 onToggleFit = {},
-                onToggleLock = {},
+                onToggleLock = controller::lock,
             )
         }
 
@@ -299,24 +296,59 @@ internal fun PlayerScreen(
             )
         }
 
-        // Placeholders for two states the design gives proper treatments: a
-        // buffering overlay and an error card, both in a later slice. Until
-        // then a dead source has to stay distinguishable from a slow one,
-        // because both look like a black rectangle.
-        when (state.status) {
-            PlaybackStatus.Loading -> Column(
+        // A load in progress is not the same overlay as a stalled buffer: the
+        // engine reports no cache figures until it has opened the source, so
+        // there is no percentage to show yet.
+        if (state.status == PlaybackStatus.Loading) {
+            CircularProgressIndicator(
+                color = HaloColors.Accent,
                 modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                CircularProgressIndicator(color = HaloColors.Accent)
-            }
-            PlaybackStatus.Failed -> Text(
-                text = state.error ?: "This source could not be played.",
-                style = HaloType.Body.copy(color = HaloColors.Danger),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.align(Alignment.Center).padding(horizontal = HaloSpacing.Xl),
             )
-            else -> Unit
+        }
+
+        controller.hud?.let { hud ->
+            GestureHudOverlay(hud)
+        }
+
+        controller.upNextSecondsRemaining?.let { remaining ->
+            UpNextCard(
+                metrics = metrics,
+                episodeTag = PlayerFixtures.NextEpisode.tag,
+                episodeName = PlayerFixtures.NextEpisode.name,
+                secondsRemaining = remaining,
+                totalSeconds = UpNextSeconds,
+                onCancel = controller::dismissUpNext,
+                onPlayNow = controller::advanceToNext,
+                modifier = Modifier.align(Alignment.BottomEnd),
+            )
+        }
+
+        if (controller.pictureInPicture) {
+            PictureInPictureOverlay(
+                metrics = metrics,
+                positionFraction = progressFraction(state.positionSeconds, state.durationSeconds),
+                onReturn = controller::exitPictureInPicture,
+            )
+        }
+
+        if (controller.locked) {
+            LockedOverlay(
+                metrics = metrics,
+                pillVisible = controller.unlockPillVisible,
+                onScrimTap = controller::revealUnlockPill,
+                onUnlock = controller::unlock,
+            )
+        }
+
+        if (state.status == PlaybackStatus.Failed) {
+            PlaybackErrorCard(
+                engineMessage = state.error,
+                onRetry = { scope.launch { playback.play(MediaItem(id = url, title = title, url = url)) } },
+                // Picking another source means going back to the list, which
+                // this screen replaced on the way in. Leaving returns to the
+                // title; navigating straight to the picker is a later change.
+                onPickAnotherSource = leave,
+            )
         }
     }
 }

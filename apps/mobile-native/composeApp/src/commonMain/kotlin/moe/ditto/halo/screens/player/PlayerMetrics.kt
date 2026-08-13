@@ -40,6 +40,9 @@ internal data class PlayerMetrics(
     val episodeThumbHeight: Dp,
     /** The drawer sits lower than the chrome, so it has its own bottom padding. */
     val drawerBottomPadding: Dp,
+    val upNextCardWidth: Dp,
+    val pipWindowWidth: Dp,
+    val pipWindowHeight: Dp,
 )
 
 /**
@@ -84,6 +87,9 @@ internal fun rememberPlayerMetrics(): PlayerMetrics {
             episodeCardWidth = responsive.pick(phone = 168.dp, tablet = 200.dp),
             episodeThumbHeight = responsive.pick(phone = 94.dp, tablet = 112.dp),
             drawerBottomPadding = bottomInset + responsive.pick(phone = 16.dp, tablet = 22.dp),
+            upNextCardWidth = responsive.pick(phone = 320.dp, tablet = 360.dp),
+            pipWindowWidth = responsive.pick(phone = 236.dp, tablet = 288.dp),
+            pipWindowHeight = responsive.pick(phone = 133.dp, tablet = 162.dp),
         )
     }
 }
