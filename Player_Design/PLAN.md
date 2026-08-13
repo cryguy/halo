@@ -17,6 +17,33 @@ The work happens in two phases, per the user's direction:
 
 This file is the handoff checklist: pick up at the first unchecked box.
 
+## Status
+
+**Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
+an Android emulator, not just compiled. Phase 2 has not started.
+
+Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
+(`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
+`PlayerOverlays`, `PlayerScenePreview`, `PlayerFixtures`, `PlayerFormat`, `PlayerMetrics`,
+`PlayerPlaceholderArt`), with tests in the matching `commonTest` package.
+
+To see it: Settings → Debug gate → **Player design scenes** gives all eleven states on a tap,
+over a placeholder rather than the engine. Debug builds only.
+
+What is already driven by the engine: position, duration, play state, seeking, the audio and
+subtitle track lists, subtitle scale/delay/font, and the error card.
+
+What is still fixture or inert, and which slice fixes each: show and episode names (2.1),
+playback rate (2.2), track format badges (2.3), buffering figures (2.4), ASS override and
+outline (2.5), audio delay (2.6), addon subtitles (2.7), gestures and the brightness/volume
+readout (2.8), fit mode (2.9), episode stills and drawer data (2.10), the up-next contents
+(2.11), and where "Pick another source" navigates (2.12). Everything not yet real is grouped
+on `PlayerScreenController` under a comment saying so, or lives in `PlayerFixtures`.
+
+Read the per-slice notes at the end of Phase 1 before starting: they record decisions that
+Phase 2 has to keep (no blur over video, opaque rail and drawer fills, where `requiredSize` is
+needed, the up-next race guard, why the caption is harness-only).
+
 ## Decisions locked (user-confirmed 2026-08-13)
 
 - **Android-first wiring.** Common UI is shared; new `PlayerPort` capabilities get real
