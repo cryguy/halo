@@ -36,6 +36,9 @@ interface PlayerPort {
     suspend fun selectAudioTrack(id: String?)
     suspend fun selectSubtitleTrack(id: String?)
 
+    /** Applies to the running core; one second of media takes `1 / rate` seconds. */
+    suspend fun setPlaybackRate(rate: Double)
+
     // Live subtitle controls: these must apply to the running core without
     // recreating it — the exact capability libVLC lacked on mobile.
     suspend fun setSubtitleDelay(seconds: Double)

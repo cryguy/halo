@@ -187,20 +187,6 @@ class PlayerScreenControllerTest {
     }
 
     @Test
-    fun playbackRateRejectsZeroAndNegatives() = runTest {
-        val controller = PlayerScreenController(backgroundScope)
-        assertEquals(1.0, controller.playbackRate)
-
-        controller.selectPlaybackRate(1.5)
-        assertEquals(1.5, controller.playbackRate)
-
-        // A rate of zero is a stop, not a speed, and mpv treats it as a hang.
-        controller.selectPlaybackRate(0.0)
-        controller.selectPlaybackRate(-1.0)
-        assertEquals(1.5, controller.playbackRate)
-    }
-
-    @Test
     fun lockingPutsEveryPanelAndTheChromeAway() = runTest {
         val controller = PlayerScreenController(backgroundScope)
         controller.openRail(RailTab.Audio)

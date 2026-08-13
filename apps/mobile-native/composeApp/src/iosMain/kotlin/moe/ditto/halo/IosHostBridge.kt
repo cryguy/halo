@@ -314,6 +314,9 @@ internal class IosPlayerHostAdapter(
         host.selectSubtitleTrack(id)
     }
 
+    /** Android-only for now; the Mac follow-up adds the Swift host capability. */
+    override suspend fun setPlaybackRate(rate: Double) = Unit
+
     override suspend fun setSubtitleDelay(seconds: Double) {
         host.setSubtitleDelay(seconds)
     }

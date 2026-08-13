@@ -57,15 +57,11 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
     /**
      * Rail choices the engine cannot hold yet.
      *
-     * Playback rate, ASS override and audio delay are all real mpv properties
-     * that `PlayerPort` does not expose, and the addon subtitle list is not
-     * fetched at all. Keeping them here means the rail is complete and reviewable
-     * now, and each one moves to `PlayerState` when its engine call lands. They
-     * are deliberately grouped and named so it is obvious what is not yet real.
+     * ASS override and audio delay are real mpv properties that `PlayerPort` does
+     * not expose yet, and the addon subtitle list is not fetched at all. Playback
+     * rate is absent from this group because 2.2 sends it through the live engine
+     * path and the screen reads its echo from `PlayerState`.
      */
-    var playbackRate by mutableStateOf(1.0)
-        private set
-
     var subtitleTrackStyling by mutableStateOf(true)
         private set
 
@@ -212,11 +208,6 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
     }
 
     // --- Rail choices ----------------------------------------------------
-
-    fun selectPlaybackRate(rate: Double) {
-        if (!rate.isFinite() || rate <= 0.0) return
-        playbackRate = rate
-    }
 
     fun setTrackStyling(enabled: Boolean) {
         subtitleTrackStyling = enabled

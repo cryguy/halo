@@ -288,7 +288,7 @@ internal fun PlayerScreen(
                 trackStyling = controller.subtitleTrackStyling,
                 selectedAddonSubtitleId = controller.selectedAddonSubtitleId,
                 audioDelaySeconds = controller.audioDelaySeconds,
-                playbackRate = controller.playbackRate,
+                playbackRate = state.playbackRate,
                 onSelectTab = controller::openRail,
                 onClose = controller::closeRail,
                 onSelectSubtitleTrack = { id ->
@@ -306,7 +306,7 @@ internal fun PlayerScreen(
                 onSubtitleFontChange = { font -> scope.launch { playback.setSubtitleFont(font) } },
                 onSelectAudioTrack = { id -> scope.launch { playback.selectAudioTrack(id) } },
                 onAudioDelayChange = controller::setAudioDelay,
-                onPlaybackRateChange = controller::selectPlaybackRate,
+                onPlaybackRateChange = { rate -> scope.launch { playback.setPlaybackRate(rate) } },
             )
         }
 
@@ -401,7 +401,7 @@ private fun playerChips(
     ),
     PlayerChip(
         kicker = "SPEED",
-        value = formatRate(controller.playbackRate),
+        value = formatRate(state.playbackRate),
         active = controller.rail == RailTab.Speed,
         onClick = { controller.openRail(RailTab.Speed) },
     ),

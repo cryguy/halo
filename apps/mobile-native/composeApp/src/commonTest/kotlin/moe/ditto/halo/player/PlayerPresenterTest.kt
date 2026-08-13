@@ -111,6 +111,45 @@ class PlayerPresenterTest {
     }
 
     @Test
+    fun playbackRatePassesThroughAndEchoesIntoState() = runTest {
+        val port = RecordingPlayerPort()
+        val presenter = PlayerPresenter(port)
+        presenter.start(first)
+
+        presenter.setPlaybackRate(1.5)
+
+        assertEquals(listOf(1.5), port.playbackRates)
+        assertEquals(1.5, presenter.state.playbackRate)
+    }
+
+    @Test
+    fun invalidPlaybackRatesNeverReachTheCore() = runTest {
+        val port = RecordingPlayerPort()
+        val presenter = PlayerPresenter(port)
+        presenter.start(first)
+
+        presenter.setPlaybackRate(0.0)
+        presenter.setPlaybackRate(-1.0)
+        presenter.setPlaybackRate(Double.NaN)
+        presenter.setPlaybackRate(Double.POSITIVE_INFINITY)
+
+        assertEquals(emptyList<Double>(), port.playbackRates)
+        assertEquals(1.0, presenter.state.playbackRate)
+    }
+
+    @Test
+    fun playbackRateAfterReleaseIsDropped() = runTest {
+        val port = RecordingPlayerPort()
+        val presenter = PlayerPresenter(port)
+        presenter.start(first)
+        presenter.close()
+
+        presenter.setPlaybackRate(1.5)
+
+        assertEquals(emptyList<Double>(), port.playbackRates)
+    }
+
+    @Test
     fun liveSubtitleControlsPassThroughAndEchoIntoState() = runTest {
         val port = RecordingPlayerPort()
         val presenter = PlayerPresenter(port)
@@ -166,6 +205,7 @@ class PlayerPresenterTest {
 
     private class RecordingPlayerPort : PlayerPort {
         val loads = mutableListOf<MediaItem>()
+        val playbackRates = mutableListOf<Double>()
         val subtitleDelays = mutableListOf<Double>()
         val subtitleScales = mutableListOf<Double>()
         val subtitleFonts = mutableListOf<String?>()
@@ -181,6 +221,10 @@ class PlayerPresenterTest {
         override suspend fun seekTo(positionSeconds: Double) = Unit
         override suspend fun selectAudioTrack(id: String?) = Unit
         override suspend fun selectSubtitleTrack(id: String?) = Unit
+
+        override suspend fun setPlaybackRate(rate: Double) {
+            playbackRates += rate
+        }
 
         override suspend fun setSubtitleDelay(seconds: Double) {
             subtitleDelays += seconds

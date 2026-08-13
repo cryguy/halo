@@ -18,8 +18,10 @@ data class PlayerState(
     val durationSeconds: Double? = null,
     val tracks: PlayerTracks = PlayerTracks(),
     val error: String? = null,
-    // Local echo of the last requested subtitle styling; the core is the
-    // source of truth, these exist so the shell can display what it asked for.
+    // Local echoes of the last requested live controls. The core is the source
+    // of truth; these exist so the shell can display what it asked for without
+    // waiting for a property observation that some platform hosts cannot emit.
+    val playbackRate: Double = 1.0,
     val subtitleDelaySeconds: Double = 0.0,
     val subtitleScale: Double = 1.0,
     val subtitleFont: String? = null,
@@ -60,6 +62,12 @@ class PlayerPresenter(
     suspend fun selectSubtitleTrack(id: String?) {
         if (state.status == PlaybackStatus.Released) return
         player.selectSubtitleTrack(id)
+    }
+
+    suspend fun setPlaybackRate(rate: Double) {
+        if (state.status == PlaybackStatus.Released || !rate.isFinite() || rate <= 0.0) return
+        player.setPlaybackRate(rate)
+        state = state.copy(playbackRate = rate)
     }
 
     suspend fun setSubtitleDelay(seconds: Double) {

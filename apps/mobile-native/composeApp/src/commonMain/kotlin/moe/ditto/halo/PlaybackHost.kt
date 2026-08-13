@@ -100,6 +100,11 @@ internal class PlaybackHost(private val playerPort: PlayerPort) {
         publish()
     }
 
+    suspend fun setPlaybackRate(rate: Double) {
+        playerPresenter.setPlaybackRate(rate)
+        publish()
+    }
+
     suspend fun setSubtitleScale(scale: Double) {
         playerPresenter.setSubtitleScale(scale)
         publish()

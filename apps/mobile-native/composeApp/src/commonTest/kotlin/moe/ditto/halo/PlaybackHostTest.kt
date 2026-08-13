@@ -57,6 +57,18 @@ class PlaybackHostTest {
     }
 
     @Test
+    fun playbackRatePublishesThePresenterEcho() = runTest {
+        val port = RecordingPlayerPort()
+        val host = PlaybackHost(port)
+        host.play(current)
+
+        host.setPlaybackRate(1.25)
+
+        assertEquals(listOf(1.25), port.playbackRates)
+        assertEquals(1.25, host.state.value.playbackRate)
+    }
+
+    @Test
     fun leavingReleasesTheVideoChainBeforeTheScreenCanGoAway() = runTest {
         val port = RecordingPlayerPort()
         val host = PlaybackHost(port)
@@ -85,6 +97,7 @@ class PlaybackHostTest {
     private class RecordingPlayerPort : PlayerPort {
         val loads = mutableListOf<MediaItem>()
         val pauses = mutableListOf<Boolean>()
+        val playbackRates = mutableListOf<Double>()
         var teardownCount = 0
             private set
         var videoReleases = 0
@@ -100,6 +113,9 @@ class PlaybackHostTest {
         override suspend fun seekTo(positionSeconds: Double) = Unit
         override suspend fun selectAudioTrack(id: String?) = Unit
         override suspend fun selectSubtitleTrack(id: String?) = Unit
+        override suspend fun setPlaybackRate(rate: Double) {
+            playbackRates += rate
+        }
         override suspend fun setSubtitleDelay(seconds: Double) = Unit
         override suspend fun setSubtitleScale(scale: Double) = Unit
         override suspend fun setSubtitleFont(font: String?) = Unit

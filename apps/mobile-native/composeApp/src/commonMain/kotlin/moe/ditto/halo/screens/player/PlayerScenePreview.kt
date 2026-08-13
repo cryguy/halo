@@ -278,7 +278,7 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
                 trackStyling = controller.subtitleTrackStyling,
                 selectedAddonSubtitleId = controller.selectedAddonSubtitleId,
                 audioDelaySeconds = controller.audioDelaySeconds,
-                playbackRate = controller.playbackRate,
+                playbackRate = state.playbackRate,
                 onSelectTab = controller::openRail,
                 onClose = controller::closeRail,
                 onSelectSubtitleTrack = {},
@@ -289,7 +289,9 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
                 onSubtitleFontChange = {},
                 onSelectAudioTrack = {},
                 onAudioDelayChange = controller::setAudioDelay,
-                onPlaybackRateChange = controller::selectPlaybackRate,
+                // The harness has no PlaybackHost by design; speed is fixed at
+                // the fixture state's 1× and the real screen exercises the call.
+                onPlaybackRateChange = {},
             )
         }
 
@@ -366,7 +368,7 @@ private fun scenePreviewChips(controller: PlayerScreenController): List<PlayerCh
     ),
     PlayerChip(
         kicker = "SPEED",
-        value = formatRate(controller.playbackRate),
+        value = formatRate(PlayerFixtures.State.playbackRate),
         active = controller.rail == RailTab.Speed,
         onClick = { controller.openRail(RailTab.Speed) },
     ),
