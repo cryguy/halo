@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #07080b; }
+  a { color: #0a84ff; }
+  a:hover { color: #3ba0ff; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#07080b;color:#f4f6fb;font-family:Roboto,Arial,sans-serif;padding:40px 40px 72px;display:flex;flex-direction:column;align-items:center;gap:28px">
+
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="p-chevron-down" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
+    <symbol id="p-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="p-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="p-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="p-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="p-play-back" viewBox="0 0 24 24"><path d="M11 6v12L3 12zM20 6v12l-8-6z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="p-play-forward" viewBox="0 0 24 24"><path d="M13 6v12l8-6zM4 6v12l8-6z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="p-albums" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M6 4h12"/></symbol>
+    <symbol id="p-contract" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></symbol>
+    <symbol id="p-scan" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/></symbol>
+    <symbol id="p-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></symbol>
+    <symbol id="p-subs" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 11h4M13 11h4M7 15h7"/></symbol>
+    <symbol id="p-lock-open" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+    <symbol id="p-lock-closed" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></symbol>
+    <symbol id="p-sunny" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/></symbol>
+    <symbol id="p-volume" viewBox="0 0 24 24"><path d="M4 10v4h3l4 3.5v-15L7 10z" fill="currentColor" stroke="none"/><path d="M16 9.2a4 4 0 0 1 0 5.6M18.7 6.5a8 8 0 0 1 0 11"/></symbol>
+    <symbol id="p-arrow-down-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v7.5M8.8 12.3 12 15.5l3.2-3.2"/></symbol>
+    <symbol id="p-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
+    <symbol id="p-minus" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol>
+  </svg>
+
+  <header style="width:100%;max-width:1020px;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:12px;letter-spacing:1.7px;font-weight:700;color:#0a84ff">HALO · PARITY REFERENCE</div>
+    <h1 style="margin:0;font-size:38px;line-height:1.05;letter-spacing:-1.4px;font-weight:800">The player as it exists today</h1>
+    <p style="margin:0;max-width:760px;font-size:15px;line-height:1.55;color:#8b93a5">Recreated from <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#c7cdd9">apps/mobile/app/player.tsx</span>, <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#c7cdd9">SubtitlesSheet.tsx</span>, <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#c7cdd9">SelectSheet.tsx</span>, <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#c7cdd9">PlayerGestureLayer.tsx</span> and <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#c7cdd9">src/theme.ts</span>. Landscape iPhone metrics, safe-area padding 59px each side. Icons are prototype stand-ins in the style of the repo's own Direction A board; the app itself uses Ionicons.</p>
+  </header>
+
+  <div style="width:100%;max-width:1020px;display:flex;flex-wrap:wrap;gap:8px">
+    <sc-for list="{{ states }}" as="s" hint-placeholder-count="10">
+      <button type="button" onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+
+  <div style="padding:8px;background:#1a1a1a;border-radius:39px;box-shadow:0 0 0 2px #2a2a2a,0 28px 70px rgba(0,0,0,.55)">
+    <div style="position:relative;width:874px;height:402px;border-radius:32px;overflow:hidden;background:#000">
+
+      <div style="position:absolute;inset:0;background:#0b0d12">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(115deg,#12151c 0 12px,#0d1015 12px 24px)"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.28)">video frame — libVLC surface</span>
+        </div>
+      </div>
+
+      <sc-if value="{{ showScrims }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;pointer-events:none">
+          <div style="position:absolute;top:0;left:0;right:0;height:120px;background:linear-gradient(180deg,rgba(0,0,0,.65),rgba(0,0,0,0))"></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:140px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.75))"></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showControls }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between">
+
+          <div style="display:flex;align-items:center;gap:16px;padding:8px 59px 0">
+            <button type="button" style="display:flex;align-items:center;background:none;border:0;padding:0;color:#f4f6fb;cursor:pointer">
+              <svg style="width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-chevron-down"></use></svg>
+            </button>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f4f6fb;font-size:16px;font-weight:600">Pale Blue Dot — S02E04</span>
+            <div style="display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.16);overflow:hidden;background:rgba(18,20,26,.55);backdrop-filter:blur(18px)">
+              <button type="button" style="padding:8px 14px;background:none;border:0;color:#f4f6fb;display:flex;cursor:pointer">
+                <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-albums"></use></svg>
+              </button>
+              <div style="width:1px;height:18px;background:rgba(255,255,255,.18)"></div>
+              <button type="button" style="padding:8px 14px;background:none;border:0;color:#f4f6fb;display:flex;cursor:pointer">
+                <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-contract"></use></svg>
+              </button>
+              <div style="width:1px;height:18px;background:rgba(255,255,255,.18)"></div>
+              <button type="button" onClick="{{ openSpeed }}" style="padding:8px 14px;background:none;border:0;color:#f4f6fb;font-size:12px;font-weight:800;min-width:25px;text-align:center;cursor:pointer">1×</button>
+              <div style="width:1px;height:18px;background:rgba(255,255,255,.18)"></div>
+              <button type="button" onClick="{{ openAudio }}" style="padding:8px 14px;background:none;border:0;color:#f4f6fb;display:flex;cursor:pointer">
+                <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-music"></use></svg>
+              </button>
+              <div style="width:1px;height:18px;background:rgba(255,255,255,.18)"></div>
+              <button type="button" onClick="{{ openSubs }}" style="padding:8px 14px;background:none;border:0;color:#f4f6fb;display:flex;cursor:pointer">
+                <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-subs"></use></svg>
+              </button>
+              <div style="width:1px;height:18px;background:rgba(255,255,255,.18)"></div>
+              <button type="button" onClick="{{ lock }}" style="padding:8px 14px;background:none;border:0;color:#f4f6fb;display:flex;cursor:pointer">
+                <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-lock-open"></use></svg>
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:center;gap:56px">
+            <button type="button" style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:none;border:0;padding:0;color:#f4f6fb;cursor:pointer">
+              <svg style="width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-play-back"></use></svg>
+              <span style="font-size:11px;font-weight:700;margin-top:-3px">10</span>
+            </button>
+            <button type="button" onClick="{{ togglePlay }}" style="width:76px;height:76px;border-radius:999px;background:rgba(255,255,255,.16);border:0;display:flex;align-items:center;justify-content:center;color:#f4f6fb;cursor:pointer">
+              <sc-if value="{{ paused }}" hint-placeholder-val="{{ true }}">
+                <svg style="width:40px;height:40px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-play"></use></svg>
+              </sc-if>
+              <sc-if value="{{ playing }}" hint-placeholder-val="{{ true }}">
+                <svg style="width:40px;height:40px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-pause"></use></svg>
+              </sc-if>
+            </button>
+            <button type="button" style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:none;border:0;padding:0;color:#f4f6fb;cursor:pointer">
+              <svg style="width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-play-forward"></use></svg>
+              <span style="font-size:11px;font-weight:700;margin-top:-3px">30</span>
+            </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;padding:0 59px 29px">
+            <span style="color:#f4f6fb;font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums;min-width:44px">{{ elapsed }}</span>
+            <div style="flex:1;height:28px;display:flex;align-items:center;position:relative">
+              <div style="position:absolute;left:0;right:0;height:4px;border-radius:2px;background:rgba(255,255,255,.3)"></div>
+              <div style="position:absolute;left:0;height:4px;border-radius:2px;background:#fff;width:42%"></div>
+              <div style="position:absolute;left:42%;width:14px;height:14px;margin-left:-7px;border-radius:999px;background:#fff"></div>
+            </div>
+            <span style="color:rgba(255,255,255,.7);font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums;min-width:44px;text-align:right">47:32</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showBuffering }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+          <div style="width:36px;height:36px;border-radius:999px;border:3px solid rgba(10,132,255,.25);border-top-color:#0a84ff;animation:spin .9s linear infinite"></div>
+          <span style="color:#f4f6fb;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;padding:4px 10px;border-radius:999px;background:rgba(5,7,12,.82)">68%</span>
+          <span style="color:#f4f6fb;font-size:13px;font-weight:600;padding:4px 16px;border-radius:999px;background:rgba(5,7,12,.82)">Still loading this stream…</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showHud }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+          <div style="min-width:132px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 24px;border-radius:16px;background:rgba(5,7,12,.82);border:1px solid rgba(255,255,255,.2)">
+            <svg style="width:30px;height:30px;color:#f4f6fb;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-sunny"></use></svg>
+            <span style="color:#f4f6fb;font-size:14px;font-weight:700">62%</span>
+            <div style="width:92px;height:4px;border-radius:999px;background:rgba(255,255,255,.22);overflow:hidden">
+              <div style="width:62%;height:100%;border-radius:999px;background:#0a84ff"></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showLocked }}" hint-placeholder-val="{{ true }}">
+        <button type="button" onClick="{{ unlock }}" style="position:absolute;top:46%;left:59px;display:flex;align-items:center;gap:4px;padding:8px 16px;border-radius:999px;background:rgba(5,7,12,.82);border:1px solid rgba(255,255,255,.2);color:#f4f6fb;cursor:pointer">
+          <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-lock-closed"></use></svg>
+          <span style="font-size:13px;font-weight:700">Unlock controls</span>
+        </button>
+      </sc-if>
+
+      <sc-if value="{{ showNotice }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;top:18%;left:0;right:0;display:flex;justify-content:center;pointer-events:none">
+          <div style="padding:8px 16px;border-radius:999px;background:rgba(5,7,12,.82);border:1px solid rgba(255,255,255,.18)">
+            <span style="color:#f4f6fb;font-size:13px;font-weight:700">Fill screen</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showUpNext }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(5,7,12,.9)">
+          <span style="color:#0a84ff;font-size:12px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase">Up next</span>
+          <span style="color:#f4f6fb;font-size:22px;font-weight:700;text-align:center;padding:0 32px">Pale Blue Dot — S02E05</span>
+          <span style="color:#8b93a5;font-size:14px">The Long Signal</span>
+          <span style="color:#8b93a5;font-size:13px;margin-top:4px">Playing in 3 s</span>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:16px">
+            <button type="button" style="padding:10px 24px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);color:#f4f6fb;font-size:15px;font-weight:600;cursor:pointer">Cancel</button>
+            <button type="button" style="display:flex;align-items:center;gap:4px;padding:10px 24px;border-radius:999px;background:#fff;border:0;color:#000;font-size:15px;font-weight:700;cursor:pointer">
+              <svg style="width:18px;height:18px;color:#000;fill:none;stroke:currentColor;stroke-width:1.8"><use href="#p-play"></use></svg>
+              Play now
+            </button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showError }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#000">
+          <span style="color:#f4f6fb;font-size:15px">Playback failed — the source may be dead.</span>
+          <button type="button" style="background:#fff;border:0;border-radius:8px;padding:8px 16px;color:#000;font-weight:700;font-size:14px;cursor:pointer">Pick another source</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showSideSheet }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;z-index:100">
+          <button type="button" onClick="{{ closeSheets }}" style="position:absolute;inset:0;background:rgba(0,0,0,.55);border:0;cursor:pointer"></button>
+          <div style="position:absolute;top:0;right:0;bottom:0;width:419px;background:rgba(20,22,30,.86);backdrop-filter:blur(30px);border-left:1px solid rgba(255,255,255,.11);border-top-left-radius:24px;border-bottom-left-radius:24px;padding:8px 0 16px;display:flex;flex-direction:column;overflow:hidden">
+            <div style="display:flex;align-items:center;padding:0 24px 8px">
+              <div style="flex:1;min-width:0">
+                <div style="color:#f4f6fb;font-size:18px;font-weight:700">{{ sheetTitle }}</div>
+                <div style="color:#8b93a5;font-size:11.5px;margin-top:2px">{{ sheetDescription }}</div>
+              </div>
+              <button type="button" onClick="{{ closeSheets }}" style="width:34px;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border:0;color:#f4f6fb;cursor:pointer">
+                <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-close"></use></svg>
+              </button>
+            </div>
+            <div style="flex:1;overflow:auto">
+              <sc-for list="{{ sheetOptions }}" as="o" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px solid rgba(255,255,255,.08)">
+                  <div style="width:22px;display:flex;color:#0a84ff">
+                    <sc-if value="{{ o.selected }}" hint-placeholder-val="{{ true }}">
+                      <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-check"></use></svg>
+                    </sc-if>
+                  </div>
+                  <div style="flex:1;min-width:0">
+                    <div style="{{ o.labelStyle }}">{{ o.label }}</div>
+                    <div style="color:rgba(255,255,255,.45);font-size:12px;margin-top:1px">{{ o.detail }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showSubsSheet }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;z-index:100;background:rgba(20,22,30,.9);backdrop-filter:blur(30px);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;padding:24px 59px 16px">
+            <div style="flex:1;min-width:0">
+              <div style="color:#f4f6fb;font-size:20px;font-weight:700">Subtitles</div>
+              <div style="color:#8b93a5;font-size:12px;margin-top:2px">Language, variant and appearance</div>
+            </div>
+            <button type="button" onClick="{{ closeSheets }}" style="width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border:0;color:#f4f6fb;cursor:pointer">
+              <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-close"></use></svg>
+            </button>
+          </div>
+
+          <div style="flex:1;display:flex;padding-bottom:21px;min-height:0">
+            <div style="flex:0.75;padding-left:59px;padding-right:16px;padding-bottom:24px;display:flex;flex-direction:column;min-height:0">
+              <div style="color:#8b93a5;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:8px;padding:0 4px">LANGUAGE</div>
+              <div style="flex:1;overflow:auto;display:flex;flex-direction:column">
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:12px">
+                  <span style="flex:1;color:rgba(255,255,255,.9);font-size:15.5px;font-weight:500">Off</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:12px;background:rgba(255,255,255,.06)">
+                  <span style="flex:1;color:#fff;font-size:15.5px;font-weight:700">English</span>
+                  <div style="width:8px;height:8px;border-radius:4px;background:#0a84ff"></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:12px">
+                  <span style="flex:1;color:rgba(255,255,255,.9);font-size:15.5px;font-weight:500">Japanese</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:12px">
+                  <span style="flex:1;color:rgba(255,255,255,.9);font-size:15.5px;font-weight:500">Spanish</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:12px">
+                  <span style="flex:1;color:rgba(255,255,255,.9);font-size:15.5px;font-weight:500">Other</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="width:1px;background:rgba(255,255,255,.12);margin:8px 0"></div>
+
+            <div style="flex:0.9;padding:0 16px 24px;display:flex;flex-direction:column;min-height:0">
+              <div style="color:#8b93a5;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:8px;padding:0 4px">VARIANT</div>
+              <div style="flex:1;overflow:auto;display:flex;flex-direction:column">
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:12px;background:rgba(255,255,255,.06)">
+                  <div style="flex:1;min-width:0">
+                    <div style="color:#fff;font-size:15.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Track 2 - [English]</div>
+                    <div style="color:rgba(255,255,255,.45);font-size:12px;margin-top:1px">Embedded</div>
+                  </div>
+                  <div style="width:8px;height:8px;border-radius:4px;background:#0a84ff"></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:12px">
+                  <div style="flex:1;min-width:0">
+                    <div style="color:rgba(255,255,255,.9);font-size:15.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">OpenSubtitles</div>
+                    <div style="color:rgba(255,255,255,.45);font-size:12px;margin-top:1px">os-en-6821194</div>
+                  </div>
+                  <svg style="width:15px;height:15px;color:#5dd39e;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#p-arrow-down-circle"></use></svg>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:12px">
+                  <div style="flex:1;min-width:0">
+                    <div style="color:rgba(255,255,255,.9);font-size:15.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">OpenSubtitles</div>
+                    <div style="color:rgba(255,255,255,.45);font-size:12px;margin-top:1px">os-en-6821507</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="width:1px;background:rgba(255,255,255,.12);margin:8px 0"></div>
+
+            <div style="flex:1.35;display:flex;flex-direction:column;min-height:0">
+              <div style="color:#8b93a5;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:8px;padding:0 59px 0 24px">SETTINGS</div>
+              <div style="flex:1;overflow:auto;padding:0 59px 32px 24px;display:flex;flex-direction:column;gap:24px">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)">
+                  <div>
+                    <div style="color:#f4f6fb;font-size:14px;font-weight:700">Subtitle sync</div>
+                    <div style="color:#8b93a5;font-size:12px;margin-top:2px">Audio timing</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <div style="width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:#f4f6fb">
+                      <svg style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><use href="#p-minus"></use></svg>
+                    </div>
+                    <div style="min-width:66px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.07);color:#f4f6fb;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums">0 ms</div>
+                    <div style="width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:#f4f6fb">
+                      <svg style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><use href="#p-plus"></use></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)">
+                  <div>
+                    <div style="color:#f4f6fb;font-size:14px;font-weight:700">Text size</div>
+                    <div style="color:#8b93a5;font-size:12px;margin-top:2px">Caption scale</div>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px">
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">75</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:#0a84ff;color:#fff;font-size:12px;font-weight:700">100</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">125</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">150</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)">
+                  <div>
+                    <div style="color:#f4f6fb;font-size:14px;font-weight:700">Outline</div>
+                    <div style="color:#8b93a5;font-size:12px;margin-top:2px">Edge thickness</div>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px">
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">None</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">Thin</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:#0a84ff;color:#fff;font-size:12px;font-weight:700">Normal</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">Thick</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)">
+                  <div>
+                    <div style="color:#f4f6fb;font-size:14px;font-weight:700">Font</div>
+                    <div style="color:#8b93a5;font-size:12px;margin-top:2px">Caption typeface</div>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px">
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:#0a84ff;color:#fff;font-size:12px;font-weight:700">Default</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">Inter</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">Serif</div>
+                    <div style="min-width:42px;text-align:center;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);color:#8b93a5;font-size:12px;font-weight:700">Mono</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="position:absolute;top:50%;left:11px;width:11px;height:34px;margin-top:-17px;background:#050505;border-radius:999px;z-index:200;box-shadow:0 0 0 1px rgba(255,255,255,.07)"></div>
+      <div style="position:absolute;right:8px;top:50%;width:4px;height:88px;margin-top:-44px;background:rgba(255,255,255,.5);border-radius:999px;z-index:200"></div>
+    </div>
+  </div>
+
+  <p style="margin:0;max-width:1020px;font-size:13px;line-height:1.6;color:#8b93a5">Anatomy today: one glass pill on the top right carries six controls (PiP, fit, speed, audio, subtitles, lock) as unlabelled icons, so the active audio track, subtitle track and speed are invisible until a panel is opened. Audio and speed open a right side panel at 48% width; subtitles take the whole screen in three columns. Seek is ±10 s / +30 s. There is no episode list and no scrub preview.</p>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const STATES = [
+  ['controls', 'Controls visible'],
+  ['hidden', 'Controls hidden'],
+  ['buffering', 'Buffering'],
+  ['hud', 'Gesture HUD'],
+  ['notice', 'Fit-mode notice'],
+  ['locked', 'Locked'],
+  ['upnext', 'Up next'],
+  ['subs', 'Subtitles sheet'],
+  ['audio', 'Audio sheet'],
+  ['speed', 'Speed sheet'],
+  ['error', 'Playback error'],
+];
+
+const AUDIO_OPTIONS = [
+  { label: 'Track 1 - [English]', detail: 'AAC 5.1', selected: true },
+  { label: 'Track 2 - [Japanese]', detail: 'AAC stereo', selected: false },
+  { label: 'Track 3 - [Commentary]', detail: 'AAC stereo', selected: false },
+];
+
+const SPEED_OPTIONS = [
+  { label: '0.5×', detail: '50% slower', selected: false },
+  { label: '0.75×', detail: '25% slower', selected: false },
+  { label: '1×', detail: 'Normal speed', selected: true },
+  { label: '1.25×', detail: '25% faster', selected: false },
+  { label: '1.5×', detail: '50% faster', selected: false },
+  { label: '2×', detail: '100% faster', selected: false },
+];
+
+class Component extends DCLogic {
+  state = { view: 'controls', paused: false };
+
+  renderVals() {
+    const v = this.state.view;
+    const sheet = v === 'audio' ? 'audio' : v === 'speed' ? 'speed' : null;
+    const opts = (sheet === 'audio' ? AUDIO_OPTIONS : SPEED_OPTIONS).map((o) => ({
+      label: o.label,
+      detail: o.detail,
+      selected: o.selected,
+      labelStyle: o.selected
+        ? 'color:#fff;font-size:15.5px;font-weight:700'
+        : 'color:rgba(255,255,255,.9);font-size:15.5px;font-weight:500',
+    }));
+
+    return {
+      states: STATES.map(([key, label]) => ({
+        label,
+        pick: () => this.setState({ view: key }),
+        style:
+          'padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid ' +
+          (this.state.view === key
+            ? 'transparent;background:#0a84ff;color:#fff'
+            : 'rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#8b93a5'),
+      })),
+      showControls: v === 'controls' || v === 'notice',
+      showScrims: v === 'controls' || v === 'notice',
+      showBuffering: v === 'buffering',
+      showHud: v === 'hud',
+      showNotice: v === 'notice',
+      showLocked: v === 'locked',
+      showUpNext: v === 'upnext',
+      showError: v === 'error',
+      showSubsSheet: v === 'subs',
+      showSideSheet: sheet !== null,
+      sheetTitle: sheet === 'audio' ? 'Audio' : 'Playback speed',
+      sheetDescription: sheet === 'audio' ? 'Language and audio track' : 'Adjust playback tempo',
+      sheetOptions: opts,
+      elapsed: '19:58',
+      paused: this.state.paused,
+      playing: !this.state.paused,
+      togglePlay: () => this.setState((s) => ({ paused: !s.paused })),
+      openAudio: () => this.setState({ view: 'audio' }),
+      openSubs: () => this.setState({ view: 'subs' }),
+      openSpeed: () => this.setState({ view: 'speed' }),
+      lock: () => this.setState({ view: 'locked' }),
+      unlock: () => this.setState({ view: 'controls' }),
+      closeSheets: () => this.setState({ view: 'controls' }),
+    };
+  }
+}
+
+</script>
+</body>
+</html>
