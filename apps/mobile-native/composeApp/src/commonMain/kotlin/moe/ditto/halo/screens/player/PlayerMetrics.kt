@@ -29,6 +29,8 @@ internal data class PlayerMetrics(
     val titleSize: TextUnit,
     val chipValueSize: TextUnit,
     val transportTextSize: TextUnit,
+    /** On-video subtitle size at 100 %; the rail's preview scales from this. */
+    val captionSize: TextUnit,
     val playButtonSize: Dp,
     val playIconSize: Dp,
     val centreGap: Dp,
@@ -69,6 +71,7 @@ internal fun rememberPlayerMetrics(): PlayerMetrics {
             titleSize = responsive.pick(phone = 16.5.sp, tablet = 19.sp),
             chipValueSize = responsive.pick(phone = 12.5.sp, tablet = 13.5.sp),
             transportTextSize = responsive.pick(phone = 12.sp, tablet = 13.sp),
+            captionSize = responsive.pick(phone = 16.sp, tablet = 21.sp),
             playButtonSize = responsive.pick(phone = 72.dp, tablet = 88.dp),
             playIconSize = responsive.pick(phone = 34.dp, tablet = 40.dp),
             centreGap = responsive.pick(phone = 34.dp, tablet = 44.dp),

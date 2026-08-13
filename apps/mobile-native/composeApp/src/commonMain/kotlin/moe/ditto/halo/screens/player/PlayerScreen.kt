@@ -4,7 +4,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -42,7 +44,8 @@ import moe.ditto.halo.ui.HaloType
 /** How far the bottom bar rises as it appears. */
 private const val ChromeFadeMillis = 180
 private const val BottomBarRiseMillis = 220
-private val SeekStepSeconds = 10.0
+private const val RailEnterMillis = 220
+private const val SeekStepSeconds = 10.0
 
 /**
  * The playback screen.
@@ -120,6 +123,13 @@ internal fun PlayerScreen(
     BackHandler(enabled = !leaving, onBack = leave)
 
     val paused = state.status != PlaybackStatus.Playing
+
+    // Which tab the rail was last showing, so its exit animation still has
+    // something to draw after the rail itself has been closed.
+    var lastRailTab by remember { mutableStateOf(RailTab.Subtitles) }
+    LaunchedEffect(controller.rail) {
+        controller.rail?.let { lastRailTab = it }
+    }
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
         // The engine paints the whole box; everything else sits on top of it.
@@ -222,6 +232,51 @@ internal fun PlayerScreen(
             )
         }
 
+        // The rail covers the chrome, so it is a sibling above it rather than a
+        // child of it: the chrome's own auto-hide must not be able to take the
+        // rail down with it.
+        AnimatedVisibility(
+            visible = controller.rail != null,
+            enter = fadeIn(tween(RailEnterMillis)) +
+                slideInHorizontally(tween(RailEnterMillis)) { width -> width / 8 },
+            exit = fadeOut(tween(RailEnterMillis)) +
+                slideOutHorizontally(tween(RailEnterMillis)) { width -> width / 8 },
+        ) {
+            // Held across the exit animation so the panel does not blank out as
+            // it slides away.
+            val tab = controller.rail ?: lastRailTab
+            PlayerRail(
+                tab = tab,
+                metrics = metrics,
+                tracks = state.tracks,
+                subtitleScale = state.subtitleScale,
+                subtitleDelaySeconds = state.subtitleDelaySeconds,
+                subtitleFont = state.subtitleFont,
+                trackStyling = controller.subtitleTrackStyling,
+                selectedAddonSubtitleId = controller.selectedAddonSubtitleId,
+                audioDelaySeconds = controller.audioDelaySeconds,
+                playbackRate = controller.playbackRate,
+                onSelectTab = controller::openRail,
+                onClose = controller::closeRail,
+                onSelectSubtitleTrack = { id ->
+                    controller.selectAddonSubtitle(null)
+                    scope.launch { playback.selectSubtitleTrack(id) }
+                },
+                onSelectAddonSubtitle = controller::selectAddonSubtitle,
+                onSubtitleScaleChange = { scale -> scope.launch { playback.setSubtitleScale(scale) } },
+                onSubtitleDelayChange = { seconds ->
+                    scope.launch {
+                        playback.setSubtitleDelay(seconds.coerceIn(-MaxDelaySeconds, MaxDelaySeconds))
+                    }
+                },
+                onTrackStylingChange = controller::setTrackStyling,
+                onSubtitleFontChange = { font -> scope.launch { playback.setSubtitleFont(font) } },
+                onSelectAudioTrack = { id -> scope.launch { playback.selectAudioTrack(id) } },
+                onAudioDelayChange = controller::setAudioDelay,
+                onPlaybackRateChange = controller::selectPlaybackRate,
+            )
+        }
+
         // Placeholders for two states the design gives proper treatments: a
         // buffering overlay and an error card, both in a later slice. Until
         // then a dead source has to stay distinguishable from a slow one,
@@ -270,7 +325,7 @@ private fun playerChips(state: PlayerState, controller: PlayerScreenController):
     ),
     PlayerChip(
         kicker = "SPEED",
-        value = "1×",
+        value = formatRate(controller.playbackRate),
         active = controller.rail == RailTab.Speed,
         onClick = { controller.openRail(RailTab.Speed) },
     ),
@@ -295,6 +350,6 @@ private fun subtitleChipValue(tracks: PlayerTracks): String {
 private fun audioChipValue(tracks: PlayerTracks): String {
     val selected = tracks.audio.firstOrNull { it.id == tracks.selectedAudioId }
         ?: tracks.audio.firstOrNull()
-        ?: return "—"
+        ?: return "None"
     return selected.language ?: selected.label
 }

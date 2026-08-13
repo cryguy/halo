@@ -54,6 +54,27 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
     var scrubFraction by mutableStateOf<Float?>(null)
         private set
 
+    /**
+     * Rail choices the engine cannot hold yet.
+     *
+     * Playback rate, ASS override and audio delay are all real mpv properties
+     * that `PlayerPort` does not expose, and the addon subtitle list is not
+     * fetched at all. Keeping them here means the rail is complete and reviewable
+     * now, and each one moves to `PlayerState` when its engine call lands. They
+     * are deliberately grouped and named so it is obvious what is not yet real.
+     */
+    var playbackRate by mutableStateOf(1.0)
+        private set
+
+    var subtitleTrackStyling by mutableStateOf(true)
+        private set
+
+    var audioDelaySeconds by mutableStateOf(0.0)
+        private set
+
+    var selectedAddonSubtitleId by mutableStateOf<String?>(null)
+        private set
+
     private var paused = false
     private var hideJob: Job? = null
 
@@ -164,4 +185,38 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
         scrubFraction = null
         armAutoHide()
     }
+
+    // --- Rail choices ----------------------------------------------------
+
+    fun selectPlaybackRate(rate: Double) {
+        if (!rate.isFinite() || rate <= 0.0) return
+        playbackRate = rate
+    }
+
+    fun setTrackStyling(enabled: Boolean) {
+        subtitleTrackStyling = enabled
+    }
+
+    /** Clamped the same way the subtitle delay is, and for the same reason. */
+    fun setAudioDelay(seconds: Double) {
+        if (!seconds.isFinite()) return
+        audioDelaySeconds = seconds.coerceIn(-MaxDelaySeconds, MaxDelaySeconds)
+    }
+
+    /**
+     * Choosing an addon subtitle clears the in-file selection in the UI, since
+     * only one subtitle can be showing. The engine side of that is a real
+     * [moe.ditto.halo.player.PlayerPort.addSubtitle] call, which arrives with
+     * the fetch.
+     */
+    fun selectAddonSubtitle(id: String?) {
+        selectedAddonSubtitleId = id
+    }
 }
+
+/**
+ * Delay limits, shared by the subtitle and audio steppers. Five seconds either
+ * way covers every real desync; beyond that the track is the wrong one.
+ */
+internal const val MaxDelaySeconds = 5.0
+internal const val DelayStepSeconds = 0.05

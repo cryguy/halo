@@ -131,7 +131,7 @@ State/controller (`PlayerViewState.kt` + `PlayerScreenController.kt`, commonTest
   bottom bar (4 chips + `<remaining> left`, transport row, growing thumb, scrub-preview card
   timecode-only). Chips already read live `PlayerState` where it exists (position, duration,
   selected tracks); everything else fixture. Tap-to-toggle chrome + auto-hide via controller.
-- [ ] **1.2 Right rail** — slide-in panel + scrim, header, `Segmented` tabs (Audio/Subtitles/
+- [x] **1.2 Right rail** — slide-in panel + scrim, header, `Segmented` tabs (Audio/Subtitles/
   Speed), shared list-row anatomy, format badges, Subtitles tab (sections, Off row, four
   appearance cards: size slider 50–200 %, delay stepper ±5000 ms step 50, track-styling switch +
   font chips `Default/Inter/Serif/Mono`, preview strip), Audio tab (tracks + delay stepper),
@@ -165,6 +165,25 @@ Notes from 1.1 worth carrying forward:
   preview without moving anything; a finger cannot.
 - `bufferedFraction` is passed in rather than read from a fixture inside the chrome, so 2.4
   only has to change the caller.
+
+Notes from 1.2:
+
+- The rail's fill is flattened onto the app background rather than left translucent. The design
+  assumes a 30dp backdrop blur that cannot exist over video, and at 90% opacity with sharp text
+  behind it the panel reads as a rendering bug. This is the fallback `HaloGlass` already
+  documents. The same applies to the episode drawer in 1.3.
+- Slider ticks are placed at their real positions, not spaced evenly: on a 50 to 200 scale the
+  100 mark belongs a third of the way along, and an evenly spaced label sits where the thumb
+  never is at that value.
+- Rail state the engine cannot hold yet (playback rate, ASS override, audio delay, the addon
+  subtitle selection) is grouped on the controller and named as such. Each moves to
+  `PlayerState` with its engine call: 2.2, 2.5, 2.6 and 2.7 respectively.
+- The engine's own track lists drive the in-file subtitle and audio rows, and the subtitle
+  scale, delay and font setters are live. Format badges and the per-format styling hints stay
+  generic until 2.3 reports each track's codec.
+- Em dashes in the design's UI copy were replaced with commas and colons, per the standing
+  writing preference. Meaning is unchanged; say the word if the design's punctuation should
+  win instead.
 - Verify each slice: compile + tests + APK on device; review states through the demo harness.
   Commit per slice (`feat(mobile-native): …`).
 

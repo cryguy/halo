@@ -86,6 +86,36 @@ internal class PlaybackHost(private val playerPort: PlayerPort) {
     }
 
     /**
+     * Track selection and subtitle styling. All of these apply to the running
+     * core without reloading it, which is what makes tuning them while watching
+     * possible at all.
+     */
+    suspend fun selectAudioTrack(id: String?) {
+        playerPresenter.selectAudioTrack(id)
+        publish()
+    }
+
+    suspend fun selectSubtitleTrack(id: String?) {
+        playerPresenter.selectSubtitleTrack(id)
+        publish()
+    }
+
+    suspend fun setSubtitleScale(scale: Double) {
+        playerPresenter.setSubtitleScale(scale)
+        publish()
+    }
+
+    suspend fun setSubtitleDelay(seconds: Double) {
+        playerPresenter.setSubtitleDelay(seconds)
+        publish()
+    }
+
+    suspend fun setSubtitleFont(font: String?) {
+        playerPresenter.setSubtitleFont(font)
+        publish()
+    }
+
+    /**
      * Winds playback down far enough that the screen showing it can be taken
      * apart: sound stops, and the video decoder is destroyed and confirmed gone.
      *

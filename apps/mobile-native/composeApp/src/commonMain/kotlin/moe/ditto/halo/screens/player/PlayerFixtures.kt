@@ -31,6 +31,17 @@ internal object PlayerFixtures {
      */
     const val BufferedLeadFraction = 0.09f
 
+    /**
+     * Subtitles offered by addons, which the API can supply but nothing fetches
+     * yet. The detail line carries the addon's own id for the file, which is
+     * what distinguishes two same-language results from each other.
+     */
+    val AddonSubtitles = listOf(
+        FixtureAddonSubtitle("a-os-en", "OpenSubtitles", "English · os-en-6821194", "SRT", onDisk = true),
+        FixtureAddonSubtitle("a-os-en2", "OpenSubtitles", "English · os-en-6821507", "SRT", onDisk = false),
+        FixtureAddonSubtitle("a-ktx", "Kitsunekko", "Japanese · fansub, styled", "ASS", onDisk = false),
+    )
+
     val Episodes = listOf(
         FixtureEpisode(tag = "S02E01", name = "Ground Truth", progress = 1f, downloaded = true),
         FixtureEpisode(tag = "S02E02", name = "Ninety Seconds", progress = 1f, downloaded = true),
@@ -42,6 +53,12 @@ internal object PlayerFixtures {
 
     /** The episode the fixture session is playing. */
     val CurrentEpisode = Episodes[3]
+
+    /**
+     * Sample line for the subtitle appearance preview. Long enough to wrap at
+     * the largest scale, which is when wrapping is the thing being judged.
+     */
+    const val CaptionSample = "They kept the antenna pointed at nothing for eleven years."
 }
 
 internal data class FixtureEpisode(
@@ -49,4 +66,12 @@ internal data class FixtureEpisode(
     val name: String,
     val progress: Float,
     val downloaded: Boolean,
+)
+
+internal data class FixtureAddonSubtitle(
+    val id: String,
+    val addonName: String,
+    val detail: String,
+    val format: String,
+    val onDisk: Boolean,
 )

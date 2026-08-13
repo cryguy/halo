@@ -62,6 +62,40 @@ class PlayerFormatTest {
     }
 
     @Test
+    fun delayCarriesItsSignAndUnit() {
+        assertEquals("0 ms", formatDelay(0.0))
+        assertEquals("+150 ms", formatDelay(0.15))
+        assertEquals("−50 ms", formatDelay(-0.05))
+        assertEquals("+5000 ms", formatDelay(5.0))
+    }
+
+    @Test
+    fun delayUsesAMinusSignRatherThanAHyphen() {
+        // The stepper draws it in a monospaced column beside a plus, where a
+        // hyphen sits at the wrong height and the wrong width.
+        assertEquals('−', formatDelay(-0.05).first())
+    }
+
+    @Test
+    fun scaleReadsAsAWholePercentage() {
+        assertEquals("100%", formatScalePercent(1.0))
+        assertEquals("50%", formatScalePercent(0.5))
+        assertEquals("200%", formatScalePercent(2.0))
+        assertEquals("125%", formatScalePercent(1.25))
+        assertEquals("100%", formatScalePercent(Double.NaN))
+    }
+
+    @Test
+    fun wholeRatesDropTheirDecimal() {
+        assertEquals("1×", formatRate(1.0))
+        assertEquals("2×", formatRate(2.0))
+        assertEquals("0.5×", formatRate(0.5))
+        assertEquals("0.75×", formatRate(0.75))
+        assertEquals("1.25×", formatRate(1.25))
+        assertEquals("1.5×", formatRate(1.5))
+    }
+
+    @Test
     fun progressIsClampedWhenPositionOverrunsDuration() {
         // Live edges and rounding both produce a position past the reported
         // duration; a fraction over 1 would draw the played fill past the track.

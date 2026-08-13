@@ -1,6 +1,8 @@
 package moe.ditto.halo.screens.player
 
+import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 /**
  * Timecodes for the transport row and the scrub preview.
@@ -31,6 +33,43 @@ internal fun formatRemaining(positionSeconds: Double, durationSeconds: Double?):
     val duration = durationSeconds ?: return null
     if (!duration.isFinite() || duration <= 0.0) return null
     return "${formatTimecode(duration - positionSeconds)} left"
+}
+
+/**
+ * A track delay, in milliseconds with an explicit sign.
+ *
+ * The sign is what the control is for: the reader needs to know which way the
+ * track has been pushed, not just by how much. Zero carries no sign, and the
+ * minus is a real minus sign rather than a hyphen so it lines up with the plus
+ * in a monospaced column.
+ */
+internal fun formatDelay(seconds: Double): String {
+    if (!seconds.isFinite()) return "0 ms"
+    val millis = (seconds * 1_000.0).roundToInt()
+    if (millis == 0) return "0 ms"
+    val sign = if (millis > 0) "+" else "−"
+    return "$sign${abs(millis)} ms"
+}
+
+/** A subtitle scale as the percentage the slider is labelled in. */
+internal fun formatScalePercent(scale: Double): String {
+    if (!scale.isFinite() || scale <= 0.0) return "100%"
+    return "${(scale * 100.0).roundToInt()}%"
+}
+
+/**
+ * Playback rate, written the way the design labels it: whole rates lose their
+ * decimal so the common case reads `1×` rather than `1.0×`.
+ */
+internal fun formatRate(rate: Double): String {
+    if (!rate.isFinite() || rate <= 0.0) return "1×"
+    val rounded = (rate * 100.0).roundToInt()
+    val text = when {
+        rounded % 100 == 0 -> (rounded / 100).toString()
+        rounded % 10 == 0 -> "${rounded / 100}.${(rounded % 100) / 10}"
+        else -> "${rounded / 100}.${(rounded % 100).toString().padStart(2, '0')}"
+    }
+    return "$text×"
 }
 
 /**
