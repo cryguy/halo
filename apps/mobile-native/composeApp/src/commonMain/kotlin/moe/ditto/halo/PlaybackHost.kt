@@ -67,8 +67,21 @@ internal class PlaybackHost(private val playerPort: PlayerPort) {
      * Stops the picture and the sound without ending the session, which is what
      * leaving a player screen means as long as [play] is the only way back in.
      */
-    suspend fun pause() {
-        playerPresenter.setPaused(true)
+    suspend fun pause() = setPaused(true)
+
+    /**
+     * Transport controls, here rather than on the presenter directly, so that a
+     * screen never reaches past the owner to the engine: the presenter's state
+     * has to be republished after every command, and a caller that drove it
+     * itself would have to remember to.
+     */
+    suspend fun setPaused(paused: Boolean) {
+        playerPresenter.setPaused(paused)
+        publish()
+    }
+
+    suspend fun seekTo(positionSeconds: Double) {
+        playerPresenter.seekTo(positionSeconds)
         publish()
     }
 

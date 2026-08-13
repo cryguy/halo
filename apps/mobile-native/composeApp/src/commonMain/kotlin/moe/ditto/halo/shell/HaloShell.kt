@@ -55,7 +55,7 @@ import moe.ditto.halo.screens.DownloadsScreen
 import moe.ditto.halo.screens.HomeScreen
 import moe.ditto.halo.screens.LibraryScreen
 import moe.ditto.halo.screens.MetaRef
-import moe.ditto.halo.screens.PlayerScreen
+import moe.ditto.halo.screens.player.PlayerScreen
 import moe.ditto.halo.screens.SearchScreen
 import moe.ditto.halo.screens.SettingsScreen
 import moe.ditto.halo.screens.StreamsScreen

@@ -123,7 +123,7 @@ State/controller (`PlayerViewState.kt` + `PlayerScreenController.kt`, commonTest
 `scrubFraction: Float?`, `locked` (+ 3 s pill hide), `cachePercent`, `hudValue`,
 `upNextSecondsRemaining` + one-shot advance guard, `subtitleTrackStyling`, `subtitleOutline`.
 
-- [ ] **1.1 Screen skeleton + chrome** — rewrite `PlayerScreen.kt` into the new package:
+- [x] **1.1 Screen skeleton + chrome** — rewrite `PlayerScreen.kt` into the new package:
   full-bleed black, surface fills, z-order per spec table; `hPad` = safe-inset floored at
   24/40 dp via `WindowInsets.safeDrawing` + `rememberResponsive()` (`pick(phone=…, tablet=…)`
   for every tablet-scaled value). Scrims; top bar (back → **the existing `leave` wind-down
@@ -150,6 +150,21 @@ State/controller (`PlayerViewState.kt` + `PlayerScreenController.kt`, commonTest
   non-debuggable builds exactly like the gate itself.
 - [ ] **1.6 Controller tests** (commonTest): auto-hide arming/suppression rules, rail/drawer
   mutual exclusion, lock pill timer, scrub state, up-next one-shot advance.
+  **Partly done in 1.1**: `PlayerScreenControllerTest` covers auto-hide arming and all four
+  suppression rules, rail/drawer exclusion, and scrub state; `PlayerFormatTest` covers
+  timecodes. Tests are being written with the slice that introduces the behaviour rather than
+  saved for the end, so what is left here is the lock pill timer and the up-next guard.
+
+Notes from 1.1 worth carrying forward:
+
+- The chrome adds the vertical safe insets to the design's 12/18dp padding, because the player
+  is not immersive yet and the title otherwise sits under the status bar. When system bars are
+  hidden the insets go to zero and the design values stand alone, so nothing has to be undone.
+- The transport's thumb and played fill follow the finger during a drag while the elapsed
+  readout stays on the engine. The prototype does the opposite because a mouse can hover a
+  preview without moving anything; a finger cannot.
+- `bufferedFraction` is passed in rather than read from a fixture inside the chrome, so 2.4
+  only has to change the caller.
 - Verify each slice: compile + tests + APK on device; review states through the demo harness.
   Commit per slice (`feat(mobile-native): …`).
 

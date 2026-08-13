@@ -50,11 +50,24 @@ object HaloPlayerColors {
     /** Vertical wash behind the bottom bar; heavier, it carries more controls. */
     val ScrimBottom = Color(red = 4f / 255f, green = 5f / 255f, blue = 8f / 255f, alpha = 0.82f)
 
-    /** Fill for chrome that floats on video: pills, chips, centre buttons. */
-    val ChromeGlass = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.45f)
+    // One dark glass in four densities. Which one a control gets tracks how
+    // much it has to survive being over a bright frame: a lone circular button
+    // needs more cover than a chip sitting in a row of them, and the utility
+    // pill holds three targets so it carries the most.
+    /** Seek buttons. */
+    val SeekButtonFill = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.42f)
 
-    /** The same fill where content must read through it, such as a badge row. */
-    val ChromeGlassStrong = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.55f)
+    /** State chips. */
+    val ChipFill = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.45f)
+
+    /** Standalone circular buttons, such as back. */
+    val CircleButtonFill = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.50f)
+
+    /** The three-button utility pill. */
+    val UtilityPillFill = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.55f)
+
+    /** Play/pause. White rather than dark: it is the one hero action here. */
+    val PlayButtonFill = Color(red = 1f, green = 1f, blue = 1f, alpha = 0.16f)
 
     /** Audio/subtitles/speed rail. */
     val RailFill = Color(red = 18f / 255f, green = 20f / 255f, blue = 27f / 255f, alpha = 0.90f)
