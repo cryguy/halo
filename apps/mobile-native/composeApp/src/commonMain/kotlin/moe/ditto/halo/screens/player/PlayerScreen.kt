@@ -57,11 +57,12 @@ private const val SeekStepSeconds = 10.0
  *
  * What is driven by the engine: position, duration, play state, seeking, the
  * audio and subtitle track lists and the subtitle styling, and the error card.
- * What is not, and is waiting on a capability rather than on this screen:
- * playback rate, audio delay, fit mode, the buffering figures, the gesture
- * readout, the up-next countdown's contents, and the show and episode names.
- * Those are reachable from the debug player scene harness so they can be
- * reviewed before the data behind them exists.
+ * The naming and the badges come from [context], which the source picker
+ * resolved before playback was entered. What is neither, and is waiting on a
+ * capability rather than on this screen: playback rate, audio delay, fit mode,
+ * the buffering figures, the gesture readout, the episode list and the up-next
+ * countdown's contents. Those are reachable from the debug player scene harness
+ * so they can be reviewed before the data behind them exists.
  */
 // BackHandler is still marked experimental in Compose 1.11; the opt-in is
 // scoped to this screen rather than turned on for the whole module, so a future
@@ -71,8 +72,8 @@ private const val SeekStepSeconds = 10.0
 internal fun PlayerScreen(
     playback: PlaybackHost,
     surface: NativePlayerSurface,
-    url: String,
-    title: String,
+    /** What is being played and what to call it; see [PlaybackContext]. */
+    context: PlaybackContext,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -82,8 +83,21 @@ internal fun PlayerScreen(
     val controller = remember(scope) { PlayerScreenController(scope) }
     var leaving by remember { mutableStateOf(false) }
 
-    LaunchedEffect(url) {
-        playback.play(MediaItem(id = url, title = title, url = url))
+    // The video is the item, so the video id names it. The URL is one way to
+    // reach that item and not what it is. Two sources for the same episode are
+    // the same thing being watched, which is what the slices reporting on the
+    // session have to agree on.
+    val item = remember(context) {
+        MediaItem(id = context.videoId, title = context.displayTitle, url = context.url)
+    }
+    // Parsed once per source rather than per frame of chrome: the strings are
+    // release names, and the regexes over them are not free.
+    val streamBadges = remember(context) {
+        streamBadges(filename = context.filename, title = context.streamTitle, name = context.streamName)
+    }
+
+    LaunchedEffect(item) {
+        playback.play(item)
     }
 
     // The chrome starts up and hides itself once playback settles; pausing
@@ -98,7 +112,7 @@ internal fun PlayerScreen(
      * Leaving is asynchronous on purpose, and every way out goes through here.
      *
      * The engine is wound down first and the navigation happens only once that
-     * has finished — the screen is still on screen while it runs, which is the
+     * has finished. The screen is still on screen while it runs, which is the
      * one moment its render surface is guaranteed to still exist. Doing this
      * from a disposal callback instead cannot work: the surface is torn down
      * before those run.
@@ -162,10 +176,10 @@ internal fun PlayerScreen(
         ) {
             PlayerTopBar(
                 metrics = metrics,
-                showTitle = PlayerFixtures.ShowTitle,
-                episodeTag = PlayerFixtures.CurrentEpisode.tag,
-                episodeName = PlayerFixtures.EpisodeName,
-                streamBadges = PlayerFixtures.StreamBadges,
+                showTitle = context.showTitle,
+                episodeTag = context.episodeTag,
+                episodeName = context.episodeName,
+                streamBadges = streamBadges,
                 locked = controller.locked,
                 onBack = leave,
                 onPictureInPicture = controller::enterPictureInPicture,
@@ -209,7 +223,7 @@ internal fun PlayerScreen(
         ) {
             PlayerBottomBar(
                 metrics = metrics,
-                chips = playerChips(state, controller),
+                chips = playerChips(state, controller, context),
                 positionSeconds = state.positionSeconds,
                 durationSeconds = state.durationSeconds,
                 bufferedFraction = progressFraction(state.positionSeconds, state.durationSeconds) +
@@ -343,7 +357,7 @@ internal fun PlayerScreen(
         if (state.status == PlaybackStatus.Failed) {
             PlaybackErrorCard(
                 engineMessage = state.error,
-                onRetry = { scope.launch { playback.play(MediaItem(id = url, title = title, url = url)) } },
+                onRetry = { scope.launch { playback.play(item) } },
                 // Picking another source means going back to the list, which
                 // this screen replaced on the way in. Leaving returns to the
                 // title; navigating straight to the picker is a later change.
@@ -360,11 +374,19 @@ private fun secondsAt(fraction: Float, durationSeconds: Double?): Double {
 }
 
 /**
- * The four state chips. Subtitles and audio read what the engine actually has
- * selected; speed and episodes are still fixtures, and each goes live with the
- * capability behind it.
+ * The state chips. Subtitles and audio read what the engine actually has
+ * selected, and episodes what is being watched; speed is still a fixture and
+ * goes live with the engine call behind it.
+ *
+ * A film gets three chips rather than four. The fourth opens a list of episodes,
+ * and a film has none. An inert chip reading its own title would be a control
+ * that does nothing, which is worse than an absent one.
  */
-private fun playerChips(state: PlayerState, controller: PlayerScreenController): List<PlayerChip> = listOf(
+private fun playerChips(
+    state: PlayerState,
+    controller: PlayerScreenController,
+    context: PlaybackContext,
+): List<PlayerChip> = listOfNotNull(
     PlayerChip(
         kicker = "SUBTITLES",
         value = subtitleChipValue(state.tracks),
@@ -383,12 +405,14 @@ private fun playerChips(state: PlayerState, controller: PlayerScreenController):
         active = controller.rail == RailTab.Speed,
         onClick = { controller.openRail(RailTab.Speed) },
     ),
-    PlayerChip(
-        kicker = "EPISODES",
-        value = PlayerFixtures.CurrentEpisode.tag,
-        active = controller.episodeDrawerOpen,
-        onClick = controller::toggleEpisodeDrawer,
-    ),
+    context.episodeTag?.let { tag ->
+        PlayerChip(
+            kicker = "EPISODES",
+            value = tag,
+            active = controller.episodeDrawerOpen,
+            onClick = controller::toggleEpisodeDrawer,
+        )
+    },
 )
 
 /**

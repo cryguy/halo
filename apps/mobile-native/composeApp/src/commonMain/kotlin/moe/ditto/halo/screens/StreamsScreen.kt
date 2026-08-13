@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.ditto.halo.SignedInGraph
+import moe.ditto.halo.api.AddonSource
 import moe.ditto.halo.api.AddonStreams
 import moe.ditto.halo.api.Stream
 import moe.ditto.halo.cache.QueryState
@@ -46,7 +47,7 @@ import moe.ditto.halo.ui.formatBytes
  *
  * Nothing here filters: the server has already dropped torrents and
  * external-link results and omitted addons left with none, so an empty list
- * means nothing installed can play this — not that something was hidden. The
+ * means nothing installed can play this, not that something was hidden. The
  * groups stay separate for the same reason search results do; which addon
  * vouched for a source is half of what makes it choosable.
  */
@@ -55,10 +56,15 @@ internal fun StreamsScreen(
     graph: SignedInGraph,
     type: String,
     videoId: String,
-    /** What is being played, for the header — an episode reads "Show — S01E02". */
+    /** What is being played, for the header. An episode reads "Show · S01E02". */
     title: String,
     onBack: () -> Unit,
-    onPlay: (Stream) -> Unit,
+    /**
+     * The chosen source, with the addon that offered it: playback asks the same
+     * addon for this title's subtitles and for what follows it, so which one
+     * vouched for the source has to travel with the source.
+     */
+    onPlay: (AddonSource, Stream) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val streams by remember(graph, type, videoId) {
@@ -113,7 +119,7 @@ internal fun StreamsScreen(
 }
 
 @Composable
-private fun AddonGroup(group: AddonStreams, onPlay: (Stream) -> Unit, modifier: Modifier = Modifier) {
+private fun AddonGroup(group: AddonStreams, onPlay: (AddonSource, Stream) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.padding(bottom = HaloSpacing.Md)) {
         Text(
             text = group.addon.name.uppercase(),
@@ -129,7 +135,11 @@ private fun AddonGroup(group: AddonStreams, onPlay: (Stream) -> Unit, modifier: 
         ) {
             group.streams.forEachIndexed { index, stream ->
                 if (index > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(HaloColors.Hairline))
-                StreamRow(stream = stream, fallbackName = group.addon.name, onClick = { onPlay(stream) })
+                StreamRow(
+                    stream = stream,
+                    fallbackName = group.addon.name,
+                    onClick = { onPlay(group.addon, stream) },
+                )
             }
         }
     }
@@ -149,7 +159,7 @@ private fun StreamRow(stream: Stream, fallbackName: String, onClick: () -> Unit)
     ) {
         Column(Modifier.weight(1f)) {
             // Real results put quality, codec and cache state on separate lines
-            // of one string — clamping to a single line throws away the half a
+            // of one string. Clamping to a single line throws away the half a
             // source is picked on.
             Text(
                 text = stream.name ?: fallbackName,

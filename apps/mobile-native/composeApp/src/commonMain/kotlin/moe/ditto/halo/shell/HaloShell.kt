@@ -49,6 +49,9 @@ import dev.chrisbanes.haze.rememberHazeState
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
 import moe.ditto.halo.SignedInGraph
+import moe.ditto.halo.api.MetaCard
+import moe.ditto.halo.api.MetaDetail
+import moe.ditto.halo.api.MetaVideo
 import moe.ditto.halo.browse.episodeTag
 import moe.ditto.halo.screens.DetailScreen
 import moe.ditto.halo.screens.DownloadsScreen
@@ -72,7 +75,7 @@ import moe.ditto.halo.ui.glassSurface
  *
  * Because the bar floats, screens scroll underneath it and are responsible for
  * ending their own content with [HaloDimensions.TabBarSpace] of bottom padding.
- * A screen that forgets it will hide its last row behind the glass — which is
+ * A screen that forgets it will hide its last row behind the glass, which is
  * the price of letting poster art bleed through the chrome.
  *
  * The whole graph is registered as the blur source here, so any frosted surface
@@ -120,7 +123,7 @@ internal fun HaloShell(
                         graph = graph,
                         onOpenSearch = { navController.navigate(SearchRoute) },
                         onOpenDetail = { navController.openDetail(it) },
-                        onPlayMovie = { meta -> navController.openStreams(meta.type, meta.id, meta.name) },
+                        onPlayMovie = { meta -> navController.navigate(movieSources(meta)) },
                     )
                 }
                 composable<SearchRoute> {
@@ -144,13 +147,8 @@ internal fun HaloShell(
                         type = route.type,
                         metaId = route.metaId,
                         onBack = { navController.popBackStack() },
-                        onPlayMovie = { meta -> navController.openStreams(meta.type, meta.id, meta.name) },
-                        onPlayEpisode = { meta, video ->
-                            // The episode tag rather than its name: an episode
-                            // title alone does not say what it is an episode of,
-                            // and the picker's header is all the context there is.
-                            navController.openStreams(meta.type, video.id, "${meta.name} — ${episodeTag(video)}")
-                        },
+                        onPlayMovie = { meta -> navController.navigate(movieSources(meta)) },
+                        onPlayEpisode = { meta, video -> navController.navigate(episodeSources(meta, video)) },
                     )
                 }
                 composable<StreamsRoute> { entry ->
@@ -159,15 +157,15 @@ internal fun HaloShell(
                         graph = graph,
                         type = route.type,
                         videoId = route.videoId,
-                        title = route.title,
+                        title = route.displayTitle,
                         onBack = { navController.popBackStack() },
-                        onPlay = { stream ->
+                        onPlay = { addon, stream ->
                             val url = stream.url ?: return@StreamsScreen
                             // The picker is replaced rather than stacked, so
-                            // leaving the player returns to the title — being
+                            // leaving the player returns to the title. Being
                             // handed the source list again after choosing from
                             // it reads as the choice not having taken.
-                            navController.navigate(PlayerRoute(url = url, title = route.title)) {
+                            navController.navigate(route.playerRoute(addon, stream, url)) {
                                 popUpTo<StreamsRoute> { inclusive = true }
                             }
                         },
@@ -178,8 +176,7 @@ internal fun HaloShell(
                     PlayerScreen(
                         playback = playback,
                         surface = playerSurface,
-                        url = route.url,
-                        title = route.title,
+                        context = route.playbackContext(),
                         onBack = { navController.popBackStack() },
                     )
                 }
@@ -205,7 +202,7 @@ internal fun HaloShell(
 private val PushSpec = tween<IntOffset>(durationMillis = 300, easing = FastOutSlowInEasing)
 
 /**
- * How far the screen being left behind travels — a fraction of the way, not off
+ * How far the screen being left behind travels: a fraction of the way, not off
  * the edge. The two screens moving at different speeds is what reads as one
  * sliding *over* the other rather than the pair sliding sideways together.
  */
@@ -231,7 +228,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnter(): EnterT
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExit(): ExitTransition =
     slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, PushSpec)
 
-/** True for destinations that replace the shell chrome — see [ChromeCoveringRoutes]. */
+/** True for destinations that replace the shell chrome. See [ChromeCoveringRoutes]. */
 private fun NavDestination?.coversChrome(): Boolean =
     this != null && ChromeCoveringRoutes.any { route -> hierarchy.any { it.hasRoute(route) } }
 
@@ -263,7 +260,7 @@ private fun HaloTabBar(navController: NavHostController, modifier: Modifier = Mo
     val destination = entry?.destination
 
     // Screens that own the whole viewport hide the bar rather than having it
-    // float over their controls — and it leaves downwards, with the push, instead
+    // float over their controls. It leaves downwards, with the push, instead
     // of blinking out of existence while the screen it belongs to is still on
     // screen. Returning slides it back up under the returning screen.
     AnimatedVisibility(
@@ -339,18 +336,42 @@ private fun NavHostController.openDetail(ref: MetaRef) =
     navigate(DetailRoute(type = ref.type, metaId = ref.metaId))
 
 /**
- * Opens a video's sources. A film's own id is the video id; an episode's is its
- * own, which is why this takes the video rather than the title.
+ * A film's sources. Its meta id is also its video id: there is one video, and it
+ * is the title.
  */
-private fun NavHostController.openStreams(type: String, videoId: String, title: String) =
-    navigate(StreamsRoute(type = type, videoId = videoId, title = title))
+private fun movieSources(meta: MetaCard) = StreamsRoute(
+    type = meta.type,
+    metaId = meta.id,
+    videoId = meta.id,
+    showTitle = meta.name,
+)
+
+/**
+ * An episode's sources, named in the parts that are set separately downstream:
+ * the show, which episode of it, and what that episode is called.
+ *
+ * The name is dropped when it is the tag: [episodeTag] falls back to the video's
+ * own title for anything unnumbered, and the same string printed twice reads as
+ * a rendering fault rather than as a missing episode number.
+ */
+private fun episodeSources(meta: MetaDetail, video: MetaVideo): StreamsRoute {
+    val tag = episodeTag(video)
+    return StreamsRoute(
+        type = meta.type,
+        metaId = meta.id,
+        videoId = video.id,
+        showTitle = meta.name,
+        episodeTag = tag,
+        episodeName = video.displayTitle?.takeIf { it != tag },
+    )
+}
 
 /**
  * Switches tabs without stacking them.
  *
  * Popping back to the graph's start destination keeps back from walking the
  * history of visited tabs, while saving and restoring state means a tab returns
- * to where it was left — same scroll position, same filter — rather than
+ * to where it was left, with the same scroll position and filter, rather than
  * rebuilding from scratch on every switch.
  */
 private fun NavHostController.switchTab(route: Any) {

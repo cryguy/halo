@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 has not started.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -252,7 +252,7 @@ Rule for every engine gap: extend `PlayerPort` (+ default no-op where sensible) 
 (**do not touch `HaloIosPlayerHost`**) → echo state in `PlayerState`/`PlayerPresenter` → wire UI →
 presenter/controller tests.
 
-- [ ] **2.1 Playback context through the route** — grow `PlayerRoute` (`Routes.kt`) with
+- [x] **2.1 Playback context through the route** — grow `PlayerRoute` (`Routes.kt`) with
   `type`, `metaId`, `videoId`, `showTitle`, `episodeTag`/`episodeName` (nullable for films),
   `addonId`, `bingeGroup`, `filename`, `videoSize`, `videoHash` (from `StreamBehaviorHints`),
   and the raw stream `name/title` for badge parsing. `StreamsScreen.onPlay` and `HaloShell`
