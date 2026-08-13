@@ -72,6 +72,7 @@ import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloDimensions
 import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.HaloSpacing
+import moe.ditto.halo.screens.player.PlayerScenePreviewScreen
 import moe.ditto.halo.ui.HaloTheme
 import moe.ditto.halo.ui.HaloType
 import moe.ditto.halo.ui.haloImageLoader
@@ -82,6 +83,8 @@ private enum class ShellScreen {
     Shell,
     Gate,
     Player,
+    /** The player's design over fixtures, with every transient state on a tap. */
+    PlayerScenes,
 }
 
 private val DebugLocalCredentials = LoginCredentialsPrefill(
@@ -237,6 +240,11 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                         refreshHostSnapshot()
                         screen = ShellScreen.Player
                     },
+                    onPlayerScenes = { screen = ShellScreen.PlayerScenes },
+                )
+                // No engine, no host snapshot: this one only draws.
+                ShellScreen.PlayerScenes -> PlayerScenePreviewScreen(
+                    onBack = { screen = ShellScreen.Gate },
                 )
                 ShellScreen.Player -> PlayerShellScreen(
                     playback = playback,
@@ -456,6 +464,7 @@ private fun GateScreen(
     onBackToApp: () -> Unit,
     onLogin: () -> Unit,
     onPlayer: () -> Unit,
+    onPlayerScenes: () -> Unit,
 ) {
     var tokenResult by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -522,6 +531,7 @@ private fun GateScreen(
             HaloButton(label = "Back to app", onClick = onBackToApp)
             HaloButton(label = "Login shell", onClick = onLogin)
             HaloButton(label = "Player shell", onClick = onPlayer)
+            HaloButton(label = "Player design scenes", onClick = onPlayerScenes)
         }
     }
 }

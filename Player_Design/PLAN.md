@@ -140,15 +140,15 @@ State/controller (`PlayerViewState.kt` + `PlayerScreenController.kt`, commonTest
   immediately since they already exist.
 - [x] **1.3 Episode drawer** — bottom sheet, header, horizontal episode cards with progress bar,
   current-episode border, download ticks (fixture). Enter animation 240 ms per spec.
-- [ ] **1.4 Transient states** — buffering ring + percentage pill; gesture HUD pill + side wash
+- [x] **1.4 Transient states** — buffering ring + percentage pill; gesture HUD pill + side wash
   (visuals only, no gestures yet); locked scrim + auto-hiding unlock pill; up-next card with
   8 s countdown bar + one-shot advance guard; in-app PiP presentation (dim + floating window);
   error card (mpv message in mono, Retry + Pick another source).
-- [ ] **1.5 Demo harness** — debug-only "Player design demo" entry from the diagnostics gate
+- [x] **1.5 Demo harness** — debug-only "Player design demo" entry from the diagnostics gate
   (`HaloApp.kt` `ShellScreen.Gate` area): renders the new screen with `PlayerFixtures` and scene
   buttons forcing Playing/Buffering/Rail/Drawer/Locked/Up next/PiP/Error. Absent from
   non-debuggable builds exactly like the gate itself.
-- [ ] **1.6 Controller tests** (commonTest): auto-hide arming/suppression rules, rail/drawer
+- [x] **1.6 Controller tests** (commonTest): auto-hide arming/suppression rules, rail/drawer
   mutual exclusion, lock pill timer, scrub state, up-next one-shot advance.
   **Partly done in 1.1**: `PlayerScreenControllerTest` covers auto-hide arming and all four
   suppression rules, rail/drawer exclusion, and scrub state; `PlayerFormatTest` covers
@@ -198,6 +198,23 @@ Notes from 1.3:
   elsewhere in the app, and the rail was using it for the wrong meaning.
 - Selecting an episode only closes the drawer for now. It cannot do more until a stream is
   resolved for that episode, which is 2.10.
+
+Notes from 1.4 and 1.5:
+
+- The up-next race guard lives entirely in the controller: the countdown, `Play now` and `Cancel`
+  all pass through one claim, so whichever happens first wins. Tested by tapping `Play now` on
+  the final tick, which is the exact double-advance the old player had.
+- Lock and picture-in-picture are now wired from the utility pill; fit mode is the only control
+  there still waiting on a capability (2.9).
+- The subtitle caption is drawn only by the scene harness. During real playback libmpv renders
+  subtitles itself, so a Compose caption would be a second one.
+- The scene picker floats over the player rather than taking a row of its own. A row costs a
+  fifth of the height, and where the caption sits against the centre controls is exactly what
+  the harness is for. `Hide` dismisses it to inspect the top bar.
+- The harness deliberately does not touch `PlaybackHost`. A review tool that could disturb
+  playback would be a liability.
+- Scenes match the prototype on which of them show chrome: buffering, the gesture readout, up
+  next and the error card all appear over bare video.
 - Verify each slice: compile + tests + APK on device; review states through the demo harness.
   Commit per slice (`feat(mobile-native): …`).
 
