@@ -10,6 +10,12 @@ data class PlayerTrack(
     val id: String,
     val label: String,
     val language: String? = null,
+    /** mpv/FFmpeg codec name, for example `aac`, `ass` or `hdmv_pgs_subtitle`. */
+    val codec: String? = null,
+    /** Decoded audio channel count. Null for subtitles and unreported audio. */
+    val channels: Int? = null,
+    /** Decoded audio sample rate in hertz. Null for subtitles and unreported audio. */
+    val sampleRateHz: Int? = null,
 )
 
 data class PlayerTracks(

@@ -213,14 +213,17 @@ internal class MpvCore private constructor(
             val lang = mpv.getPropertyString("track-list/$i/lang")
             val title = mpv.getPropertyString("track-list/$i/title")
             val selected = mpv.getPropertyBoolean("track-list/$i/selected") ?: false
+            val codec = mpv.getPropertyString("track-list/$i/codec")
+            val channels = mpv.getPropertyInt("track-list/$i/demux-channel-count")
+            val sampleRateHz = mpv.getPropertyInt("track-list/$i/demux-samplerate")
             val label = title ?: lang ?: "$type $trackId"
             when (type) {
                 "audio" -> {
-                    audio += PlayerTrack(trackId, label, lang)
+                    audio += PlayerTrack(trackId, label, lang, codec, channels, sampleRateHz)
                     if (selected) selectedAudio = trackId
                 }
                 "sub" -> {
-                    subs += PlayerTrack(trackId, label, lang)
+                    subs += PlayerTrack(trackId, label, lang, codec = codec)
                     if (selected) selectedSub = trackId
                 }
             }

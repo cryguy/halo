@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import moe.ditto.halo.player.PlayerTrack
 import moe.ditto.halo.player.PlayerTracks
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloPlayerColors
@@ -67,7 +68,8 @@ internal fun SubtitlesTab(
     onTrackStylingChange: (Boolean) -> Unit,
     onFontChange: (String?) -> Unit,
 ) {
-    val format = SubtitleFormat.Unknown
+    val selectedTrack = tracks.subtitles.firstOrNull { it.id == tracks.selectedSubtitleId }
+    val format = subtitleFormat(selectedTrack?.codec)
     val bitmap = format == SubtitleFormat.Bitmap
 
     RailSectionLabel("IN THIS FILE")
@@ -80,9 +82,10 @@ internal fun SubtitlesTab(
     tracks.subtitles.forEach { track ->
         RailSelectableRow(
             label = track.label,
-            detail = track.language,
+            detail = subtitleDetail(track),
             selected = track.id == tracks.selectedSubtitleId && selectedAddonId == null,
             onClick = { onSelectTrack(track.id) },
+            format = subtitleBadge(track.codec),
         )
     }
 
@@ -205,9 +208,46 @@ private fun trackStylingHint(format: SubtitleFormat, enabled: Boolean): String =
         else "Overriding the script with Halo styling"
     SubtitleFormat.Text -> "Plain text track: Halo styling always applies"
     SubtitleFormat.Bitmap -> "PGS is rendered images: font and outline do not apply"
-    // Until the engine reports each track's codec there is no way to tell which
-    // of the three a track is, so the control states the general rule.
     SubtitleFormat.Unknown -> "Applies to styled tracks only"
+}
+
+internal fun subtitleFormat(codec: String?): SubtitleFormat = when (codec?.lowercase()) {
+    "ass", "ssa", "ass-text" -> SubtitleFormat.Ass
+    "subrip", "srt", "webvtt", "vtt", "text" -> SubtitleFormat.Text
+    "hdmv_pgs_subtitle", "pgssub", "pgs" -> SubtitleFormat.Bitmap
+    null -> SubtitleFormat.Unknown
+    else -> SubtitleFormat.Unknown
+}
+
+internal fun subtitleBadge(codec: String?): String? = when (subtitleFormat(codec)) {
+    SubtitleFormat.Ass -> "ASS"
+    SubtitleFormat.Text -> "SRT"
+    SubtitleFormat.Bitmap -> "PGS"
+    SubtitleFormat.Unknown -> codec?.uppercase()?.takeIf { it.length <= 8 }
+}
+
+internal fun subtitleDetail(track: PlayerTrack): String? = listOfNotNull(
+    track.language,
+    subtitleBadge(track.codec),
+).takeIf { it.isNotEmpty() }?.joinToString(" · ")
+
+internal fun audioBadge(track: PlayerTrack): String? {
+    val codec = track.codec?.uppercase()?.takeIf { it.length <= 8 } ?: return null
+    val layout = track.channels?.let(::channelLayout) ?: return codec
+    return "$codec $layout"
+}
+
+internal fun audioDetail(track: PlayerTrack): String? = listOfNotNull(
+    track.language,
+    track.sampleRateHz?.let { "${it / 1000} kHz" },
+).takeIf { it.isNotEmpty() }?.joinToString(" · ")
+
+private fun channelLayout(channels: Int): String = when (channels) {
+    1 -> "mono"
+    2 -> "stereo"
+    6 -> "5.1"
+    8 -> "7.1"
+    else -> "$channels ch"
 }
 
 @Composable
@@ -229,9 +269,10 @@ internal fun AudioTab(
     tracks.audio.forEach { track ->
         RailSelectableRow(
             label = track.label,
-            detail = track.language,
+            detail = audioDetail(track),
             selected = track.id == tracks.selectedAudioId,
             onClick = { onSelectTrack(track.id) },
+            format = audioBadge(track),
         )
     }
 

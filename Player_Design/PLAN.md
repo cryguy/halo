@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1 and 2.2 complete.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1, 2.2 and 2.3 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -262,7 +262,7 @@ presenter/controller tests.
 - [x] **2.2 Playback speed** — `PlayerPort.setPlaybackRate(rate)` → mpv `speed` property;
   `PlayerState.playbackRate` echo. (The design README claims speed "already exists" — it does
   not; this is a real gap.) Speed tab + SPEED chip go live.
-- [ ] **2.3 Track format metadata** — extend `PlayerTrack` with `codec`, `channels`,
+- [x] **2.3 Track format metadata** — extend `PlayerTrack` with `codec`, `channels`,
   `sampleRateHz` (nullable). `MpvCore.emitTracks` reads `track-list/N/codec`,
   `demux-channel-count`, `demux-samplerate`. `PlayerTracksJson` gains the same fields with
   defaults (old Swift JSON keeps decoding — no Swift change). Unlocks: format badges

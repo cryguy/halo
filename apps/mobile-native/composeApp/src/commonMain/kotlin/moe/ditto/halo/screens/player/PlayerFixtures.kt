@@ -82,14 +82,14 @@ internal object PlayerFixtures {
         durationSeconds = 2_852.0,
         tracks = PlayerTracks(
             audio = listOf(
-                PlayerTrack(id = "1", label = "English", language = "Track 1 · 48 kHz"),
-                PlayerTrack(id = "2", label = "Japanese", language = "Track 2 · 48 kHz"),
-                PlayerTrack(id = "3", label = "Commentary", language = "Track 3 · director"),
+                PlayerTrack(id = "1", label = "English", language = "eng", codec = "eac3", channels = 6, sampleRateHz = 48000),
+                PlayerTrack(id = "2", label = "Japanese", language = "jpn", codec = "aac", channels = 2, sampleRateHz = 48000),
+                PlayerTrack(id = "3", label = "Commentary", language = "eng", codec = "aac", channels = 2, sampleRateHz = 48000),
             ),
             subtitles = listOf(
-                PlayerTrack(id = "4", label = "English — Signs & Songs", language = "Track 2 · styled"),
-                PlayerTrack(id = "5", label = "English (SDH)", language = "Track 3 · plain text"),
-                PlayerTrack(id = "6", label = "Japanese", language = "Track 4 · bitmap"),
+                PlayerTrack(id = "4", label = "English, Signs & Songs", language = "eng", codec = "ass"),
+                PlayerTrack(id = "5", label = "English (SDH)", language = "eng", codec = "subrip"),
+                PlayerTrack(id = "6", label = "Japanese", language = "jpn", codec = "hdmv_pgs_subtitle"),
             ),
             selectedAudioId = "1",
             selectedSubtitleId = "4",

@@ -422,12 +422,16 @@ private fun playerChips(
  */
 private fun subtitleChipValue(tracks: PlayerTracks): String {
     val selected = tracks.subtitles.firstOrNull { it.id == tracks.selectedSubtitleId } ?: return "Off"
-    return selected.language ?: selected.label
+    return listOfNotNull(selected.language ?: selected.label, subtitleBadge(selected.codec))
+        .distinct()
+        .joinToString(" · ")
 }
 
 private fun audioChipValue(tracks: PlayerTracks): String {
     val selected = tracks.audio.firstOrNull { it.id == tracks.selectedAudioId }
         ?: tracks.audio.firstOrNull()
         ?: return "None"
-    return selected.language ?: selected.label
+    return listOfNotNull(selected.language ?: selected.label, selected.codec?.uppercase())
+        .distinct()
+        .joinToString(" · ")
 }

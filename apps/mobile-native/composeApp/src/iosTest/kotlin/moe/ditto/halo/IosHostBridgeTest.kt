@@ -137,9 +137,9 @@ class IosHostBridgeTest {
         bridge.onTracks(
             """
             {
-              "audio": [{"id": "2", "label": "AAC stereo", "language": "eng"}],
+              "audio": [{"id": "2", "label": "AAC stereo", "language": "eng", "codec": "aac", "channels": 2, "sampleRateHz": 48000}],
               "subtitles": [
-                {"id": "3", "label": "English ASS", "language": "eng"},
+                {"id": "3", "label": "English ASS", "language": "eng", "codec": "ass"},
                 {"id": "4", "label": "Signs"}
               ],
               "selectedAudioId": "2",
@@ -158,9 +158,12 @@ class IosHostBridgeTest {
 
         assertEquals(PlayerEvent.Ready(60.0), received[0])
         val tracks = (received[1] as PlayerEvent.TracksChanged).tracks
-        assertEquals(listOf(PlayerTrack("2", "AAC stereo", "eng")), tracks.audio)
         assertEquals(
-            listOf(PlayerTrack("3", "English ASS", "eng"), PlayerTrack("4", "Signs")),
+            listOf(PlayerTrack("2", "AAC stereo", "eng", "aac", 2, 48000)),
+            tracks.audio,
+        )
+        assertEquals(
+            listOf(PlayerTrack("3", "English ASS", "eng", "ass"), PlayerTrack("4", "Signs")),
             tracks.subtitles,
         )
         assertEquals("2", tracks.selectedAudioId)

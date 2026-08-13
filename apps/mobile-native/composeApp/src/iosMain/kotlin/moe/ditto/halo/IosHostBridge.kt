@@ -151,6 +151,9 @@ internal data class PlayerTrackJson(
     val id: String,
     val label: String,
     val language: String? = null,
+    val codec: String? = null,
+    val channels: Int? = null,
+    val sampleRateHz: Int? = null,
 )
 
 @Serializable
@@ -190,8 +193,12 @@ internal class IosPlayerEventBridge : HaloIosPlayerEventSink {
         channel.trySend(
             PlayerEvent.TracksChanged(
                 PlayerTracks(
-                    audio = parsed.audio.map { PlayerTrack(it.id, it.label, it.language) },
-                    subtitles = parsed.subtitles.map { PlayerTrack(it.id, it.label, it.language) },
+                    audio = parsed.audio.map {
+                        PlayerTrack(it.id, it.label, it.language, it.codec, it.channels, it.sampleRateHz)
+                    },
+                    subtitles = parsed.subtitles.map {
+                        PlayerTrack(it.id, it.label, it.language, it.codec, it.channels, it.sampleRateHz)
+                    },
                     selectedAudioId = parsed.selectedAudioId,
                     selectedSubtitleId = parsed.selectedSubtitleId,
                 ),
