@@ -30,16 +30,24 @@ internal data class VideoFingerprint(val hash: String, val sizeBytes: Long)
  */
 internal class StreamVideoHasher(private val http: HttpClient) {
 
-    suspend fun fingerprint(url: String): VideoFingerprint? = try {
-        hash(url)
+    /**
+     * [knownSizeBytes] is the size the addon already declared in its behaviour
+     * hints. Supplying it removes the two requests this would otherwise spend
+     * discovering something the caller was told, which matters because the
+     * source host is often the same rate-limited resolver the engine is
+     * streaming through. A declared size that turns out to be wrong yields a
+     * hash no subtitle matches, which is the same outcome as not hashing.
+     */
+    suspend fun fingerprint(url: String, knownSizeBytes: Long? = null): VideoFingerprint? = try {
+        hash(url, knownSizeBytes)
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (_: Throwable) {
         null
     }
 
-    private suspend fun hash(url: String): VideoFingerprint? {
-        val size = contentLength(url) ?: return null
+    private suspend fun hash(url: String, knownSizeBytes: Long?): VideoFingerprint? {
+        val size = knownSizeBytes?.takeIf { it > 0 } ?: contentLength(url) ?: return null
         if (size < VideoHash.MinimumHashableBytes) return null
 
         val last = size - 1

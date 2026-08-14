@@ -393,6 +393,12 @@ internal class MpvCore private constructor(
             mpv.setOptionString("hwdec", "mediacodec-copy") // auto-falls back to sw
             mpv.setOptionString("ao", "audiotrack")
             mpv.setOptionString("keep-open", "yes") // so eof-reached fires
+            // mpv's default is to hand a URL it could not open to youtube-dl.
+            // There is no such binary on Android and never will be, so every
+            // failed open would otherwise spawn a subprocess, fail, and bury the
+            // real diagnostic under its own error. The error card prints the
+            // engine's message verbatim, so that noise is not free.
+            mpv.setOptionString("ytdl", "no")
             // Subtitle auto-select + rendering; embedded fonts make ASS render
             // without depending on Android system fonts.
             mpv.setOptionString("slang", "eng,en")

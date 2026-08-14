@@ -211,7 +211,13 @@ internal fun PlayerScreen(
     // to no subtitles.
     var fingerprint by remember(item) { mutableStateOf(context.fingerprint()) }
     LaunchedEffect(item) {
-        if (fingerprint == null) fingerprint = graph.videoHasher.fingerprint(context.url)
+        // The size the addon declared is handed over rather than rediscovered:
+        // hashing already costs two range reads against the same host the engine
+        // is streaming from, and asking it for a number we were given is two
+        // more requests that a rate-limited resolver counts against playback.
+        if (fingerprint == null) {
+            fingerprint = graph.videoHasher.fingerprint(context.url, context.videoSize)
+        }
     }
     val addonSubtitleState by remember(item, fingerprint) {
         graph.browse.subtitles(
