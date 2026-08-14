@@ -27,6 +27,8 @@ internal data class PlaybackContext(
     /** Null for films: they are one video, and there is no episode to tag. */
     val episodeTag: String? = null,
     val episodeName: String? = null,
+    /** The episode still used by the drawer and Up Next card. */
+    val episodeThumbnail: String? = null,
     /** The addon that offered this source, for asking the same one what follows. */
     val addonId: String,
     val bingeGroup: String? = null,

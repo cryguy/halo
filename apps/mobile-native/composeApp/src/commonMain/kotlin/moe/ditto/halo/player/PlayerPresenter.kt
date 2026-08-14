@@ -12,7 +12,6 @@ enum class PlaybackStatus {
 
 data class PlayerState(
     val current: MediaItem? = null,
-    val queuedNext: MediaItem? = null,
     val status: PlaybackStatus = PlaybackStatus.Idle,
     val positionSeconds: Double = 0.0,
     val durationSeconds: Double? = null,
@@ -42,15 +41,22 @@ class PlayerPresenter(
     var state: PlayerState = PlayerState()
         private set
 
-    suspend fun start(item: MediaItem, next: MediaItem? = null) {
+    suspend fun start(item: MediaItem) {
         if (state.status == PlaybackStatus.Released) return
-        state = PlayerState(current = item, queuedNext = next, status = PlaybackStatus.Loading)
+        state = PlayerState(
+            current = item,
+            status = PlaybackStatus.Loading,
+            // These are core properties, not file properties. libmpv retains
+            // them across loadfile, so the UI echoes must retain them too.
+            playbackRate = state.playbackRate,
+            videoFillsScreen = state.videoFillsScreen,
+            audioDelaySeconds = state.audioDelaySeconds,
+            subtitleDelaySeconds = state.subtitleDelaySeconds,
+            subtitleScale = state.subtitleScale,
+            subtitleFont = state.subtitleFont,
+            subtitleTrackStyling = state.subtitleTrackStyling,
+        )
         player.load(item)
-    }
-
-    fun queueNext(item: MediaItem?) {
-        if (state.status == PlaybackStatus.Released) return
-        state = state.copy(queuedNext = item)
     }
 
     suspend fun setPaused(paused: Boolean) {
@@ -175,7 +181,7 @@ class PlayerPresenter(
                     .takeIf { it.isFinite() && it >= 0.0 }
                     ?: state.bufferedPositionSeconds,
             )
-            PlayerEvent.NaturalEnd -> advanceOrEnd()
+            PlayerEvent.NaturalEnd -> state.copy(status = PlaybackStatus.Ended, buffering = null)
             // Nothing is being filled once playback has failed, and a stall is
             // a common way to arrive here, so the overlay must not survive
             // underneath the error card.
@@ -184,7 +190,7 @@ class PlayerPresenter(
                 error = event.message,
                 buffering = null,
             )
-            PlayerEvent.Teardown -> state.copy(status = PlaybackStatus.Released, queuedNext = null)
+            PlayerEvent.Teardown -> state.copy(status = PlaybackStatus.Released)
         }
     }
 
@@ -195,13 +201,6 @@ class PlayerPresenter(
         } finally {
             onEvent(PlayerEvent.Teardown)
         }
-    }
-
-    private suspend fun advanceOrEnd(): PlayerState {
-        val next = state.queuedNext
-            ?: return state.copy(status = PlaybackStatus.Ended, buffering = null)
-        player.load(next)
-        return PlayerState(current = next, status = PlaybackStatus.Loading)
     }
 }
 

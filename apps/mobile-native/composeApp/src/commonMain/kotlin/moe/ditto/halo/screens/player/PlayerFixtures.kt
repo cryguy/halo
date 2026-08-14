@@ -32,7 +32,7 @@ internal object PlayerFixtures {
      * Stands in for the platform's real answer, so the harness shows the
      * unbundled-font notice on the chips that would trigger it.
      */
-    val BundledSubtitleFonts = setOf("JetBrains Mono")
+    val BundledSubtitleFonts = setOf("Inter", "Source Serif 4", "JetBrains Mono")
 
     /**
      * How far ahead of the playhead the scene harness draws the transport's
@@ -83,6 +83,7 @@ internal object PlayerFixtures {
             videoId = "tt-fixture:2:${tag.substringAfter('E').trimStart('0')}",
             tag = tag,
             name = name,
+            thumbnail = "https://episodes.metahub.space/tt0903747/2/${tag.substringAfter('E').toInt()}/w780.jpg",
             progress = progress,
             downloaded = downloaded,
         )

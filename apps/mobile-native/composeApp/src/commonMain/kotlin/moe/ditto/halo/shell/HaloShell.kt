@@ -392,6 +392,7 @@ private fun episodeSources(meta: MetaDetail, video: MetaVideo): StreamsRoute {
         showTitle = meta.name,
         episodeTag = tag,
         episodeName = video.displayTitle?.takeIf { it != tag },
+        episodeThumbnail = video.thumbnail,
     )
 }
 

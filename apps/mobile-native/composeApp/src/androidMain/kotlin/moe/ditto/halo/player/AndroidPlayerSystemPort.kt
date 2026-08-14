@@ -5,7 +5,11 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.provider.Settings
+import android.view.ViewTreeObserver
 import android.view.WindowManager
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * Android's answers to [PlayerSystemPort], all of them attributes of the one
@@ -24,6 +28,21 @@ internal class AndroidPlayerSystemPort(private val activity: Activity) : PlayerS
     // which is where every caller of these already is.
     private var landscapeHolders = 0
     private var screenOnHolders = 0
+    private var immersiveHolders = 0
+
+    private val insets: WindowInsetsControllerCompat
+        get() = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+
+    /**
+     * Hiding the bars is a request the system may undo on its own: returning
+     * from another app, from the lock screen or from a system dialog can bring
+     * them back while the player is still on screen and still holding its claim.
+     * Nothing recomposes at that point, so re-applying on regained focus is the
+     * only place the claim can be honoured again.
+     */
+    private val restoreImmersiveOnFocus = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
+        if (focused && immersiveHolders > 0) applyImmersive()
+    }
 
     /**
      * The window's own override if it has one, otherwise the device's current
@@ -83,6 +102,43 @@ internal class AndroidPlayerSystemPort(private val activity: Activity) : PlayerS
     override fun releaseScreenOn() {
         if (screenOnHolders <= 0 || --screenOnHolders > 0) return
         activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    /**
+     * Status and navigation bars both, which is what the player's layout is
+     * measured for: a bar left on screen would keep its inset and push the
+     * chrome off the design.
+     *
+     * Transient-by-swipe rather than a bar the system keeps: an edge swipe
+     * brings them back for a moment and they leave again on their own, so the
+     * clock and the back gesture stay reachable without a tap that would
+     * otherwise have gone to the video.
+     */
+    override fun hideSystemBars() {
+        if (immersiveHolders++ > 0) return
+        activity.window.decorView.viewTreeObserver
+            .addOnWindowFocusChangeListener(restoreImmersiveOnFocus)
+        applyImmersive()
+    }
+
+    /**
+     * The behaviour goes back first. Shown under the transient rule the bars
+     * are an overlay the system takes away again on its own timer and which
+     * reports no inset while it lasts, so the rest of the app would lay out as
+     * though it were still full-screen and lose its clock a moment later.
+     */
+    override fun releaseSystemBars() {
+        if (immersiveHolders <= 0 || --immersiveHolders > 0) return
+        activity.window.decorView.viewTreeObserver
+            .removeOnWindowFocusChangeListener(restoreImmersiveOnFocus)
+        insets.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        insets.show(WindowInsetsCompat.Type.systemBars())
+    }
+
+    private fun applyImmersive() {
+        insets.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        insets.hide(WindowInsetsCompat.Type.systemBars())
     }
 
     private fun applyWindowBrightness(value: Float) {

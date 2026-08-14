@@ -13,9 +13,11 @@ import moe.ditto.halo.browse.AddonsRepository
 import moe.ditto.halo.browse.BrowseRepository
 import moe.ditto.halo.cache.QueryCache
 import moe.ditto.halo.player.StreamVideoHasher
+import moe.ditto.halo.player.SubtitleFileCache
 import moe.ditto.halo.storage.KeyValueStore
 import moe.ditto.halo.storage.SearchHistoryStore
 import moe.ditto.halo.storage.SubtitleChoiceStore
+import moe.ditto.halo.storage.VideoFitModeStore
 import moe.ditto.halo.sync.AccountRepository
 import moe.ditto.halo.sync.LibraryRepository
 import moe.ditto.halo.sync.SettingsRepository
@@ -41,6 +43,7 @@ internal class SignedInGraph(
     serverUrl: String,
     tokens: TokenProvider,
     keyValueStore: KeyValueStore,
+    subtitleCacheDirectory: String,
     clock: EpochClock = SystemEpochClock,
 ) {
     /**
@@ -73,6 +76,7 @@ internal class SignedInGraph(
      * to Halo, and needs none of the client's auth or base URL.
      */
     val videoHasher = StreamVideoHasher(httpClient)
+    val subtitleFiles = SubtitleFileCache(client, subtitleCacheDirectory)
 
     /**
      * Device-local, so they are not per-user the way the cache is; they are
@@ -81,6 +85,7 @@ internal class SignedInGraph(
      */
     val searchHistory = SearchHistoryStore(keyValueStore)
     val subtitleChoices = SubtitleChoiceStore(keyValueStore, clock)
+    val videoFitMode = VideoFitModeStore(keyValueStore)
 
     /**
      * Ends the session's work and its connections. Cancelling the scope also

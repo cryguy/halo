@@ -5,6 +5,7 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.request.HttpRequestData
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -70,6 +71,29 @@ class HaloClientTest {
         assertEquals(Me("u1", "kenneth", isAdmin = true, createdAt = 17), me)
         assertEquals("Bearer access-1", recorded.single().headers[HttpHeaders.Authorization])
         assertEquals("$BaseUrl/auth/me", recorded.single().url.toString())
+    }
+
+    @Test
+    fun externalSubtitleUsesTheAuthenticatedAddonProxy() = runTest {
+        val client = client { Triple("caption", HttpStatusCode.OK, io.ktor.http.Headers.Empty) }
+
+        assertEquals("caption", client.getAddonProxyResponse("https://subs.example/a.srt").bodyAsText())
+
+        assertEquals(
+            "$BaseUrl/addon-proxy?url=https%3A%2F%2Fsubs.example%2Fa.srt",
+            recorded.single().url.toString(),
+        )
+        assertEquals("Bearer access-1", recorded.single().headers[HttpHeaders.Authorization])
+    }
+
+    @Test
+    fun anExistingHaloProxyUrlIsNotWrappedAgain() = runTest {
+        val client = client { Triple("caption", HttpStatusCode.OK, io.ktor.http.Headers.Empty) }
+        val proxied = "$BaseUrl/addon-proxy?url=https%3A%2F%2Fsubs%2Eexample%2Fa%2Esrt"
+
+        client.getAddonProxyResponse(proxied).bodyAsText()
+
+        assertEquals(proxied, recorded.single().url.toString())
     }
 
     @Test

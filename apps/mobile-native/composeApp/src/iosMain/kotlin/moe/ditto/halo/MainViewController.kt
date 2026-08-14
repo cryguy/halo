@@ -21,6 +21,12 @@ private fun imageCacheDirectory(): String {
     return "$caches/halo-images"
 }
 
+private fun subtitleCacheDirectory(): String {
+    val caches = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true)
+        .first() as String
+    return "$caches/halo-subtitles"
+}
+
 @OptIn(ExperimentalNativeApi::class)
 fun MainViewController(
     authHost: HaloIosAuthHost,
@@ -41,6 +47,7 @@ fun MainViewController(
         secureStorage = IosKeychainStorage(),
         keyValueStore = IosUserDefaultsStore(),
         imageCacheDirectory = imageCacheDirectory(),
+        subtitleCacheDirectory = subtitleCacheDirectory(),
         // Whether the Kotlin framework itself was linked debug. Taken from the
         // binary rather than plumbed down from Swift so the host cannot pass
         // the wrong answer, and so a release framework has no way to say yes.

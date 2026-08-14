@@ -31,6 +31,7 @@ class PlayerEpisodesTest {
 
         assertEquals(listOf("S02E01", "S02E02", "S02E03"), episodes.map { it.tag })
         assertEquals("Grilled", episodes[1].name)
+        assertEquals("https://images.test/2.jpg", episodes[1].thumbnail)
     }
 
     @Test
@@ -155,6 +156,7 @@ class PlayerEpisodesTest {
             showTitle = "Breaking Bad",
             episodeTag = "S02E01",
             episodeName = "Seven Thirty-Seven",
+            episodeThumbnail = "https://images.test/old.jpg",
             addonId = "torrentio",
             bingeGroup = "old-group",
             filename = "old.mkv",
@@ -180,6 +182,7 @@ class PlayerEpisodesTest {
         assertEquals("tt0903747:2:2", next?.videoId)
         assertEquals("S02E02", next?.episodeTag)
         assertEquals("Grilled", next?.episodeName)
+        assertEquals("https://images.test/2.jpg", next?.episodeThumbnail)
         assertEquals("https://a.test/e2.mkv", next?.url)
         assertEquals("new-group", next?.bingeGroup)
         assertEquals("new.mkv", next?.filename)
@@ -190,6 +193,28 @@ class PlayerEpisodesTest {
         // Title and addon identity survive the episode change.
         assertEquals("tt0903747", next?.metaId)
         assertEquals("torrentio", next?.addonId)
+    }
+
+    @Test
+    fun drawerEpisodeSelectionCarriesTheEpisodesThumbnail() {
+        val current = PlaybackContext(
+            url = "https://a.test/e1.mkv",
+            type = "series",
+            metaId = "tt0903747",
+            videoId = "tt0903747:2:1",
+            showTitle = "Breaking Bad",
+            addonId = "old-addon",
+        )
+
+        val selected = episodePlaybackContext(
+            current = current,
+            video = meta.videos[2],
+            stream = stream("https://a.test/e2.mkv", "release"),
+            addonId = "selected-addon",
+        )
+
+        assertEquals("https://images.test/2.jpg", selected?.episodeThumbnail)
+        assertEquals("selected-addon", selected?.addonId)
     }
 
     @Test
@@ -210,7 +235,13 @@ class PlayerEpisodesTest {
     }
 
     private fun video(id: String, season: Int, episode: Int, title: String) =
-        MetaVideo(id = id, title = title, season = season, episode = episode)
+        MetaVideo(
+            id = id,
+            title = title,
+            season = season,
+            episode = episode,
+            thumbnail = "https://images.test/$episode.jpg",
+        )
 
     private fun watchState(videoId: String, positionSec: Double, durationSec: Double, watched: Boolean) =
         WatchState(

@@ -182,6 +182,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                     serverUrl = it,
                     tokens = sessionController.tokenProvider,
                     keyValueStore = dependencies.keyValueStore,
+                    subtitleCacheDirectory = dependencies.subtitleCacheDirectory,
                 )
             }
         }
@@ -573,13 +574,23 @@ private fun PlayerShellScreen(
     val bitmapItem = { base: String ->
         MediaItem("sample-bitmap", "4K bitmap (${transportOf(base)})", "${base.trimEnd('/')}/sample4k-bitmap.mkv")
     }
+    var diagnosticsNext by remember { mutableStateOf<MediaItem?>(null) }
 
     LaunchedEffect(playback) {
-        // The 60s ASS sample with the bitmap sample queued next makes natural
-        // end exercise load-next-on-the-same-core for real.
-        playback.ensurePlayerStarted(assItem(httpBase), bitmapItem(httpBase))
+        // The harness, not the presenter, owns its second fixture. This keeps
+        // NaturalEnd observable while still exercising two loads on one core.
+        diagnosticsNext = bitmapItem(httpBase)
+        playback.ensurePlayerStarted(assItem(httpBase))
         onStateChanged()
         onRefresh()
+    }
+
+    LaunchedEffect(state.status) {
+        if (state.status != PlaybackStatus.Ended) return@LaunchedEffect
+        val next = diagnosticsNext ?: return@LaunchedEffect
+        diagnosticsNext = null
+        presenter.start(next)
+        onStateChanged()
     }
 
     Column(
@@ -688,7 +699,8 @@ private fun PlayerShellScreen(
                 compact = true,
                 onClick = {
                     scope.launch {
-                        presenter.start(assItem(httpBase), bitmapItem(httpBase))
+                        diagnosticsNext = bitmapItem(httpBase)
+                        presenter.start(assItem(httpBase))
                         onStateChanged()
                     }
                 },
@@ -698,6 +710,7 @@ private fun PlayerShellScreen(
                 compact = true,
                 onClick = {
                     scope.launch {
+                        diagnosticsNext = null
                         presenter.start(bitmapItem(httpBase))
                         onStateChanged()
                     }
@@ -710,7 +723,8 @@ private fun PlayerShellScreen(
                 compact = true,
                 onClick = {
                     scope.launch {
-                        presenter.start(assItem(localBase), bitmapItem(localBase))
+                        diagnosticsNext = bitmapItem(localBase)
+                        presenter.start(assItem(localBase))
                         onStateChanged()
                     }
                 },
@@ -720,6 +734,7 @@ private fun PlayerShellScreen(
                 compact = true,
                 onClick = {
                     scope.launch {
+                        diagnosticsNext = null
                         presenter.start(bitmapItem(localBase))
                         onStateChanged()
                     }

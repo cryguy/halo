@@ -63,6 +63,19 @@ interface PlayerSystemPort {
     fun keepScreenOn()
 
     fun releaseScreenOn()
+
+    /**
+     * The system's own bars off the screen, so the video is the only thing on
+     * it. Counted like [lockLandscape] and for the same overlapping-players
+     * reason.
+     *
+     * The player's chrome is measured from an edge with no status or navigation
+     * bar on it (see `rememberPlayerMetrics`), so this is what makes the layout
+     * land where it was designed rather than pushed down by the clock.
+     */
+    fun hideSystemBars()
+
+    fun releaseSystemBars()
 }
 
 /**
@@ -81,4 +94,6 @@ object NoPlayerSystemPort : PlayerSystemPort {
     override fun releaseLandscape() = Unit
     override fun keepScreenOn() = Unit
     override fun releaseScreenOn() = Unit
+    override fun hideSystemBars() = Unit
+    override fun releaseSystemBars() = Unit
 }

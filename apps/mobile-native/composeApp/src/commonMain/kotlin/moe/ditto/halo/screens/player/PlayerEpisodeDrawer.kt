@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloIcons
+import moe.ditto.halo.ui.HaloAsyncImage
 import moe.ditto.halo.ui.HaloPlayerColors
 import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.monoStyle
@@ -187,6 +189,12 @@ private fun EpisodeCard(
                     shape = RoundedCornerShape(ThumbRadius),
                 ),
         ) {
+            HaloAsyncImage(
+                url = episode.thumbnail,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                placeholder = { Box(Modifier.fillMaxSize().placeholderStripes()) },
+            )
             // Progress rides the bottom edge of the still rather than sitting
             // under it, so the strip stays one row of thumbnails to scan.
             if (episode.progress > 0f) {

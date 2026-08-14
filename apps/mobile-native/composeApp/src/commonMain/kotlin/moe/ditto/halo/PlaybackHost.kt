@@ -189,10 +189,10 @@ internal class PlaybackHost(private val playerPort: PlayerPort) {
      * Loads only if nothing is playing yet — the diagnostics harness re-enters
      * its screen repeatedly and must not restart the core each time.
      */
-    suspend fun ensurePlayerStarted(current: MediaItem, next: MediaItem?) {
+    suspend fun ensurePlayerStarted(current: MediaItem) {
         startMutex.withLock {
             if (playerPresenter.state.status != PlaybackStatus.Idle) return
-            playerPresenter.start(current, next)
+            playerPresenter.start(current)
             publish()
         }
     }

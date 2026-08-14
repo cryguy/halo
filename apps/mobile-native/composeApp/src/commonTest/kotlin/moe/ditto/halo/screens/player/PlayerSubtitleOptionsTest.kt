@@ -7,8 +7,13 @@ import moe.ditto.halo.player.PlayerTrack
 import moe.ditto.halo.player.PlayerTracks
 import moe.ditto.halo.storage.SubtitleChoice
 import moe.ditto.halo.storage.SubtitleChoiceKind
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class PlayerSubtitleOptionsTest {
@@ -226,5 +231,85 @@ class PlayerSubtitleOptionsTest {
         // An unknown code still has to match exactly.
         assertEquals(false, languageMatches("xyz", "xyw"))
         assertEquals(false, languageMatches("eng", null))
+    }
+
+    @Test
+    fun anOlderExternalSubtitleCannotOverwriteANewerSelection() = runTest {
+        val coordinator = ExternalSubtitleSelectionCoordinator()
+        val firstResolved = CompletableDeferred<String>()
+        val loaded = mutableListOf<String>()
+        val firstAttempt = coordinator.begin()
+        val first = async {
+            coordinator.load(
+                attempt = firstAttempt,
+                resolve = { firstResolved.await() },
+                addToPlayer = { loaded += it },
+            )
+        }
+
+        val secondAttempt = coordinator.begin()
+        val secondLoaded = coordinator.load(
+            attempt = secondAttempt,
+            resolve = { "/cache/second.srt" },
+            addToPlayer = { loaded += it },
+        )
+        firstResolved.complete("/cache/first.srt")
+
+        assertEquals(true, secondLoaded)
+        assertFalse(first.await())
+        assertEquals(listOf("/cache/second.srt"), loaded)
+    }
+
+    @Test
+    fun newerSelectionCommitsAfterAnOlderPlayerLoadAlreadyInProgress() = runTest {
+        val coordinator = ExternalSubtitleSelectionCoordinator()
+        val firstLoadStarted = CompletableDeferred<Unit>()
+        val finishFirstLoad = CompletableDeferred<Unit>()
+        val loaded = mutableListOf<String>()
+        val firstAttempt = coordinator.begin()
+        val first = async {
+            coordinator.load(
+                attempt = firstAttempt,
+                resolve = { "/cache/first.srt" },
+                addToPlayer = {
+                    firstLoadStarted.complete(Unit)
+                    finishFirstLoad.await()
+                    loaded += it
+                },
+            )
+        }
+        firstLoadStarted.await()
+
+        val secondAttempt = coordinator.begin()
+        val second = async {
+            coordinator.load(
+                attempt = secondAttempt,
+                resolve = { "/cache/second.srt" },
+                addToPlayer = { loaded += it },
+            )
+        }
+        finishFirstLoad.complete(Unit)
+
+        assertFalse(first.await())
+        assertEquals(true, second.await())
+        assertEquals(listOf("/cache/first.srt", "/cache/second.srt"), loaded)
+    }
+
+    @Test
+    fun failedExternalLoadCannotUpdateSelectionMemory() = runTest {
+        val coordinator = ExternalSubtitleSelectionCoordinator()
+        val attempt = coordinator.begin()
+        var remembered = false
+
+        assertFailsWith<IllegalStateException> {
+            coordinator.load(
+                attempt = attempt,
+                resolve = { throw IllegalStateException("fixture download failed") },
+                addToPlayer = {},
+                onLoaded = { remembered = true },
+            )
+        }
+
+        assertFalse(remembered)
     }
 }

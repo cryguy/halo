@@ -55,7 +55,19 @@ internal class MpvCore private constructor(
     @Volatile private var stoppedByApp = false
 
     private val eventObserver = object : MPVLib.EventObserver {
-        override fun eventProperty(property: String) { /* NODE/none formats: ignored */ }
+        /**
+         * Value-less observations. `sid`/`aid` are observed for the fact that
+         * they changed, not for what they changed to: which track is current is
+         * read back off `track-list` like every other track fact, so a
+         * selection mpv made on its own reports the same way an app-driven one
+         * does. Without this the panel keeps highlighting the previous row
+         * after a switch, because the track *count* has not moved.
+         */
+        override fun eventProperty(property: String) {
+            when (property) {
+                "sid", "aid" -> emitTracks()
+            }
+        }
 
         override fun eventProperty(property: String, value: Long) {
             when (property) {
@@ -140,6 +152,9 @@ internal class MpvCore private constructor(
     fun setListener(listener: Listener?) {
         this.listener = listener
     }
+
+    /** Read only by Android instrumentation after [MPVLib.init] has completed. */
+    fun isMutedForTest(): Boolean? = if (destroyed) null else mpv.getPropertyBoolean("mute")
 
     /** Attach the render surface and turn the GPU video output on (mpv-android order). */
     fun attachSurface(surface: Surface, width: Int, height: Int) {
@@ -388,7 +403,6 @@ internal class MpvCore private constructor(
             mpv.setOptionString("opengl-es", "yes")
             mpv.setOptionString("hwdec", "mediacodec-copy") // auto-falls back to sw
             mpv.setOptionString("ao", "audiotrack")
-            mpv.setOptionString("mute", "yes") // test playback is always silent
             mpv.setOptionString("keep-open", "yes") // so eof-reached fires
             // Subtitle auto-select + rendering; embedded fonts make ASS render
             // without depending on Android system fonts.
@@ -410,6 +424,11 @@ internal class MpvCore private constructor(
             mpv.observeProperty("pause", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
             mpv.observeProperty("eof-reached", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
             mpv.observeProperty("track-list/count", MPVLib.MpvFormat.MPV_FORMAT_INT64)
+            // Selection, which the count cannot report. Same pair the iOS core
+            // observes, so both platforms answer "which track is playing" from
+            // the engine rather than from what the UI last asked for.
+            mpv.observeProperty("sid", MPVLib.MpvFormat.MPV_FORMAT_NONE)
+            mpv.observeProperty("aid", MPVLib.MpvFormat.MPV_FORMAT_NONE)
             mpv.observeProperty("paused-for-cache", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
             mpv.observeProperty("cache-buffering-state", MPVLib.MpvFormat.MPV_FORMAT_INT64)
             mpv.observeProperty("demuxer-cache-time", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)

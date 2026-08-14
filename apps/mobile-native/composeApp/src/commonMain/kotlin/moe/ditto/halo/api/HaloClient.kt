@@ -224,6 +224,30 @@ class HaloClient(
      */
     fun proxyUrl(target: String): String = "$baseUrl/addon-proxy?url=${target.encodeUriComponent()}"
 
+    /**
+     * Opens an authenticated proxy response without buffering its body.
+     *
+     * Subtitle files can be several megabytes, so their caller streams this
+     * response to disk. A URL already pointing at this server's proxy is used
+     * as-is, which prevents nested proxy URLs after route restoration.
+     */
+    suspend fun getAddonProxyResponse(target: String): HttpResponse {
+        val url = if (isOwnAddonProxyUrl(target)) target else proxyUrl(target)
+        var response = executeUrl(HttpMethod.Get, url, token = tokens.accessToken())
+        if (response.status == HttpStatusCode.Unauthorized) {
+            val refreshed = tokens.refreshAccessToken() ?: throw HaloApiException(401, Unauthorized)
+            response = executeUrl(HttpMethod.Get, url, token = refreshed)
+        }
+        if (!response.status.isSuccess()) {
+            val text = response.bodyAsText()
+            throw HaloApiException(
+                response.status.value,
+                errorMessage(text) ?: "HTTP ${response.status.value} from /addon-proxy",
+            )
+        }
+        return response
+    }
+
     private suspend fun <T> request(
         method: HttpMethod,
         path: String,
@@ -279,6 +303,17 @@ class HaloClient(
             contentType(ContentType.Application.Json)
             setBody(body)
         }
+    }
+
+    private suspend fun executeUrl(method: HttpMethod, url: String, token: String?): HttpResponse =
+        httpClient.request(url) {
+            this.method = method
+            token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
+        }
+
+    private fun isOwnAddonProxyUrl(url: String): Boolean {
+        val endpoint = "$baseUrl/addon-proxy"
+        return url == endpoint || url.startsWith("$endpoint?")
     }
 
     /** Error bodies are `{"error": ...}`; anything else falls back to the status. */

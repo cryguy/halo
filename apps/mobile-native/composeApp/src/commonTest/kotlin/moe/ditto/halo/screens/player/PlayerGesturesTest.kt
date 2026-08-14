@@ -106,4 +106,29 @@ class PlayerGesturesTest {
         // since it changes nothing outside this window.
         assertEquals(VerticalDragTarget.Brightness, verticalDragTarget(startX = 10f, widthPx = 0f))
     }
+
+    @Test
+    fun exactlyTwoHundredEightyMillisecondsIsADoubleTap() {
+        val taps = PlayerTapRecognizer()
+
+        assertEquals(emptyList(), taps.record(atMillis = 1_000, onRightHalf = false))
+        assertEquals(
+            listOf(PlayerTapDecision.DoubleRight),
+            taps.record(atMillis = 1_280, onRightHalf = true),
+        )
+        assertEquals(false, taps.hasPendingTap)
+    }
+
+    @Test
+    fun laterTapsBecomeSeparateSingles() {
+        val taps = PlayerTapRecognizer()
+
+        taps.record(atMillis = 1_000, onRightHalf = false)
+        assertEquals(
+            listOf(PlayerTapDecision.Single),
+            taps.record(atMillis = 1_281, onRightHalf = true),
+        )
+        assertEquals(emptyList(), taps.expire(atMillis = 1_561))
+        assertEquals(listOf(PlayerTapDecision.Single), taps.expire(atMillis = 1_562))
+    }
 }

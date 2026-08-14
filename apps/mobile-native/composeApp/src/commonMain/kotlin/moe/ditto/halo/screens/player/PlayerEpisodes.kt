@@ -24,6 +24,7 @@ internal data class PlayerEpisode(
     val videoId: String,
     val tag: String,
     val name: String,
+    val thumbnail: String?,
     val progress: Float,
     val downloaded: Boolean,
 )
@@ -45,6 +46,7 @@ internal fun playerEpisodes(
             videoId = video.id,
             tag = episodeTag(video),
             name = video.displayTitle ?: episodeTag(video),
+            thumbnail = video.thumbnail,
             progress = progressOf(progressByVideo[video.id]),
             // Nothing on this platform downloads yet, and a tick that always
             // showed would be a claim about the device that is not true.
@@ -112,6 +114,7 @@ internal sealed interface EpisodeChoice {
         val videoId: String,
         val episodeTag: String?,
         val episodeName: String?,
+        val episodeThumbnail: String?,
     ) : EpisodeChoice
 }
 
@@ -130,7 +133,7 @@ internal suspend fun resolveEpisodePlayback(
 ): EpisodeChoice {
     val tag = episodeTag(video)
     val name = video.displayTitle?.takeIf { it != tag }
-    val needsSource = EpisodeChoice.NeedsSource(video.id, tag, name)
+    val needsSource = EpisodeChoice.NeedsSource(video.id, tag, name, video.thumbnail)
 
     val results = try {
         graph.client.getStreams(current.type, video.id).results
@@ -141,23 +144,8 @@ internal suspend fun resolveEpisodePlayback(
     }
 
     val (addon, stream) = sameReleaseStream(results, current.addonId, current.bingeGroup) ?: return needsSource
-    val url = stream.url ?: return needsSource
-    val hints = stream.behaviorHints
-    return EpisodeChoice.Resolved(
-        current.copy(
-            url = url,
-            videoId = video.id,
-            episodeTag = tag,
-            episodeName = name,
-            addonId = addon.id,
-            bingeGroup = hints?.bingeGroup,
-            filename = hints?.filename,
-            videoSize = hints?.videoSize,
-            videoHash = hints?.videoHash,
-            streamName = stream.name,
-            streamTitle = stream.title ?: stream.description,
-        ),
-    )
+    val resolved = episodePlaybackContext(current, video, stream, addon.id) ?: return needsSource
+    return EpisodeChoice.Resolved(resolved)
 }
 
 /**
@@ -184,6 +172,32 @@ internal suspend fun reportProgress(
         name = context.showTitle,
         poster = meta?.poster,
     )
+}
+
+/**
+ * Watch state is useful but never safety-critical. A failed report must not
+ * cancel periodic sampling, prevent a pause from settling, or strand a player
+ * on screen before its decoder can release the render surface.
+ */
+internal suspend fun reportProgressBestEffort(report: suspend () -> Unit) {
+    try {
+        report()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        // The next periodic, pause, or exit sample gets another opportunity.
+    }
+}
+
+/** The exit order is load-bearing: report, decoder wind-down, then navigation. */
+internal suspend fun windDownAndLeave(
+    report: suspend () -> Unit,
+    windDown: suspend () -> Unit,
+    navigate: () -> Unit,
+) {
+    reportProgressBestEffort(report)
+    windDown()
+    navigate()
 }
 
 /**
@@ -229,6 +243,14 @@ internal fun nextPlaybackContext(
     current: PlaybackContext,
     video: MetaVideo,
     stream: Stream,
+): PlaybackContext? = episodePlaybackContext(current, video, stream, current.addonId)
+
+/** Shared propagation path for drawer selection and the Up Next response. */
+internal fun episodePlaybackContext(
+    current: PlaybackContext,
+    video: MetaVideo,
+    stream: Stream,
+    addonId: String,
 ): PlaybackContext? {
     val url = stream.url ?: return null
     val tag = episodeTag(video)
@@ -238,6 +260,8 @@ internal fun nextPlaybackContext(
         videoId = video.id,
         episodeTag = tag,
         episodeName = video.displayTitle?.takeIf { it != tag },
+        episodeThumbnail = video.thumbnail,
+        addonId = addonId,
         bingeGroup = hints?.bingeGroup,
         filename = hints?.filename,
         videoSize = hints?.videoSize,

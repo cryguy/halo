@@ -4,9 +4,12 @@ import moe.ditto.halo.PlaybackHost
 import moe.ditto.halo.api.AddonSubtitles
 import moe.ditto.halo.player.PlayerTrack
 import moe.ditto.halo.player.PlayerTracks
+import moe.ditto.halo.player.SubtitleFileException
 import moe.ditto.halo.storage.SubtitleChoice
 import moe.ditto.halo.storage.SubtitleChoiceKind
 import moe.ditto.halo.ui.languageLabel
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * One subtitle an addon offered, in the shape the rail draws and the memory
@@ -207,12 +210,9 @@ private fun canonicalLanguage(code: String): String = when (code) {
 /**
  * Puts a resolved selection into effect.
  *
- * External subtitles are handed to the engine as the addon gave them, not
- * through the server's addon proxy. That proxy is an authenticated route and
- * the engine sends no Authorization header, so a proxied subtitle URL cannot be
- * opened at all; it is for fetches this app's own code makes. The engine
- * already opens the source URL directly, and a subtitle from the same addon is
- * no wider an exposure than the video it belongs to.
+ * The shipping screen resolves external URLs through [ExternalSubtitleSelectionCoordinator]
+ * first. This helper therefore receives external selections only when their URL
+ * is already safe for the engine, such as a local file in a test or harness.
  */
 internal suspend fun applySubtitleSelection(
     selection: SubtitleSelection,
@@ -230,8 +230,52 @@ internal suspend fun applySubtitleSelection(
             playback.selectSubtitleTrack(selection.trackId)
         }
         is SubtitleSelection.External -> {
-            onAddonSelected(selection.option.id)
             playback.addSubtitle(selection.option.url)
+            onAddonSelected(selection.option.id)
         }
     }
 }
+
+/**
+ * A monotonically increasing claim for external subtitle loads.
+ *
+ * Downloads can finish out of order. Only the newest attempt may reach libmpv
+ * or update selection memory, even if an older HTTP client ignores cancellation.
+ */
+internal class ExternalSubtitleSelectionCoordinator {
+    private var latestAttempt = 0L
+    private val commitMutex = Mutex()
+
+    fun begin(): Long {
+        latestAttempt += 1L
+        return latestAttempt
+    }
+
+    fun supersede() {
+        latestAttempt += 1L
+    }
+
+    fun currentAttempt(): Long = latestAttempt
+
+    suspend fun load(
+        attempt: Long,
+        resolve: suspend () -> String,
+        addToPlayer: suspend (String) -> Unit,
+        onLoaded: () -> Unit = {},
+    ): Boolean {
+        val localFile = resolve()
+        return commitMutex.withLock {
+            if (attempt != latestAttempt) return@withLock false
+            addToPlayer(localFile)
+            if (attempt != latestAttempt) return@withLock false
+            onLoaded()
+            true
+        }
+    }
+}
+
+internal fun subtitleLoadErrorMessage(failure: Throwable): String =
+    (failure as? SubtitleFileException)?.message ?: "This subtitle could not be loaded."
+
+internal fun subtitleCacheIdentity(context: PlaybackContext, option: AddonSubtitleOption): String =
+    listOf(context.itemId, context.videoId, option.addonId, option.subId).joinToString("|")

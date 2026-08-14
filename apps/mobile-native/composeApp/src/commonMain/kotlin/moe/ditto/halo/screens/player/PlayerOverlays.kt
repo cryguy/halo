@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloIcons
+import moe.ditto.halo.ui.HaloAsyncImage
 import moe.ditto.halo.ui.HaloPlayerColors
 import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.monoStyle
@@ -289,6 +290,7 @@ internal fun UpNextCard(
     metrics: PlayerMetrics,
     episodeTag: String,
     episodeName: String,
+    episodeThumbnail: String?,
     secondsRemaining: Int,
     totalSeconds: Int,
     onCancel: () -> Unit,
@@ -331,7 +333,14 @@ internal fun UpNextCard(
                     .size(width = 104.dp, height = 59.dp)
                     .clip(RoundedCornerShape(HaloRadius.Sm))
                     .placeholderStripes(),
-            )
+            ) {
+                HaloAsyncImage(
+                    url = episodeThumbnail,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    placeholder = { Box(Modifier.fillMaxSize().placeholderStripes()) },
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = episodeTag,

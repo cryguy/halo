@@ -61,6 +61,7 @@ internal class AndroidMpvPlayerHost(
 
     val instanceId: String get() = core.id
     val viewInstanceId: String get() = surfaceView?.let { "view-$viewSeq" } ?: "none"
+    val mutedForTest: Boolean? get() = core.isMutedForTest()
 
     private val channel = Channel<PlayerEvent>(Channel.UNLIMITED)
     val playerEvents: Flow<PlayerEvent> = channel.receiveAsFlow()

@@ -121,12 +121,14 @@ kotlin {
             implementation("io.ktor:ktor-client-core:3.5.1")
             implementation("io.ktor:ktor-client-content-negotiation:3.5.1")
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.1")
+            implementation("com.squareup.okio:okio:3.17.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation("io.ktor:ktor-client-mock:3.5.1")
+            implementation("com.squareup.okio:okio-fakefilesystem:3.17.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
         }
         iosMain.dependencies {

@@ -29,7 +29,9 @@ import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
@@ -125,7 +127,6 @@ internal fun PlayerScreen(
     // during one the platform could not give a starting value for.
     var dragAdjustment by remember { mutableStateOf<VerticalDragAdjustment?>(null) }
     var dragTarget by remember { mutableStateOf<VerticalDragTarget?>(null) }
-
     // The video is the item, so the video id names it. The URL is one way to
     // reach that item and not what it is. Two sources for the same episode are
     // the same thing being watched, which is what the slices reporting on the
@@ -133,6 +134,10 @@ internal fun PlayerScreen(
     val item = remember(context) {
         MediaItem(id = context.videoId, title = context.displayTitle, url = context.url)
     }
+    val externalSubtitleSelection = remember(item) { ExternalSubtitleSelectionCoordinator() }
+    var externalSubtitleJob by remember(item) { mutableStateOf<Job?>(null) }
+    var subtitleLoadError by remember(item) { mutableStateOf<String?>(null) }
+    var fitModeRestored by remember(item) { mutableStateOf(false) }
     // Parsed once per source rather than per frame of chrome: the strings are
     // release names, and the regexes over them are not free.
     val streamBadges = remember(context) {
@@ -144,12 +149,12 @@ internal fun PlayerScreen(
     // The write-back is debounced because the size slider emits continuously
     // and every settings write is a whole-document PUT.
     LaunchedEffect(item) {
+        playback.setVideoFillsScreen(graph.videoFitMode.current() == VideoFitMode.Cover)
+        fitModeRestored = true
         val settings = graph.settings.current()
         val stored = subtitleStyleOf(settings)
         playback.applySubtitleStyle(stored)
         playback.play(item)
-
-        playback.setVideoFillsScreen(settings.videoFitMode == VideoFitMode.Cover)
 
         val storedPreference = SubtitlePreference(stored.scale, stored.font)
         playback.state
@@ -164,15 +169,17 @@ internal fun PlayerScreen(
 
     // Fit mode is written back the moment it changes rather than debounced:
     // unlike the size slider it is one decision per gesture, not a stream.
-    LaunchedEffect(item) {
-        val stored = graph.settings.current().videoFitMode
+    LaunchedEffect(item, fitModeRestored) {
+        if (!fitModeRestored) return@LaunchedEffect
+        var persisted = graph.videoFitMode.current()
         playback.state
             .map { it.videoFillsScreen }
             .distinctUntilChanged()
             .collect { fills ->
                 val mode = if (fills) VideoFitMode.Cover else VideoFitMode.Contain
-                if (mode == stored) return@collect
-                graph.settings.update { it.withVideoFitMode(mode) }
+                if (mode == persisted) return@collect
+                graph.videoFitMode.update(mode)
+                persisted = mode
             }
     }
 
@@ -218,7 +225,31 @@ internal fun PlayerScreen(
         // effect. A claim taken first would be kept by the cancelled run and
         // the restart would decline to do the work.
         selectionApplied = true
-        applySubtitleSelection(selection, playback, controller::selectAddonSubtitle)
+        if (selection is SubtitleSelection.External) {
+            val attempt = externalSubtitleSelection.begin()
+            try {
+                externalSubtitleSelection.load(
+                    attempt = attempt,
+                    resolve = {
+                        graph.subtitleFiles.resolve(
+                            identity = subtitleCacheIdentity(context, selection.option),
+                            sourceUrl = selection.option.url,
+                        )
+                    },
+                    addToPlayer = playback::addSubtitle,
+                    onLoaded = { controller.selectAddonSubtitle(selection.option.id) },
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (failure: Exception) {
+                if (attempt == externalSubtitleSelection.currentAttempt()) {
+                    subtitleLoadError = subtitleLoadErrorMessage(failure)
+                }
+            }
+        } else {
+            externalSubtitleSelection.supersede()
+            applySubtitleSelection(selection, playback, controller::selectAddonSubtitle)
+        }
     }
 
     // The bottom bar sits exactly where captions do, so the caption steps up
@@ -244,12 +275,16 @@ internal fun PlayerScreen(
     LaunchedEffect(item) {
         while (true) {
             delay(WatchStateReportMillis)
-            reportProgress(graph, context, playback.state.value, metaState.value)
+            reportProgressBestEffort {
+                reportProgress(graph, context, playback.state.value, metaState.value)
+            }
         }
     }
     LaunchedEffect(item, state.status) {
         if (state.status != PlaybackStatus.Playing) {
-            reportProgress(graph, context, playback.state.value, metaState.value)
+            reportProgressBestEffort {
+                reportProgress(graph, context, playback.state.value, metaState.value)
+            }
         }
     }
 
@@ -272,19 +307,29 @@ internal fun PlayerScreen(
         controller.showUpNext { onSelectEpisode(EpisodeChoice.Resolved(next)) }
     }
 
-    // Landscape and a display that will not sleep, for as long as this screen
-    // exists. Disposal rather than the back handler, because the error card's
-    // exit and a system-initiated one leave the same way and would otherwise
-    // strand the device in landscape with the screen pinned on.
+    // Landscape, a display that will not sleep and no system bars, for as long
+    // as this screen exists. Disposal rather than the back handler, because the
+    // error card's exit and a system-initiated one leave the same way and would
+    // otherwise strand the device in landscape with the screen pinned on and
+    // the rest of the app with nothing to reach the clock by.
     DisposableEffect(system) {
         system.lockLandscape()
         system.keepScreenOn()
+        system.hideSystemBars()
         onDispose {
             system.releaseLandscape()
             system.releaseScreenOn()
+            system.releaseSystemBars()
             // The window's brightness override belongs to the player, not to
             // the app: leaving it set would dim every other screen.
             system.clearScreenBrightnessOverride()
+        }
+    }
+
+    DisposableEffect(item) {
+        onDispose {
+            externalSubtitleJob?.cancel()
+            externalSubtitleSelection.supersede()
         }
     }
 
@@ -317,9 +362,11 @@ internal fun PlayerScreen(
                 // Before the wind-down: pausing moves nothing, but the state
                 // read has to happen while the position is still the one the
                 // viewer stopped at.
-                reportProgress(graph, context, playback.state.value, metaState.value)
-                playback.windDownForExit()
-                destination()
+                windDownAndLeave(
+                    report = { reportProgress(graph, context, playback.state.value, metaState.value) },
+                    windDown = playback::windDownForExit,
+                    navigate = destination,
+                )
             }
         }
     }
@@ -533,7 +580,11 @@ internal fun PlayerScreen(
                 onClose = controller::closeRail,
                 addonSubtitles = addonSubtitles,
                 addonSubtitlesFetching = addonSubtitleState.isFetching,
+                subtitleLoadError = subtitleLoadError,
                 onSelectSubtitleTrack = { id ->
+                    externalSubtitleSelection.supersede()
+                    externalSubtitleJob?.cancel()
+                    subtitleLoadError = null
                     controller.selectAddonSubtitle(null)
                     scope.launch { playback.selectSubtitleTrack(id) }
                     // Only a deliberate choice is remembered. Restoring one is
@@ -547,13 +598,37 @@ internal fun PlayerScreen(
                     )
                 },
                 onSelectAddonSubtitle = { option ->
-                    controller.selectAddonSubtitle(option.id)
-                    scope.launch { playback.addSubtitle(option.url) }
-                    graph.subtitleChoices.remember(
-                        videoId = context.videoId,
-                        itemId = context.itemId,
-                        choice = externalChoice(option),
-                    )
+                    val attempt = externalSubtitleSelection.begin()
+                    externalSubtitleJob?.cancel()
+                    subtitleLoadError = null
+                    externalSubtitleJob = scope.launch {
+                        try {
+                            externalSubtitleSelection.load(
+                                attempt = attempt,
+                                resolve = {
+                                    graph.subtitleFiles.resolve(
+                                        identity = subtitleCacheIdentity(context, option),
+                                        sourceUrl = option.url,
+                                    )
+                                },
+                                addToPlayer = playback::addSubtitle,
+                                onLoaded = {
+                                    controller.selectAddonSubtitle(option.id)
+                                    graph.subtitleChoices.remember(
+                                        videoId = context.videoId,
+                                        itemId = context.itemId,
+                                        choice = externalChoice(option),
+                                    )
+                                },
+                            )
+                        } catch (cancellation: CancellationException) {
+                            throw cancellation
+                        } catch (failure: Exception) {
+                            if (attempt == externalSubtitleSelection.currentAttempt()) {
+                                subtitleLoadError = subtitleLoadErrorMessage(failure)
+                            }
+                        }
+                    }
                 },
                 onSubtitleScaleChange = { scale -> scope.launch { playback.setSubtitleScale(scale) } },
                 onSubtitleDelayChange = { seconds ->
@@ -598,6 +673,7 @@ internal fun PlayerScreen(
                 metrics = metrics,
                 episodeTag = next.episodeTag.orEmpty(),
                 episodeName = next.episodeName ?: next.showTitle,
+                episodeThumbnail = next.episodeThumbnail,
                 secondsRemaining = remaining,
                 totalSeconds = UpNextSeconds,
                 onCancel = controller::dismissUpNext,

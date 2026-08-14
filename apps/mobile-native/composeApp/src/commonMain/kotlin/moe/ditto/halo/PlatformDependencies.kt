@@ -27,6 +27,8 @@ internal data class PlatformDependencies(
      * Poster art is re-fetchable, so it must never occupy backed-up storage.
      */
     val imageCacheDirectory: String,
+    /** App-private, purgeable storage for authenticated external subtitles. */
+    val subtitleCacheDirectory: String,
     /**
      * Native OIDC session owner; [NoOidcSessionPort] where the platform has
      * no OIDC host yet (Android until its port, fakes in tests).

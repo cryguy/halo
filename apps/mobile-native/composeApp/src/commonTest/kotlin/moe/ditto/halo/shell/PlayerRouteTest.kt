@@ -27,6 +27,7 @@ class PlayerRouteTest {
         showTitle = "Game of Thrones",
         episodeTag = "S01E01",
         episodeName = "Winter Is Coming",
+        episodeThumbnail = "https://images.example/s01e01.jpg",
     )
 
     private val addon = AddonSource(id = "addon-1", name = "Torrentio TB")
@@ -55,6 +56,7 @@ class PlayerRouteTest {
         assertEquals("Game of Thrones", route.showTitle)
         assertEquals("S01E01", route.episodeTag)
         assertEquals("Winter Is Coming", route.episodeName)
+        assertEquals("https://images.example/s01e01.jpg", route.episodeThumbnail)
         assertEquals("addon-1", route.addonId)
         assertEquals("torrentio|106e91b9", route.bingeGroup)
         assertEquals("Game of Thrones S01E01 1080p BluRay x265.mkv", route.filename)
@@ -69,6 +71,7 @@ class PlayerRouteTest {
         val context = episode.playerRoute(addon, stream, stream.url!!).playbackContext()
 
         assertEquals("tt0944947:1:1", context.videoId)
+        assertEquals("https://images.example/s01e01.jpg", context.episodeThumbnail)
         assertEquals(34_249_807_367, context.videoSize)
         assertTrue(context.isEpisode)
         assertEquals("Game of Thrones · S01E01", context.displayTitle)
@@ -122,6 +125,21 @@ class PlayerRouteTest {
         val player = episode.playerRoute(addon, stream, stream.url!!)
 
         assertEquals(episode, player.sourcesRoute())
+    }
+
+    @Test
+    fun fallbackEpisodePickerCarriesTheSelectedEpisodesThumbnail() {
+        val player = episode.playerRoute(addon, stream, stream.url!!)
+        val fallback = player.episodeSources(
+            moe.ditto.halo.screens.player.EpisodeChoice.NeedsSource(
+                videoId = "tt0944947:1:2",
+                episodeTag = "S01E02",
+                episodeName = "The Kingsroad",
+                episodeThumbnail = "https://images.example/s01e02.jpg",
+            ),
+        )
+
+        assertEquals("https://images.example/s01e02.jpg", fallback.episodeThumbnail)
     }
 
     @Test

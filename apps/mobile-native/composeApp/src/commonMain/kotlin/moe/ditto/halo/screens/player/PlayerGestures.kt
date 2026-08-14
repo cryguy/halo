@@ -9,7 +9,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.time.TimeSource
 
 /**
  * How much of the screen's height a drag must cross to sweep the whole range.
@@ -70,13 +75,12 @@ internal fun verticalDragTarget(startX: Float, widthPx: Float): VerticalDragTarg
 /**
  * The video's own gestures.
  *
- * Taps and drags are separate detectors on the same surface rather than one
- * hand-rolled loop: each is a well-defined interaction with its own slop and
- * timing rules, and combining them by hand is how a drag starts eating taps.
+ * Taps and drags are separate detectors on the same surface. Compose still
+ * owns each tap's touch slop and cancellation, while [PlayerTapRecognizer]
+ * owns the one timing rule the player specifies itself.
  *
- * A single tap is delayed by the platform's double-tap window, which is
- * unavoidable while both gestures exist on the same surface: nothing can know a
- * tap was single until the window has passed without a second one.
+ * A single tap is delayed by the fixed double-tap window. Nothing can know a
+ * tap was single until that window passes without a second one.
  */
 internal fun Modifier.playerGestures(
     onTap: () -> Unit,
@@ -88,12 +92,35 @@ internal fun Modifier.playerGestures(
     onFillScreenChange: (Boolean) -> Unit,
 ): Modifier = this
     .pointerInput(Unit) {
-        detectTapGestures(
-            onTap = { onTap() },
-            onDoubleTap = { offset ->
-                if (offset.x > size.width / 2f) onDoubleTapRight() else onDoubleTapLeft()
-            },
-        )
+        coroutineScope {
+            val recognizer = PlayerTapRecognizer()
+            val started = TimeSource.Monotonic.markNow()
+            var expiry: Job? = null
+
+            fun dispatch(decisions: List<PlayerTapDecision>) {
+                decisions.forEach { decision ->
+                    when (decision) {
+                        PlayerTapDecision.Single -> onTap()
+                        PlayerTapDecision.DoubleLeft -> onDoubleTapLeft()
+                        PlayerTapDecision.DoubleRight -> onDoubleTapRight()
+                    }
+                }
+            }
+
+            detectTapGestures(
+                onTap = { offset ->
+                    val now = started.elapsedNow().inWholeMilliseconds
+                    expiry?.cancel()
+                    dispatch(recognizer.record(now, offset.x > size.width / 2f))
+                    if (recognizer.hasPendingTap) {
+                        expiry = launch {
+                            delay(DoubleTapWindowMillis + 1L)
+                            dispatch(recognizer.expire(started.elapsedNow().inWholeMilliseconds))
+                        }
+                    }
+                },
+            )
+        }
     }
     .pointerInput(Unit) {
         var totalDrag = 0f
@@ -130,6 +157,53 @@ internal fun Modifier.playerGestures(
             } while (event.changes.any { it.pressed })
         }
     }
+
+internal enum class PlayerTapDecision {
+    Single,
+    DoubleLeft,
+    DoubleRight,
+}
+
+/**
+ * Groups physical taps into the player's single and double-tap actions.
+ *
+ * The interval is inclusive, so a second tap exactly 280 ms after the first is
+ * still a double tap. The platform detector outside this class remains
+ * responsible for rejecting drags and out-of-bounds movement.
+ */
+internal class PlayerTapRecognizer {
+    private var pendingAtMillis: Long? = null
+
+    val hasPendingTap: Boolean get() = pendingAtMillis != null
+
+    fun record(atMillis: Long, onRightHalf: Boolean): List<PlayerTapDecision> {
+        val first = pendingAtMillis
+        if (first == null) {
+            pendingAtMillis = atMillis
+            return emptyList()
+        }
+
+        val interval = atMillis - first
+        if (interval in 0L..DoubleTapWindowMillis) {
+            pendingAtMillis = null
+            return listOf(
+                if (onRightHalf) PlayerTapDecision.DoubleRight else PlayerTapDecision.DoubleLeft,
+            )
+        }
+
+        pendingAtMillis = atMillis
+        return listOf(PlayerTapDecision.Single)
+    }
+
+    fun expire(atMillis: Long): List<PlayerTapDecision> {
+        val first = pendingAtMillis ?: return emptyList()
+        if (atMillis - first <= DoubleTapWindowMillis) return emptyList()
+        pendingAtMillis = null
+        return listOf(PlayerTapDecision.Single)
+    }
+}
+
+internal const val DoubleTapWindowMillis = 280L
 
 /**
  * How far a pinch has to travel before it means anything. Below this it is a

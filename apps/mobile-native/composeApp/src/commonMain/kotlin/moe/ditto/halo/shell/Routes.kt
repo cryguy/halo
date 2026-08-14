@@ -69,6 +69,7 @@ data class StreamsRoute(
     /** Null for films, which have no second line anywhere they are named. */
     val episodeTag: String? = null,
     val episodeName: String? = null,
+    val episodeThumbnail: String? = null,
 ) {
     /** One line naming the video, for a header that has room for only one. */
     val displayTitle: String
@@ -100,6 +101,7 @@ data class PlayerRoute(
     val showTitle: String,
     val episodeTag: String? = null,
     val episodeName: String? = null,
+    val episodeThumbnail: String? = null,
     /** Which addon offered this source; the next episode is asked of the same one. */
     val addonId: String,
     val bingeGroup: String? = null,
@@ -137,6 +139,7 @@ internal fun PlayerRoute.playbackContext(): PlaybackContext = PlaybackContext(
     showTitle = showTitle,
     episodeTag = episodeTag,
     episodeName = episodeName,
+    episodeThumbnail = episodeThumbnail,
     addonId = addonId,
     bingeGroup = bingeGroup,
     filename = filename,
@@ -163,6 +166,7 @@ internal fun StreamsRoute.playerRoute(addon: AddonSource, stream: Stream, url: S
         showTitle = showTitle,
         episodeTag = episodeTag,
         episodeName = episodeName,
+        episodeThumbnail = episodeThumbnail,
         addonId = addon.id,
         bingeGroup = hints?.bingeGroup,
         filename = hints?.filename,
@@ -197,6 +201,7 @@ internal fun PlayerRoute.withContext(context: PlaybackContext): PlayerRoute = Pl
     showTitle = context.showTitle,
     episodeTag = context.episodeTag,
     episodeName = context.episodeName,
+    episodeThumbnail = context.episodeThumbnail,
     addonId = context.addonId,
     bingeGroup = context.bingeGroup,
     filename = context.filename,
@@ -214,6 +219,7 @@ internal fun PlayerRoute.episodeSources(choice: EpisodeChoice.NeedsSource): Stre
     showTitle = showTitle,
     episodeTag = choice.episodeTag,
     episodeName = choice.episodeName,
+    episodeThumbnail = choice.episodeThumbnail,
 )
 
 /** The source picker for the video this player route is already showing. */
@@ -224,4 +230,5 @@ internal fun PlayerRoute.sourcesRoute(): StreamsRoute = StreamsRoute(
     showTitle = showTitle,
     episodeTag = episodeTag,
     episodeName = episodeName,
+    episodeThumbnail = episodeThumbnail,
 )

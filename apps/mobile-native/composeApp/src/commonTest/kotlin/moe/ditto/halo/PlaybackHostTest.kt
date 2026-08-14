@@ -18,12 +18,11 @@ class PlaybackHostTest {
         val port = RecordingPlayerPort()
         val host = PlaybackHost(port)
 
-        host.ensurePlayerStarted(current, next)
-        host.ensurePlayerStarted(current, next)
+        host.ensurePlayerStarted(current)
+        host.ensurePlayerStarted(current)
 
         assertEquals(listOf(current), port.loads)
         assertEquals(current, host.playerPresenter.state.current)
-        assertEquals(next, host.playerPresenter.state.queuedNext)
     }
 
     @Test

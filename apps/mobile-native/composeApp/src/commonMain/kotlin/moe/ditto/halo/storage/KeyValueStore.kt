@@ -35,4 +35,7 @@ object StorageKeys {
 
     /** Remembered subtitle selections, per video and per series. */
     const val SubtitleChoices = "halo.subtitleChoices.v1"
+
+    /** Player framing on this device. It is intentionally not synced. */
+    const val VideoFitMode = "halo.videoFitMode.v1"
 }

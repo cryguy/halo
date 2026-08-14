@@ -32,6 +32,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var authHost: AndroidOidcAuthHost
     private lateinit var authHttpClient: HttpClient
 
+    /** Instrumentation seam that reads the initialized core, not an option list. */
+    internal fun playerMutedForTest(): Boolean? = playerHost.mutedForTest
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -57,6 +60,7 @@ class MainActivity : ComponentActivity() {
             // cacheDir, not filesDir: Android's auto-backup skips it and the
             // system may reclaim it, which suits re-fetchable poster art.
             imageCacheDirectory = File(applicationContext.cacheDir, "halo-images").path,
+            subtitleCacheDirectory = File(applicationContext.cacheDir, "halo-subtitles").path,
             // The manifest's own debuggable flag, so a release build cannot
             // reach the diagnostics harness. Read from ApplicationInfo rather
             // than BuildConfig, which this module does not generate.

@@ -2,6 +2,7 @@ package moe.ditto.halo
 
 import android.content.Context
 import android.content.Intent
+import java.io.File
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -11,6 +12,10 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import moe.ditto.halo.player.SubtitleFontLibrary
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.After
 import org.junit.Ignore
 import org.junit.Rule
@@ -23,10 +28,10 @@ import org.junit.runner.RunWith
  * Compose semantics (content descriptions + text), asserting playback and the
  * core/view ownership invariants without a single hard-coded coordinate.
  *
- * Requires: the OIDC fixture server on the host plus
- * `adb reverse tcp:18787 tcp:18787`. Discovery is real; the unfinished Android
- * OIDC request host parks on the debug-only gate shortcut, so playback tests do
- * not need an identity provider.
+ * Requires: the local-auth fixture server on the host plus
+ * `adb reverse tcp:18788 tcp:18788`. Discovery is real, while local mode keeps
+ * the app in the foreground on the debug-only gate shortcut. Player ownership
+ * tests must not depend on whether a browser is installed or configured.
  */
 @RunWith(AndroidJUnit4::class)
 class PlayerOwnershipInstrumentedTest {
@@ -34,7 +39,7 @@ class PlayerOwnershipInstrumentedTest {
         ApplicationProvider.getApplicationContext<Context>(),
         MainActivity::class.java,
     ).apply {
-        putExtra("serverUrl", "http://127.0.0.1:18787")
+        putExtra("serverUrl", "http://127.0.0.1:18788")
         putExtra("resetSession", true)
     }
 
@@ -43,6 +48,37 @@ class PlayerOwnershipInstrumentedTest {
 
     @get:Rule(order = 1)
     val activityRule = ActivityScenarioRule<MainActivity>(launchIntent)
+
+    @Test
+    fun initializedCoreIsNotMuted() {
+        activityRule.scenario.onActivity { activity ->
+            val muted = activity.playerMutedForTest()
+            assertNotNull("initialized libmpv core did not expose its mute property", muted)
+            assertFalse("initialized libmpv core is muted", muted == true)
+        }
+    }
+
+    @Test
+    fun everyBundledSubtitleFamilyUnpacksForLibass() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val directory = SubtitleFontLibrary.prepare(context)
+
+        assertNotNull("subtitle font directory was not prepared", directory)
+        assertEquals(
+            setOf("Inter", "Source Serif 4", "JetBrains Mono"),
+            SubtitleFontLibrary.bundledFamilies(),
+        )
+        assertEquals(
+            setOf(
+                "inter_regular.otf",
+                "inter_bold.otf",
+                "sourceserif4_regular.otf",
+                "sourceserif4_bold.otf",
+                "jetbrainsmono_regular.ttf",
+            ),
+            File(directory!!).list().orEmpty().toSet(),
+        )
+    }
 
     @After
     fun leavePlayerShellCleanly() {

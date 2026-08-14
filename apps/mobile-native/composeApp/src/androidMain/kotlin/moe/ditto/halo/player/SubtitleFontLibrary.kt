@@ -26,6 +26,10 @@ internal object SubtitleFontLibrary {
      * the family recorded inside the file, not the file name.
      */
     private val BundledFonts = mapOf(
+        "composeResources/moe.ditto.halo.resources/font/inter_regular.otf" to "Inter",
+        "composeResources/moe.ditto.halo.resources/font/inter_bold.otf" to "Inter",
+        "composeResources/moe.ditto.halo.resources/font/sourceserif4_regular.otf" to "Source Serif 4",
+        "composeResources/moe.ditto.halo.resources/font/sourceserif4_bold.otf" to "Source Serif 4",
         "composeResources/moe.ditto.halo.resources/font/jetbrainsmono_regular.ttf" to "JetBrains Mono",
     )
 

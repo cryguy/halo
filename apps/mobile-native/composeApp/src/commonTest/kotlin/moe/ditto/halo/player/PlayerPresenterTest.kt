@@ -10,18 +10,17 @@ class PlayerPresenterTest {
     private val second = MediaItem("two", "Episode two", "https://example.test/two.mp4")
 
     @Test
-    fun naturalEndLoadsNextOnSameCore() = runTest {
+    fun naturalEndNeverLoadsAnotherItem() = runTest {
         val port = RecordingPlayerPort()
         val presenter = PlayerPresenter(port)
-        presenter.start(first, second)
+        presenter.start(first)
 
         presenter.onEvent(PlayerEvent.NaturalEnd)
 
-        assertEquals(listOf(first, second), port.loads)
+        assertEquals(listOf(first), port.loads)
         assertEquals(0, port.teardownCount)
-        assertEquals(second, presenter.state.current)
-        assertEquals(PlaybackStatus.Loading, presenter.state.status)
-        assertNull(presenter.state.queuedNext)
+        assertEquals(first, presenter.state.current)
+        assertEquals(PlaybackStatus.Ended, presenter.state.status)
     }
 
     @Test
@@ -40,7 +39,7 @@ class PlayerPresenterTest {
     fun errorDoesNotMasqueradeAsNaturalEnd() = runTest {
         val port = RecordingPlayerPort()
         val presenter = PlayerPresenter(port)
-        presenter.start(first, second)
+        presenter.start(first)
 
         presenter.onEvent(PlayerEvent.Error("decoder failed"))
 
@@ -53,7 +52,7 @@ class PlayerPresenterTest {
     fun lateNaturalEndAfterErrorCannotTriggerAutoplay() = runTest {
         val port = RecordingPlayerPort()
         val presenter = PlayerPresenter(port)
-        presenter.start(first, second)
+        presenter.start(first)
 
         presenter.onEvent(PlayerEvent.Error("decoder failed"))
         presenter.onEvent(PlayerEvent.NaturalEnd)
@@ -66,14 +65,13 @@ class PlayerPresenterTest {
     fun teardownReleasesCoreWithoutAutoplay() = runTest {
         val port = RecordingPlayerPort()
         val presenter = PlayerPresenter(port)
-        presenter.start(first, second)
+        presenter.start(first)
 
         presenter.close()
 
         assertEquals(1, port.teardownCount)
         assertEquals(PlaybackStatus.Released, presenter.state.status)
         assertEquals(listOf(first), port.loads)
-        assertNull(presenter.state.queuedNext)
     }
 
     @Test
@@ -219,17 +217,40 @@ class PlayerPresenterTest {
     }
 
     @Test
-    fun bufferingStateDoesNotLeakAcrossAnAutoplayAdvance() = runTest {
+    fun bufferingStateClearsAtNaturalEnd() = runTest {
         val presenter = PlayerPresenter(RecordingPlayerPort())
-        presenter.start(first, second)
+        presenter.start(first)
         presenter.onEvent(PlayerEvent.BufferingChanged(active = true, percent = 30))
         presenter.onEvent(PlayerEvent.BufferedPositionChanged(184.0))
 
         presenter.onEvent(PlayerEvent.NaturalEnd)
 
-        assertEquals(second, presenter.state.current)
+        assertEquals(first, presenter.state.current)
+        assertEquals(PlaybackStatus.Ended, presenter.state.status)
         assertNull(presenter.state.buffering)
-        assertNull(presenter.state.bufferedPositionSeconds)
+        assertEquals(184.0, presenter.state.bufferedPositionSeconds)
+    }
+
+    @Test
+    fun engineControlEchoesSurviveLoadingASource() = runTest {
+        val presenter = PlayerPresenter(RecordingPlayerPort())
+        presenter.setPlaybackRate(1.5)
+        presenter.setVideoFillsScreen(true)
+        presenter.setAudioDelay(-0.15)
+        presenter.setSubtitleDelay(0.4)
+        presenter.setSubtitleScale(1.25)
+        presenter.setSubtitleFont("Inter")
+        presenter.setSubtitleTrackStyling(false)
+
+        presenter.start(first)
+
+        assertEquals(1.5, presenter.state.playbackRate)
+        assertEquals(true, presenter.state.videoFillsScreen)
+        assertEquals(-0.15, presenter.state.audioDelaySeconds)
+        assertEquals(0.4, presenter.state.subtitleDelaySeconds)
+        assertEquals(1.25, presenter.state.subtitleScale)
+        assertEquals("Inter", presenter.state.subtitleFont)
+        assertEquals(false, presenter.state.subtitleTrackStyling)
     }
 
     @Test

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
@@ -25,9 +26,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.ditto.halo.player.PlayerTrack
 import moe.ditto.halo.player.PlayerTracks
+import moe.ditto.halo.resources.Res
+import moe.ditto.halo.resources.inter_bold
+import moe.ditto.halo.resources.inter_regular
+import moe.ditto.halo.resources.jetbrainsmono_regular
+import moe.ditto.halo.resources.sourceserif4_bold
+import moe.ditto.halo.resources.sourceserif4_regular
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloPlayerColors
 import moe.ditto.halo.ui.HaloRadius
+import org.jetbrains.compose.resources.Font
 
 private val PreviewStripFill = Color(0xFF12141B)
 private val PreviewStripBorder = Color.White.copy(alpha = 0.08f)
@@ -63,6 +71,7 @@ internal fun SubtitlesTab(
     bundledFonts: Set<String>,
     addonSubtitles: List<AddonSubtitleOption>,
     addonSubtitlesFetching: Boolean,
+    subtitleLoadError: String?,
     captionBaseSize: TextUnit,
     onSelectTrack: (String?) -> Unit,
     onSelectAddonSubtitle: (AddonSubtitleOption) -> Unit,
@@ -115,6 +124,14 @@ internal fun SubtitlesTab(
             selected = subtitle.id == selectedAddonId,
             onClick = { onSelectAddonSubtitle(subtitle) },
             format = subtitle.format,
+        )
+    }
+    if (subtitleLoadError != null) {
+        Text(
+            text = subtitleLoadError,
+            color = HaloColors.Danger,
+            fontSize = 12.5.sp,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
 
@@ -217,15 +234,48 @@ internal fun SubtitlesTab(
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
+            val previewFamily = rememberSubtitlePreviewFamily(subtitleFont)
             Text(
                 text = PlayerFixtures.CaptionSample,
                 color = HaloColors.Text,
                 fontSize = captionBaseSize * subtitleScale.toFloat() * PreviewCaptionRatio,
+                fontFamily = previewFamily,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
             )
         }
     }
+}
+
+internal enum class SubtitlePreviewFamily {
+    Default,
+    Inter,
+    SourceSerif4,
+    JetBrainsMono,
+}
+
+/** The same family mapping used by the chips and by libass. */
+internal fun subtitlePreviewFamily(font: String?): SubtitlePreviewFamily = when (font) {
+    "Inter" -> SubtitlePreviewFamily.Inter
+    "Source Serif 4" -> SubtitlePreviewFamily.SourceSerif4
+    "JetBrains Mono" -> SubtitlePreviewFamily.JetBrainsMono
+    else -> SubtitlePreviewFamily.Default
+}
+
+@Composable
+private fun rememberSubtitlePreviewFamily(font: String?): FontFamily = when (subtitlePreviewFamily(font)) {
+    SubtitlePreviewFamily.Default -> FontFamily.Default
+    SubtitlePreviewFamily.Inter -> FontFamily(
+        Font(Res.font.inter_regular, weight = FontWeight.Normal),
+        Font(Res.font.inter_bold, weight = FontWeight.Bold),
+    )
+    SubtitlePreviewFamily.SourceSerif4 -> FontFamily(
+        Font(Res.font.sourceserif4_regular, weight = FontWeight.Normal),
+        Font(Res.font.sourceserif4_bold, weight = FontWeight.Bold),
+    )
+    SubtitlePreviewFamily.JetBrainsMono -> FontFamily(
+        Font(Res.font.jetbrainsmono_regular, weight = FontWeight.Normal),
+    )
 }
 
 /**

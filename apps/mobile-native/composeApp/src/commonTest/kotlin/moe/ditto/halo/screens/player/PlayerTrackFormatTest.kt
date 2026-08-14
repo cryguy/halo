@@ -68,6 +68,19 @@ class PlayerTrackFormatTest {
     }
 
     @Test
+    fun everySubtitleChipMapsToItsComposePreviewFamily() {
+        assertEquals(
+            listOf(
+                SubtitlePreviewFamily.Default,
+                SubtitlePreviewFamily.Inter,
+                SubtitlePreviewFamily.SourceSerif4,
+                SubtitlePreviewFamily.JetBrainsMono,
+            ),
+            SubtitleFontChoices.map { subtitlePreviewFamily(it.family) },
+        )
+    }
+
+    @Test
     fun subtitleDetailCombinesLanguageAndFormat() {
         assertEquals(
             "eng · ASS",
