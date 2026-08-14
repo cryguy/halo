@@ -35,7 +35,7 @@ row. Downloads is not a departure screen; strict parity binds it.
 - **iOS gets a real Kotlin storage port**, supplied from `MainViewController.kt`. No Swift file
   changes, so the Mac build cannot break. It is compile-verified only; nothing here has been run on
   an iOS device.
-- **Commit per slice** on `feat/native-rewrite`, conventional commits, never push.
+- **Commit per slice** on `mags-native-rewrite`, conventional commits, never push.
 
 Judgment calls made on the user's behalf (flag if wrong):
 

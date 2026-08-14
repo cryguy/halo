@@ -51,7 +51,7 @@ needed, the up-next race guard, why the caption is harness-only).
 - **Real OS PiP and scrub-preview frame extraction are deferred** to optional end slices. The
   in-app PiP presentation and the timecode-only scrub card ship in Phase 1 (the design doc itself
   says to ship the card without frames).
-- **Commit per slice** on `feat/native-rewrite`, conventional commits, never push.
+- **Commit per slice** on `mags-native-rewrite`, conventional commits, never push.
 
 Judgment calls made on the user's behalf (flag if wrong):
 
