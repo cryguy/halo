@@ -215,3 +215,13 @@ internal fun PlayerRoute.episodeSources(choice: EpisodeChoice.NeedsSource): Stre
     episodeTag = choice.episodeTag,
     episodeName = choice.episodeName,
 )
+
+/** The source picker for the video this player route is already showing. */
+internal fun PlayerRoute.sourcesRoute(): StreamsRoute = StreamsRoute(
+    type = type,
+    metaId = metaId,
+    videoId = videoId,
+    showTitle = showTitle,
+    episodeTag = episodeTag,
+    episodeName = episodeName,
+)

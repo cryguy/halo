@@ -109,6 +109,8 @@ internal fun PlayerScreen(
      * that is playing, which only this screen holds.
      */
     onSelectEpisode: (EpisodeChoice) -> Unit,
+    /** Opens the picker for [context] after the player has safely wound down. */
+    onPickAnotherSource: () -> Unit,
     /** What is being played and what to call it; see [PlaybackContext]. */
     context: PlaybackContext,
     onBack: () -> Unit,
@@ -308,7 +310,7 @@ internal fun PlayerScreen(
      * so a screen that tore down on the way out would play exactly once per
      * launch.
      */
-    val leave: () -> Unit = {
+    val leaveTo: (() -> Unit) -> Unit = { destination ->
         if (!leaving) {
             leaving = true
             scope.launch {
@@ -317,10 +319,11 @@ internal fun PlayerScreen(
                 // viewer stopped at.
                 reportProgress(graph, context, playback.state.value, metaState.value)
                 playback.windDownForExit()
-                onBack()
+                destination()
             }
         }
     }
+    val leave: () -> Unit = { leaveTo(onBack) }
 
     // The system gesture and button take the same path as the button drawn
     // here; a back that skipped the wind-down would hang the app just as
@@ -624,10 +627,7 @@ internal fun PlayerScreen(
             PlaybackErrorCard(
                 engineMessage = state.error,
                 onRetry = { scope.launch { playback.play(item) } },
-                // Picking another source means going back to the list, which
-                // this screen replaced on the way in. Leaving returns to the
-                // title; navigating straight to the picker is a later change.
-                onPickAnotherSource = leave,
+                onPickAnotherSource = { leaveTo(onPickAnotherSource) },
             )
         }
     }

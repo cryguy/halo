@@ -118,6 +118,13 @@ class PlayerRouteTest {
     }
 
     @Test
+    fun pickingAnotherSourceRebuildsTheSamePickerContext() {
+        val player = episode.playerRoute(addon, stream, stream.url!!)
+
+        assertEquals(episode, player.sourcesRoute())
+    }
+
+    @Test
     fun theSourcePickersHeaderNamesTheEpisodeItIsPickingFor() {
         assertEquals("Game of Thrones · S01E01", episode.displayTitle)
     }

@@ -228,6 +228,16 @@ function streamsFor(videoId: string, mediaUrl: string | null): Stream[] {
       },
     },
     {
+      // Deliberately 404s on the fixture server, so the real player error card,
+      // Retry and Pick another source paths can be exercised without taking a
+      // public host down. The origin follows the requesting client just like the
+      // playable media URL does.
+      url: mediaUrl ? `${new URL(mediaUrl).origin}/dev/missing-media` : 'https://cdn.fixture.test/missing.mp4',
+      name: 'Fixture\nBroken source',
+      title: 'Expected to fail, player error-card fixture',
+      behaviorHints: { filename: `${videoId.replace(/:/g, '.')}.broken.mp4` },
+    },
+    {
       // Torrents are never playable in Halo; the server drops this before it
       // reaches a client, which is the point of including it.
       name: 'Fixture\nTorrent',

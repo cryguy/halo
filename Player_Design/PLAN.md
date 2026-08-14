@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.11 complete.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.12 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -310,7 +310,7 @@ presenter/controller tests.
   one-shot guard; advance = `playback.play(next)` + route-context update. Presenter: stop
   auto-advancing via `queuedNext` on NaturalEnd when the screen owns the countdown — adjust
   `advanceOrEnd` + `PlayerPresenterTest` accordingly.
-- [ ] **2.12 Error card wiring** — mpv's message verbatim (no HTTP codes/hosts added);
+- [x] **2.12 Error card wiring** — mpv's message verbatim (no HTTP codes/hosts added);
   `Retry` = reload same item; `Pick another source` = navigate to `StreamsRoute` (replace).
 - [ ] **2.13 Instrumented tests** — extend the Android instrumented suite (pattern:
   `PlayerOwnershipInstrumentedTest`): chrome auto-hides, rail applies without reload

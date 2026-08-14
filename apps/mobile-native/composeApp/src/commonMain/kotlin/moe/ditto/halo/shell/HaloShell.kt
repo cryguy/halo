@@ -201,6 +201,11 @@ internal fun HaloShell(
                                     }
                             }
                         },
+                        onPickAnotherSource = {
+                            navController.navigate(route.sourcesRoute()) {
+                                popUpTo<PlayerRoute> { inclusive = true }
+                            }
+                        },
                         onBack = { navController.popBackStack() },
                     )
                 }

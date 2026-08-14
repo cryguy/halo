@@ -47,6 +47,12 @@ internal class MpvCore private constructor(
     // the overlay needs both at once.
     @Volatile private var pausedForCache = false
     @Volatile private var cacheFillPercent: Int? = null
+    // END_FILE's reason is hidden by this JNI binding, so preserve mpv's own
+    // last error line and combine it with the two facts the binding does expose:
+    // whether EOF was reached and whether this app explicitly stopped it.
+    @Volatile private var lastErrorMessage: String? = null
+    @Volatile private var eofReached = false
+    @Volatile private var stoppedByApp = false
 
     private val eventObserver = object : MPVLib.EventObserver {
         override fun eventProperty(property: String) { /* NODE/none formats: ignored */ }
@@ -83,7 +89,10 @@ internal class MpvCore private constructor(
         override fun eventProperty(property: String, value: Boolean) {
             when (property) {
                 "pause" -> listener?.onPauseChanged(value)
-                "eof-reached" -> if (value) listener?.onEnded()
+                "eof-reached" -> if (value) {
+                    eofReached = true
+                    listener?.onEnded()
+                }
                 "paused-for-cache" -> {
                     pausedForCache = value
                     emitBuffering()
@@ -96,6 +105,11 @@ internal class MpvCore private constructor(
         override fun event(eventId: Int) {
             when (eventId) {
                 MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> onFileLoaded()
+                MPVLib.MpvEvent.MPV_EVENT_END_FILE -> {
+                    if (!stoppedByApp && !eofReached) {
+                        listener?.onError(lastErrorMessage ?: "Playback ended unexpectedly.")
+                    }
+                }
                 MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> listener?.onEnded()
             }
         }
@@ -105,9 +119,21 @@ internal class MpvCore private constructor(
     // SAM lambda — an explicit object is required.
     private val logObserver = object : MPVLib.LogObserver {
         override fun logMessage(prefix: String, level: Int, text: String) {
+            val message = text.trim()
             // Primary diagnostic channel: mpv's own log lines land in logcat under
             // a greppable tag (Configuration/vo/hwdec/subtitle-track selection).
-            Log.i(LOG_TAG, "[$id][$prefix] ${text.trimEnd()}")
+            Log.i(LOG_TAG, "[$id][$prefix] $message")
+            // Preserve exactly what mpv said. No URL, HTTP status or host is
+            // added by this layer; the error card prints this string verbatim.
+            if (lastErrorMessage == null &&
+                level in MPVLib.MpvLogLevel.MPV_LOG_LEVEL_FATAL..MPVLib.MpvLogLevel.MPV_LOG_LEVEL_ERROR &&
+                message.isNotEmpty()
+            ) {
+                // The first error is the one that caused the failure. Hooks that
+                // react afterwards may log their own generic failures, and the
+                // last of those would hide the actual cause on the card.
+                lastErrorMessage = message
+            }
         }
     }
 
@@ -151,11 +177,15 @@ internal class MpvCore private constructor(
 
     fun load(url: String) {
         if (destroyed) return
+        lastErrorMessage = null
+        eofReached = false
+        stoppedByApp = false
         mpv.command(arrayOf("loadfile", url))
     }
 
     fun stop() {
         if (destroyed) return
+        stoppedByApp = true
         mpv.command(arrayOf("stop"))
     }
 
