@@ -42,14 +42,29 @@ internal object PlayerFixtures {
     const val BufferedLeadFraction = 0.09f
 
     /**
-     * Subtitles offered by addons, which the API can supply but nothing fetches
-     * yet. The detail line carries the addon's own id for the file, which is
-     * what distinguishes two same-language results from each other.
+     * Stand-in addon results for the harness, which fetches nothing. The real
+     * screen reads them from the subtitles endpoint; these keep the section's
+     * layout reviewable, including two results in the same language.
      */
     val AddonSubtitles = listOf(
-        FixtureAddonSubtitle("a-os-en", "OpenSubtitles", "English · os-en-6821194", "SRT", onDisk = true),
-        FixtureAddonSubtitle("a-os-en2", "OpenSubtitles", "English · os-en-6821507", "SRT", onDisk = false),
-        FixtureAddonSubtitle("a-ktx", "Kitsunekko", "Japanese · fansub, styled", "ASS", onDisk = false),
+        addonSubtitle("opensubtitles", "OpenSubtitles", "eng", "os-en-6821194", "srt"),
+        addonSubtitle("opensubtitles", "OpenSubtitles", "eng", "os-en-6821507", "srt"),
+        addonSubtitle("kitsunekko", "Kitsunekko", "jpn", "ktx-4471", "ass"),
+    )
+
+    private fun addonSubtitle(
+        addonId: String,
+        addonName: String,
+        lang: String,
+        subId: String,
+        extension: String,
+    ) = AddonSubtitleOption(
+        id = "$addonId:$subId",
+        addonId = addonId,
+        addonName = addonName,
+        lang = lang,
+        subId = subId,
+        url = "https://subs.fixture.test/$subId.$extension",
     )
 
     const val SeasonTitle = "Season 2"
@@ -107,12 +122,4 @@ internal data class FixtureEpisode(
     val name: String,
     val progress: Float,
     val downloaded: Boolean,
-)
-
-internal data class FixtureAddonSubtitle(
-    val id: String,
-    val addonName: String,
-    val detail: String,
-    val format: String,
-    val onDisk: Boolean,
 )

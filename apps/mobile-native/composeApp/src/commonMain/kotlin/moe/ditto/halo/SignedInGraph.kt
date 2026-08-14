@@ -12,6 +12,7 @@ import moe.ditto.halo.auth.TokenProvider
 import moe.ditto.halo.browse.AddonsRepository
 import moe.ditto.halo.browse.BrowseRepository
 import moe.ditto.halo.cache.QueryCache
+import moe.ditto.halo.player.StreamVideoHasher
 import moe.ditto.halo.storage.KeyValueStore
 import moe.ditto.halo.storage.SearchHistoryStore
 import moe.ditto.halo.storage.SubtitleChoiceStore
@@ -65,6 +66,13 @@ internal class SignedInGraph(
     val library = LibraryRepository(client, cache, clock)
     val watchStates = WatchStateRepository(client, cache, clock)
     val settings = SettingsRepository(client, cache, keyValueStore, clock)
+
+    /**
+     * Hashes a source over range requests so subtitle results match the exact
+     * file. Shares the session's HTTP client: it talks to the source host, not
+     * to Halo, and needs none of the client's auth or base URL.
+     */
+    val videoHasher = StreamVideoHasher(httpClient)
 
     /**
      * Device-local, so they are not per-user the way the cache is; they are

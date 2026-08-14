@@ -6,6 +6,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import moe.ditto.halo.api.AddonStreams
+import moe.ditto.halo.api.AddonSubtitles
 import moe.ditto.halo.api.HaloClient
 import moe.ditto.halo.api.ManifestCatalog
 import moe.ditto.halo.api.MetaDetail
@@ -64,6 +65,28 @@ class BrowseRepository(
     fun streams(type: String, videoId: String): Flow<QueryState<List<AddonStreams>>> {
         val key = HaloKey.Streams(type, videoId)
         return cache.query(key, key.staleMs) { client.getStreams(type, videoId).results }
+    }
+
+    /**
+     * External subtitles for a video, grouped by the addon that offered them.
+     *
+     * [videoHash] and [videoSize] are what make the results exact rather than a
+     * guess from the title, so a caller that can compute them should. They are
+     * part of the cache key through [source]: the same episode from a different
+     * release is a different file and deserves different subtitles.
+     */
+    fun subtitles(
+        type: String,
+        videoId: String,
+        videoHash: String? = null,
+        videoSize: Long? = null,
+        filename: String? = null,
+        enabled: Boolean = true,
+    ): Flow<QueryState<List<AddonSubtitles>>> {
+        val key = HaloKey.Subtitles(type, videoId, videoHash ?: filename)
+        return cache.query(key, key.staleMs, enabled) {
+            client.getSubtitles(type, videoId, videoHash, videoSize, filename).results
+        }
     }
 
     /**

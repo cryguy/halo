@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.6 complete.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.7 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -282,7 +282,7 @@ presenter/controller tests.
   `subtitleOutline`, `subtitleShadow` — all already in `UserSettings`), and apply persisted
   values at load.
 - [x] **2.6 Audio delay** — `setAudioDelay(seconds)` → mpv `audio-delay`; Audio-tab stepper live.
-- [ ] **2.7 External subtitles + memory** — fetch `getSubtitles(type, videoId, videoHash,
+- [x] **2.7 External subtitles + memory** — fetch `getSubtitles(type, videoId, videoHash,
   videoSize, filename)` at playback start (hash/size from behaviorHints when present; a native
   OpenSubtitles hash via Ktor range requests is a sub-item, port of `packages/core`'s logic);
   FROM ADDONS section live; selection → `addSubtitle(url)` (proxied via `proxyUrl` when needed);

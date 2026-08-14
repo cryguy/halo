@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
 import moe.ditto.halo.SignedInGraph
+import moe.ditto.halo.cache.QueryState
 import moe.ditto.halo.player.MediaItem
 import moe.ditto.halo.player.PlaybackStatus
 import moe.ditto.halo.player.PlayerState
@@ -133,6 +134,51 @@ internal fun PlayerScreen(
                 if (preference == storedPreference) return@collect
                 graph.settings.update { it.withSubtitlePreference(preference) }
             }
+    }
+
+    // Addon subtitles, matched to this exact file when the source can be
+    // hashed. The hash comes from the addon's own hints when it supplied them,
+    // and otherwise from two range requests over the source; either way it is
+    // best effort, and a failure falls back to a name-based search rather than
+    // to no subtitles.
+    var fingerprint by remember(item) { mutableStateOf(context.fingerprint()) }
+    LaunchedEffect(item) {
+        if (fingerprint == null) fingerprint = graph.videoHasher.fingerprint(context.url)
+    }
+    val addonSubtitleState by remember(item, fingerprint) {
+        graph.browse.subtitles(
+            type = context.type,
+            videoId = context.videoId,
+            videoHash = fingerprint?.hash,
+            videoSize = fingerprint?.sizeBytes,
+            filename = context.filename,
+        )
+    }.collectAsState(QueryState())
+    val addonSubtitles = remember(addonSubtitleState.value) {
+        addonSubtitleOptions(addonSubtitleState.value.orEmpty())
+    }
+
+    // Applied once the engine has reported this file's own tracks, because the
+    // choice is between those and the addon results and both have to be known
+    // to pick between them. Re-running on a later track list would fight the
+    // viewer, so the guard is a claim rather than a comparison.
+    var selectionApplied by remember(item) { mutableStateOf(false) }
+    LaunchedEffect(item, state.tracks, addonSubtitleState.isFetching) {
+        if (selectionApplied || addonSubtitleState.isFetching) return@LaunchedEffect
+        if (state.tracks.subtitles.isEmpty() && addonSubtitles.isEmpty()) return@LaunchedEffect
+
+        val selection = resolveSubtitleSelection(
+            remembered = graph.subtitleChoices.choiceFor(context.videoId, context.metaId),
+            tracks = state.tracks,
+            addonSubtitles = addonSubtitles,
+            preferredLang = graph.settings.current().preferredSubtitleLang,
+        )
+        // Claimed after the reads, not before them: reading settings suspends,
+        // and the engine reporting its tracks again in that window cancels this
+        // effect. A claim taken first would be kept by the cancelled run and
+        // the restart would decline to do the work.
+        selectionApplied = true
+        applySubtitleSelection(selection, playback, controller::selectAddonSubtitle)
     }
 
     // The bottom bar sits exactly where captions do, so the caption steps up
@@ -338,11 +384,30 @@ internal fun PlayerScreen(
                 playbackRate = state.playbackRate,
                 onSelectTab = controller::openRail,
                 onClose = controller::closeRail,
+                addonSubtitles = addonSubtitles,
+                addonSubtitlesFetching = addonSubtitleState.isFetching,
                 onSelectSubtitleTrack = { id ->
                     controller.selectAddonSubtitle(null)
                     scope.launch { playback.selectSubtitleTrack(id) }
+                    // Only a deliberate choice is remembered. Restoring one is
+                    // not a new decision, and writing it back would let a
+                    // preference reinforce itself into looking like one.
+                    val track = state.tracks.subtitles.firstOrNull { it.id == id }
+                    graph.subtitleChoices.remember(
+                        videoId = context.videoId,
+                        itemId = context.metaId,
+                        choice = track?.let(::embeddedChoice) ?: OffChoice,
+                    )
                 },
-                onSelectAddonSubtitle = controller::selectAddonSubtitle,
+                onSelectAddonSubtitle = { option ->
+                    controller.selectAddonSubtitle(option.id)
+                    scope.launch { playback.addSubtitle(option.url) }
+                    graph.subtitleChoices.remember(
+                        videoId = context.videoId,
+                        itemId = context.metaId,
+                        choice = externalChoice(option),
+                    )
+                },
                 onSubtitleScaleChange = { scale -> scope.launch { playback.setSubtitleScale(scale) } },
                 onSubtitleDelayChange = { seconds ->
                     scope.launch { playback.setSubtitleDelay(clampedDelay(seconds)) }

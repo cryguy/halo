@@ -236,9 +236,15 @@ internal class MpvCore private constructor(
         mpv.setPropertyInt("sub-pos", 100 - percent)
     }
 
+    /**
+     * `cached` rather than `select`: it re-selects a URL already added instead
+     * of adding it a second time. Restoring a remembered subtitle and then
+     * tapping the same row otherwise leaves two identical tracks in the list,
+     * which is visible on device and cannot be undone from the UI.
+     */
     fun addSubtitle(url: String) {
         if (destroyed) return
-        mpv.command(arrayOf("sub-add", url, "select"))
+        mpv.command(arrayOf("sub-add", url, "cached"))
     }
 
     /**

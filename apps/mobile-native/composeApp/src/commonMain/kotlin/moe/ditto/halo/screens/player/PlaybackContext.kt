@@ -1,5 +1,7 @@
 package moe.ditto.halo.screens.player
 
+import moe.ditto.halo.player.VideoFingerprint
+
 /**
  * What the player is playing, beyond the URL it plays.
  *
@@ -45,4 +47,15 @@ internal data class PlaybackContext(
      */
     val displayTitle: String
         get() = if (episodeTag == null) showTitle else "$showTitle · $episodeTag"
+
+    /**
+     * What the addon already knew about the file, when it knew both halves.
+     * Null means the player has to work it out itself; a hash without a size is
+     * not a match a subtitle addon can use, so neither counts alone.
+     */
+    fun fingerprint(): VideoFingerprint? {
+        val hash = videoHash?.takeIf { it.isNotBlank() } ?: return null
+        val size = videoSize?.takeIf { it > 0 } ?: return null
+        return VideoFingerprint(hash, size)
+    }
 }

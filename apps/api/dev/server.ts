@@ -37,6 +37,25 @@ import { FIXTURE_ADDONS, FIXTURE_TITLES, fixtureAddonFetch } from './fixtureAddo
 const DEFAULT_PORT = 18790
 const ADMIN_PASSWORD = 'fixture-pass'
 const MEDIA_PATH = '/dev/media'
+const SUBTITLE_PATH = '/dev/subtitle'
+
+/**
+ * A canned subtitle track, generated rather than stored: it exists so the
+ * player's addon-subtitle path can be exercised, and a caption that names its
+ * own language is the quickest way to see which result was applied. Served
+ * beside the API for the same reason the media route is, since the engine
+ * fetches it with no Authorization header.
+ */
+function subtitleBody(label: string): string {
+  const lines: string[] = []
+  for (let index = 0; index < 30; index += 1) {
+    const start = index * 2
+    const stamp = (seconds: number) =>
+      `00:00:${String(seconds).padStart(2, '0')},000`
+    lines.push(String(index + 1), `${stamp(start)} --> ${stamp(start + 2)}`, `${label} line ${index + 1}`, '')
+  }
+  return lines.join('\n')
+}
 
 // Never a real secret: this server holds no real data and its tokens are only
 // ever accepted by itself.
@@ -57,10 +76,12 @@ function main(): void {
   if (mediaFile && !existsSync(mediaFile)) throw new Error(`--media file not found: ${mediaFile}`)
 
   const db = createDb(options.dbPath)
+  const origin = (): string => requestOrigin.getStore() ?? `http://127.0.0.1:${options.port}`
   const mediaUrl = (): string | null => {
     if (!mediaFile) return null
-    return `${requestOrigin.getStore() ?? `http://127.0.0.1:${options.port}`}${MEDIA_PATH}`
+    return `${origin()}${MEDIA_PATH}`
   }
+  const subtitleUrl = (id: string): string => `${origin()}${SUBTITLE_PATH}/${id}.srt`
   const app = createApp({
     db,
     auth: { mode: 'local', jwtSecret: JWT_SECRET },
@@ -68,7 +89,7 @@ function main(): void {
     // Passthrough reaches real addons over the network for manual work; the
     // guard is the real one either way, which is why a fixture addon cannot
     // simply be hosted on this machine.
-    safeFetch: options.passthrough ? safeFetch : fixtureAddonFetch(FIXTURE_ADDONS, mediaUrl),
+    safeFetch: options.passthrough ? safeFetch : fixtureAddonFetch(FIXTURE_ADDONS, mediaUrl, subtitleUrl),
   })
 
   ensureAdminUser(db, ADMIN_PASSWORD)
@@ -80,6 +101,12 @@ function main(): void {
   const handler = (request: Request): Response | Promise<Response> => {
     const url = new URL(request.url)
     if (mediaFile && url.pathname === MEDIA_PATH) return mediaResponse(request, mediaFile)
+    if (url.pathname.startsWith(`${SUBTITLE_PATH}/`)) {
+      const id = url.pathname.slice(SUBTITLE_PATH.length + 1).replace(/\.srt$/, '')
+      return new Response(subtitleBody(id), {
+        headers: { 'content-type': 'application/x-subrip; charset=utf-8' },
+      })
+    }
     return requestOrigin.run(url.origin, () => app.fetch(request))
   }
 
@@ -188,7 +215,7 @@ function mediaType(file: string): string {
  */
 function seedAddons(db: Db, userId: string): void {
   const now = Date.now()
-  const [catalogs, streams, cloud] = FIXTURE_ADDONS
+  const [catalogs, streams, subs, cloud] = FIXTURE_ADDONS
   db.insert(globalAddons)
     .values({
       transportUrl: `${catalogs!.base}/manifest.json`,
@@ -213,10 +240,19 @@ function seedAddons(db: Db, userId: string): void {
       },
       {
         userId,
+        transportUrl: `${subs!.base}/manifest.json`,
+        id: subs!.entryId,
+        manifest: subs!.manifest,
+        position: 1,
+        hideCatalogs: false,
+        addedAt: now,
+      },
+      {
+        userId,
         transportUrl: `${cloud!.base}/manifest.json`,
         id: cloud!.entryId,
         manifest: cloud!.manifest,
-        position: 1,
+        position: 2,
         // Installed already hidden: its catalogs must reach clients stripped.
         hideCatalogs: true,
         addedAt: now,

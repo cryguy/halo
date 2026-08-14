@@ -61,9 +61,11 @@ internal fun SubtitlesTab(
     trackStyling: Boolean,
     selectedAddonId: String?,
     bundledFonts: Set<String>,
+    addonSubtitles: List<AddonSubtitleOption>,
+    addonSubtitlesFetching: Boolean,
     captionBaseSize: TextUnit,
     onSelectTrack: (String?) -> Unit,
-    onSelectAddonSubtitle: (String) -> Unit,
+    onSelectAddonSubtitle: (AddonSubtitleOption) -> Unit,
     onScaleChange: (Double) -> Unit,
     onDelayChange: (Double) -> Unit,
     onTrackStylingChange: (Boolean) -> Unit,
@@ -91,14 +93,28 @@ internal fun SubtitlesTab(
     }
 
     RailSectionLabel("FROM ADDONS")
-    PlayerFixtures.AddonSubtitles.forEach { subtitle ->
+    // Three states, and they are not the same thing: still asking, asked and
+    // told nothing, and told something. Showing an empty section while the
+    // request is in flight reads as "there are none".
+    if (addonSubtitles.isEmpty()) {
+        Text(
+            text = if (addonSubtitlesFetching) {
+                "Looking for subtitles…"
+            } else {
+                "No addon offered subtitles for this file."
+            },
+            color = HaloColors.TextDim,
+            fontSize = 12.5.sp,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+        )
+    }
+    addonSubtitles.forEach { subtitle ->
         RailSelectableRow(
             label = subtitle.addonName,
             detail = subtitle.detail,
             selected = subtitle.id == selectedAddonId,
-            onClick = { onSelectAddonSubtitle(subtitle.id) },
+            onClick = { onSelectAddonSubtitle(subtitle) },
             format = subtitle.format,
-            onDisk = subtitle.onDisk,
         )
     }
 
