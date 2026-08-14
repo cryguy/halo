@@ -43,6 +43,11 @@ internal fun entry(
     updatedAt = createdAt,
 )
 
+/** A subtitle search with a fixed answer, so the coordinator's side of it is testable. */
+internal class FixedDownloadSubtitles(private val subtitle: DownloadSubtitle?) : DownloadSubtitleSource {
+    override suspend fun fetch(media: DownloadMedia): DownloadSubtitle? = subtitle
+}
+
 internal class FakeDownloadStorage(
     private val path: String? = "/downloads",
     private val free: Long? = null,

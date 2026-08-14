@@ -225,6 +225,59 @@ class DownloadsCoordinatorTest {
         assertEquals("https://source.test/better.mkv", world.entry("tt1").media.sourceUrl)
         assertEquals(DownloadStatus.Downloading, world.status("tt1"))
     }
+
+    @Test
+    fun theChosenSubtitleIsStoredAgainstTheEntry() = runTest {
+        val subtitle = DownloadSubtitle(fileName = "tt1.srt", lang = "eng", subId = "os-9")
+        val world = world(subtitles = FixedDownloadSubtitles(subtitle))
+        world.coordinator.start(media(videoId = "tt1"))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(subtitle, world.entry("tt1").subtitle)
+        assertEquals(subtitle, DownloadIndex(world.store).read().entries.single().subtitle)
+    }
+
+    @Test
+    fun aSubtitleThatArrivesAfterTheDownloadWasRemovedIsDropped() = runTest {
+        val world = world(subtitles = FixedDownloadSubtitles(DownloadSubtitle(fileName = "tt1.srt", lang = "eng")))
+        world.coordinator.start(media(videoId = "tt1"))
+        world.coordinator.remove("tt1")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(emptyList(), world.coordinator.entries.value)
+    }
+
+    @Test
+    fun aSourceTooBigForTheDeviceIsRefusedBeforeAnythingIsWritten() = runTest {
+        val world = world(storage = FakeDownloadStorage(free = 2_000_000_000))
+
+        val result = world.coordinator.start(media(videoId = "tt1", videoSize = 1_900_000_000))
+
+        // Refused on the reserve, not on the raw comparison: filling the device
+        // to its last byte is its own failure.
+        val refusal = assertIs<DownloadStartResult.NotEnoughSpace>(result)
+        assertEquals(1_900_000_000, refusal.requiredBytes)
+        assertEquals(2_000_000_000, refusal.freeBytes)
+        assertEquals(emptyList(), world.coordinator.entries.value)
+    }
+
+    @Test
+    fun aSourceThatFitsIsAccepted() = runTest {
+        val world = world(storage = FakeDownloadStorage(free = 8_000_000_000))
+
+        val result = world.coordinator.start(media(videoId = "tt1", videoSize = 1_900_000_000))
+
+        assertIs<DownloadStartResult.Started>(result)
+    }
+
+    @Test
+    fun anUndeclaredSizeIsNeverRefusedOnAGuess() = runTest {
+        val world = world(storage = FakeDownloadStorage(free = 1))
+
+        val result = world.coordinator.start(media(videoId = "tt1", videoSize = null))
+
+        assertIs<DownloadStartResult.Started>(result)
+    }
 }
 
 private class World(
@@ -248,6 +301,7 @@ private fun TestScope.world(
     store: FakeStore = FakeStore(),
     storage: DownloadStoragePort = FakeDownloadStorage(),
     files: List<Any> = emptyList(),
+    subtitles: DownloadSubtitleSource = NoDownloadSubtitles,
 ): World {
     val fileSystem = FakeFileSystem()
     val directory = "/downloads".toPath()
@@ -271,6 +325,7 @@ private fun TestScope.world(
         // never be seen to move.
         scope = CoroutineScope(coroutineContext + SupervisorJob()),
         fileSystem = fileSystem,
+        subtitles = subtitles,
     )
     return World(coordinator, transfer, store, clock, fileSystem)
 }

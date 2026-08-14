@@ -12,6 +12,7 @@ import moe.ditto.halo.auth.TokenProvider
 import moe.ditto.halo.browse.AddonsRepository
 import moe.ditto.halo.browse.BrowseRepository
 import moe.ditto.halo.cache.QueryCache
+import moe.ditto.halo.downloads.AddonDownloadSubtitles
 import moe.ditto.halo.downloads.DownloadIndex
 import moe.ditto.halo.downloads.DownloadStoragePort
 import moe.ditto.halo.downloads.DownloadsCoordinator
@@ -99,6 +100,7 @@ internal class SignedInGraph(
         transfer = HttpRangeTransfer(httpClient, downloadFileSystem(), clock),
         clock = clock,
         scope = scope,
+        subtitles = AddonDownloadSubtitles(client, videoHasher, settings, downloadStorage),
     )
 
     /**

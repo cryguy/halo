@@ -169,13 +169,27 @@ is slice 4's work: offering one now would be a button that does nothing.
 
 ## Slice 3 — starting a download
 
-- [ ] Download column on every source row, per the prototype: accent, a check when the video is
+- [x] Download column on every source row, per the prototype: accent, a check when the video is
   already downloaded, disabled while queued or in flight.
-- [ ] `poster` added to `StreamsRoute` so a section header has art without a network.
-- [ ] Free-space preflight against the declared `videoSize` when both numbers are known.
-- [ ] The subtitle alongside: `StreamVideoHasher` for hash and size, `getSubtitles`, pick by the
+- [x] `poster` added to `StreamsRoute` so a section header has art without a network.
+- [x] Free-space preflight against the declared `videoSize` when both numbers are known.
+- [x] The subtitle alongside: `StreamVideoHasher` for hash and size, `getSubtitles`, pick by the
   account's preferred language, fetch through the authenticated proxy into the downloads
   directory. Failures are silent, as before.
+
+**Done 2026-08-15.** 485 unit tests pass (11 new), iOS Kotlin and the debug APK build.
+
+Notes:
+
+- The action column reports the state of the video rather than of the row, because there is one
+  download per video: once a source is on the device every row here says the same thing. The
+  glyph is inert in that state, so there is no tap that quietly does nothing, and a failed
+  download is offered again because asking a second time is how it is retried from here.
+- `languageMatches` moved from `screens/player/PlayerSubtitleOptions.kt` to `ui/LanguageOptions.kt`,
+  beside the language labels it belongs with. The downloads engine has to ask the same question and
+  must not depend on a screens package to do it. Pure move, no behaviour change.
+- Only the preferred language is fetched. Keeping every result would download a dozen files for a
+  choice almost nobody makes, and the player's rail still offers the rest when there is a network.
 
 ## Slice 4 — offline playback
 

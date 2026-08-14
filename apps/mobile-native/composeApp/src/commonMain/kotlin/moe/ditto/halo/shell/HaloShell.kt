@@ -168,6 +168,7 @@ internal fun HaloShell(
                         videoId = route.videoId,
                         title = route.displayTitle,
                         onBack = { navController.popBackStack() },
+                        downloadMedia = { addon, stream, url -> route.downloadMedia(addon, stream, url) },
                         onPlay = { addon, stream ->
                             val url = stream.url ?: return@StreamsScreen
                             // The picker is replaced rather than stacked, so
@@ -382,6 +383,7 @@ private fun movieSources(meta: MetaCard) = StreamsRoute(
     metaId = meta.id,
     videoId = meta.id,
     showTitle = meta.name,
+    poster = meta.poster,
 )
 
 /**
@@ -402,6 +404,7 @@ private fun episodeSources(meta: MetaDetail, video: MetaVideo): StreamsRoute {
         episodeTag = tag,
         episodeName = video.displayTitle?.takeIf { it != tag },
         episodeThumbnail = video.thumbnail,
+        poster = meta.poster,
     )
 }
 

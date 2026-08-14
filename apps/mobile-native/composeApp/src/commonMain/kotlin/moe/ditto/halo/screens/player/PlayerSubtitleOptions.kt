@@ -8,6 +8,7 @@ import moe.ditto.halo.player.SubtitleFileException
 import moe.ditto.halo.storage.SubtitleChoice
 import moe.ditto.halo.storage.SubtitleChoiceKind
 import moe.ditto.halo.ui.languageLabel
+import moe.ditto.halo.ui.languageMatches
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -232,43 +233,6 @@ private fun PlayerTrack.matches(lang: String?): Boolean =
     languageMatches(language, lang)
 
 private fun AddonSubtitleOption.matches(other: String?): Boolean = languageMatches(lang, other)
-
-internal fun languageMatches(left: String?, right: String?): Boolean {
-    val a = left?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
-    val b = right?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
-    if (a == b) return true
-    return canonicalLanguage(a) == canonicalLanguage(b)
-}
-
-/**
- * Folds the spellings that mean one language onto one code. Only the pairs the
- * addons in use actually produce; an unknown code stays itself, so two unknown
- * codes still have to match exactly.
- */
-private fun canonicalLanguage(code: String): String = when (code) {
-    "en", "eng" -> "eng"
-    "es", "spa" -> "spa"
-    "pt", "por" -> "por"
-    "pb", "pob" -> "pob"
-    "fr", "fre", "fra" -> "fre"
-    "de", "ger", "deu" -> "ger"
-    "it", "ita" -> "ita"
-    "nl", "dut", "nld" -> "dut"
-    "pl", "pol" -> "pol"
-    "ru", "rus" -> "rus"
-    "ja", "jpn" -> "jpn"
-    "ko", "kor" -> "kor"
-    "zh", "chi", "zho" -> "chi"
-    "ar", "ara" -> "ara"
-    "tr", "tur" -> "tur"
-    "sv", "swe" -> "swe"
-    "cs", "cze", "ces" -> "cze"
-    "el", "gre", "ell" -> "gre"
-    "he", "heb" -> "heb"
-    "fa", "per", "fas" -> "per"
-    "ro", "rum", "ron" -> "rum"
-    else -> code
-}
 
 /**
  * Puts a resolved selection into effect.

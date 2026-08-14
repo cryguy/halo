@@ -3,6 +3,7 @@ package moe.ditto.halo.shell
 import kotlinx.serialization.Serializable
 import moe.ditto.halo.api.AddonSource
 import moe.ditto.halo.api.Stream
+import moe.ditto.halo.downloads.DownloadMedia
 import moe.ditto.halo.screens.player.EpisodeChoice
 import moe.ditto.halo.screens.player.PlaybackContext
 
@@ -70,6 +71,12 @@ data class StreamsRoute(
     val episodeTag: String? = null,
     val episodeName: String? = null,
     val episodeThumbnail: String? = null,
+    /**
+     * The title's own art. Carried rather than looked up because a download
+     * started here is shown by the Downloads tab under this poster, and that
+     * tab has to render with no network at all.
+     */
+    val poster: String? = null,
 ) {
     /** One line naming the video, for a header that has room for only one. */
     val displayTitle: String
@@ -171,6 +178,37 @@ internal fun StreamsRoute.playerRoute(addon: AddonSource, stream: Stream, url: S
         bingeGroup = hints?.bingeGroup,
         filename = hints?.filename,
         videoSize = hints?.videoSize ?: 0,
+        videoHash = hints?.videoHash,
+        streamName = stream.name,
+        streamTitle = stream.title ?: stream.description,
+    )
+}
+
+/**
+ * The download this picker would start, from the source that was chosen for the
+ * video it is showing.
+ *
+ * Everything the Downloads tab and the offline player need is resolved here,
+ * from what the picker already has, for the same reason [playerRoute] resolves
+ * playback context: once the file is on the device there may be no network left
+ * to ask anything with.
+ */
+internal fun StreamsRoute.downloadMedia(addon: AddonSource, stream: Stream, url: String): DownloadMedia {
+    val hints = stream.behaviorHints
+    return DownloadMedia(
+        videoId = videoId,
+        type = type,
+        metaId = metaId,
+        showTitle = showTitle,
+        episodeTag = episodeTag,
+        episodeName = episodeName,
+        episodeThumbnail = episodeThumbnail,
+        poster = poster,
+        sourceUrl = url,
+        addonId = addon.id,
+        bingeGroup = hints?.bingeGroup,
+        filename = hints?.filename,
+        videoSize = hints?.videoSize,
         videoHash = hints?.videoHash,
         streamName = stream.name,
         streamTitle = stream.title ?: stream.description,

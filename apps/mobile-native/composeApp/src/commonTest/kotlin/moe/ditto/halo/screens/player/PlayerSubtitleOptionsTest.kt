@@ -7,6 +7,7 @@ import moe.ditto.halo.player.PlayerTrack
 import moe.ditto.halo.player.PlayerTracks
 import moe.ditto.halo.storage.SubtitleChoice
 import moe.ditto.halo.storage.SubtitleChoiceKind
+import moe.ditto.halo.ui.languageMatches
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest

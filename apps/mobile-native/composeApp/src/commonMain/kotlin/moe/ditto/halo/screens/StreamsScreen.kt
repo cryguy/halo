@@ -12,18 +12,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,7 +49,12 @@ import moe.ditto.halo.api.SessionRejectedException
 import moe.ditto.halo.api.Stream
 import moe.ditto.halo.api.StreamsResult
 import moe.ditto.halo.cache.QueryState
+import moe.ditto.halo.downloads.DownloadEntry
+import moe.ditto.halo.downloads.DownloadMedia
+import moe.ditto.halo.downloads.DownloadStartResult
+import moe.ditto.halo.downloads.DownloadStatus
 import moe.ditto.halo.ui.HaloColors
+import moe.ditto.halo.ui.HaloIcons
 import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
@@ -76,12 +86,24 @@ internal fun StreamsScreen(
      * vouched for the source has to travel with the source.
      */
     onPlay: (AddonSource, Stream) -> Unit,
+    /**
+     * The download a chosen source would become. Built by the caller, which
+     * holds the route naming what is being watched; this screen knows only the
+     * sources.
+     */
+    downloadMedia: (AddonSource, Stream, String) -> DownloadMedia,
     modifier: Modifier = Modifier,
 ) {
     val streams by remember(graph, type, videoId) {
         graph.browse.streams(type, videoId)
     }.collectAsState(QueryState())
     val scope = rememberCoroutineScope()
+
+    // One download per video, so this is the state of the whole screen's
+    // subject rather than of any one row.
+    val downloads by graph.downloads.entries.collectAsState()
+    val download = remember(downloads, videoId) { downloads.firstOrNull { it.videoId == videoId } }
+    var refusal by remember { mutableStateOf<String?>(null) }
 
     Column(modifier.fillMaxSize().background(HaloColors.Background)) {
         // The header outlives every state below it: a screen that swaps itself
@@ -96,10 +118,30 @@ internal fun StreamsScreen(
             query = streams,
             onRetry = { scope.launch { graph.browse.retryStreams(type, videoId) } },
             onPlay = onPlay,
+            download = download,
+            // No column at all where the device has nowhere to keep downloads,
+            // rather than a glyph that cannot do anything.
+            downloadsAvailable = graph.downloads.isAvailable,
+            onDownload = { addon, stream ->
+                val url = stream.url
+                if (url != null) {
+                    scope.launch {
+                        refusal = when (val result = graph.downloads.start(downloadMedia(addon, stream, url))) {
+                            is DownloadStartResult.NotEnoughSpace -> notEnoughSpaceMessage(result)
+                            else -> null
+                        }
+                    }
+                }
+            },
+            refusal = refusal,
             modifier = Modifier.fillMaxSize(),
         )
     }
 }
+
+internal fun notEnoughSpaceMessage(result: DownloadStartResult.NotEnoughSpace): String =
+    "This source needs ${formatBytes(result.requiredBytes)} and the device has " +
+        "${formatBytes(result.freeBytes)} free."
 
 /** Pure rendering states for the source request, independent of the app graph. */
 internal sealed interface StreamsContentState {
@@ -166,6 +208,12 @@ internal fun StreamsContent(
     onRetry: () -> Unit,
     onPlay: (AddonSource, Stream) -> Unit,
     modifier: Modifier = Modifier,
+    /** This video's download, if it has one. There is at most one per video. */
+    download: DownloadEntry? = null,
+    downloadsAvailable: Boolean = false,
+    onDownload: (AddonSource, Stream) -> Unit = { _, _ -> },
+    /** Why the last download was not accepted; shown above the sources. */
+    refusal: String? = null,
 ) {
     when (val state = streamsContentState(query)) {
         is StreamsContentState.Loading -> Box(modifier, contentAlignment = Alignment.Center) {
@@ -205,6 +253,11 @@ internal fun StreamsContent(
                 bottom = HaloSpacing.Xl,
             ),
         ) {
+            if (refusal != null) {
+                item(key = "download-refusal") {
+                    Notice(text = refusal)
+                }
+            }
             if (state.failures.isNotEmpty() || state.refreshFailure != null) {
                 item(key = "source-failures") {
                     FailureNotice(
@@ -218,7 +271,13 @@ internal fun StreamsContent(
             // Keyed by addon, so a slow one arriving late does not renumber
             // the groups already on screen.
             items(items = state.groups, key = { it.addon.id }) { group ->
-                AddonGroup(group = group, onPlay = onPlay)
+                AddonGroup(
+                    group = group,
+                    onPlay = onPlay,
+                    download = download,
+                    downloadsAvailable = downloadsAvailable,
+                    onDownload = onDownload,
+                )
             }
         }
     }
@@ -330,7 +389,14 @@ internal fun safeAddonFailure(error: AddonError): String {
 private val CredentialLikeNameSegment = Regex("[A-Za-z0-9_-]{32,}")
 
 @Composable
-private fun AddonGroup(group: AddonStreams, onPlay: (AddonSource, Stream) -> Unit, modifier: Modifier = Modifier) {
+private fun AddonGroup(
+    group: AddonStreams,
+    onPlay: (AddonSource, Stream) -> Unit,
+    download: DownloadEntry?,
+    downloadsAvailable: Boolean,
+    onDownload: (AddonSource, Stream) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier.padding(bottom = HaloSpacing.Md)) {
         Text(
             text = group.addon.name.uppercase(),
@@ -350,6 +416,9 @@ private fun AddonGroup(group: AddonStreams, onPlay: (AddonSource, Stream) -> Uni
                     stream = stream,
                     fallbackName = group.addon.name,
                     onClick = { onPlay(group.addon, stream) },
+                    download = download,
+                    downloadsAvailable = downloadsAvailable,
+                    onDownload = { onDownload(group.addon, stream) },
                 )
             }
         }
@@ -357,14 +426,21 @@ private fun AddonGroup(group: AddonStreams, onPlay: (AddonSource, Stream) -> Uni
 }
 
 @Composable
-private fun StreamRow(stream: Stream, fallbackName: String, onClick: () -> Unit) {
+private fun StreamRow(
+    stream: Stream,
+    fallbackName: String,
+    onClick: () -> Unit,
+    download: DownloadEntry?,
+    downloadsAvailable: Boolean,
+    onDownload: () -> Unit,
+) {
     val size = stream.behaviorHints?.videoSize?.let(::formatBytes).orEmpty()
     val detail = stream.title ?: stream.description
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = HaloSpacing.Md, vertical = HaloSpacing.Sm + 2.dp),
+            .padding(start = HaloSpacing.Md, top = HaloSpacing.Sm + 2.dp, bottom = HaloSpacing.Sm + 2.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(HaloSpacing.Sm),
     ) {
@@ -406,5 +482,92 @@ private fun StreamRow(stream: Stream, fallbackName: String, onClick: () -> Unit)
                 maxLines = 1,
             )
         }
+        if (downloadsAvailable) {
+            DownloadAction(download = download, onDownload = onDownload)
+        } else {
+            Box(Modifier.width(HaloSpacing.Md))
+        }
+    }
+}
+
+/**
+ * The keep-it column at the end of every source row.
+ *
+ * It shows the state of the video rather than of the row, because only one
+ * download per video exists: once one source is on the device, every row here
+ * reports the same thing. The glyph is inert in that state, so there is no tap
+ * that quietly does nothing, and a failed download is offered again because
+ * asking a second time is how it is retried from here.
+ */
+@Composable
+private fun DownloadAction(download: DownloadEntry?, onDownload: () -> Unit) {
+    val column = Modifier.width(DownloadColumnWidth)
+    val status = download?.status
+    Box(column, contentAlignment = Alignment.Center) {
+        when (status) {
+            null, DownloadStatus.Failed -> Icon(
+                imageVector = HaloIcons.Download,
+                contentDescription = if (status == null) "Download this source" else "Retry this download",
+                tint = if (status == null) HaloColors.Accent else HaloColors.Danger,
+                modifier = Modifier
+                    .clickable(role = Role.Button, onClick = onDownload)
+                    .padding(HaloSpacing.Xs)
+                    .size(DownloadGlyphSize),
+            )
+
+            DownloadStatus.Done -> Icon(
+                imageVector = HaloIcons.Check,
+                contentDescription = "Downloaded",
+                tint = HaloColors.Success,
+                modifier = Modifier.padding(HaloSpacing.Xs).size(DownloadGlyphSize),
+            )
+
+            DownloadStatus.Downloading, DownloadStatus.Queued -> {
+                val fraction = download.fraction
+                if (fraction == null) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(DownloadGlyphSize),
+                        color = HaloColors.Accent,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    CircularProgressIndicator(
+                        progress = { fraction },
+                        modifier = Modifier.size(DownloadGlyphSize),
+                        color = HaloColors.Accent,
+                        strokeWidth = 2.dp,
+                    )
+                }
+            }
+
+            // Paused belongs to the Downloads tab, which is where it can be
+            // resumed; here it only reports that the video is part-way there.
+            DownloadStatus.Paused -> Icon(
+                imageVector = HaloIcons.Download,
+                contentDescription = "Download paused",
+                tint = HaloColors.TextDim,
+                modifier = Modifier.padding(HaloSpacing.Xs).size(DownloadGlyphSize),
+            )
+        }
+    }
+}
+
+/** Wide enough for the glyph plus the row's trailing padding. */
+private val DownloadColumnWidth = 50.dp
+private val DownloadGlyphSize = 22.dp
+
+/** A line above the sources explaining something the screen just refused to do. */
+@Composable
+private fun Notice(text: String) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = HaloSpacing.Md)
+            .clip(RoundedCornerShape(HaloRadius.Md))
+            .background(HaloColors.SurfaceHigh)
+            .border(1.dp, HaloColors.Border, RoundedCornerShape(HaloRadius.Md))
+            .padding(HaloSpacing.Md),
+    ) {
+        Text(text = text, style = HaloType.Callout, color = HaloColors.Text)
     }
 }

@@ -26,6 +26,14 @@ internal sealed interface DownloadStartResult {
 
     /** This device has nowhere to keep downloads. */
     data object Unavailable : DownloadStartResult
+
+    /**
+     * The source declared a size this device cannot take. Only ever returned
+     * when both numbers are known: an unknown size or unknown free space means
+     * the download is attempted, because refusing on a guess is worse than
+     * failing on a full disk.
+     */
+    data class NotEnoughSpace(val requiredBytes: Long, val freeBytes: Long) : DownloadStartResult
 }
 
 /**
@@ -50,11 +58,16 @@ internal sealed interface DownloadStartResult {
  */
 internal class DownloadsCoordinator(
     private val index: DownloadIndex,
-    storage: DownloadStoragePort,
+    private val storage: DownloadStoragePort,
     private val transfer: DownloadTransfer,
     private val clock: EpochClock,
     private val scope: CoroutineScope,
     private val fileSystem: FileSystem = downloadFileSystem(),
+    /**
+     * Fetched once, when a download is accepted, because a video watched with
+     * no network needs its subtitle already on the device.
+     */
+    private val subtitles: DownloadSubtitleSource = NoDownloadSubtitles,
 ) {
     private val directory: Path? = storage.directory()?.toPath()
 
@@ -95,6 +108,7 @@ internal class DownloadsCoordinator(
             if (existing != null && existing.status != DownloadStatus.Failed) {
                 return@withLock DownloadStartResult.AlreadyExists(existing)
             }
+            spaceShortfall(media)?.let { return@withLock it }
             if (existing != null) discardFiles(existing, root)
             val now = clock.nowMs()
             val entry = DownloadEntry(
@@ -107,8 +121,36 @@ internal class DownloadsCoordinator(
             put(entry)
             DownloadStartResult.Started(entry)
         }
-        if (result is DownloadStartResult.Started) pumpNext()
+        if (result is DownloadStartResult.Started) {
+            // Launched rather than awaited: the subtitle search hashes the
+            // source over the network, and the video has no reason to wait for
+            // it. In the graph's scope, so leaving the picker does not cancel it.
+            scope.launch { attachSubtitle(media) }
+            pumpNext()
+        }
         return result
+    }
+
+    /**
+     * Refuses only what is known not to fit, keeping [SpaceReserveBytes] back
+     * so a download cannot fill the device to the last byte.
+     */
+    private fun spaceShortfall(media: DownloadMedia): DownloadStartResult.NotEnoughSpace? {
+        val required = media.videoSize?.takeIf { it > 0 } ?: return null
+        val free = storage.freeBytes()?.takeIf { it >= 0 } ?: return null
+        if (free >= required + SpaceReserveBytes) return null
+        return DownloadStartResult.NotEnoughSpace(requiredBytes = required, freeBytes = free)
+    }
+
+    private suspend fun attachSubtitle(media: DownloadMedia) {
+        val found = subtitles.fetch(media) ?: return
+        mutex.withLock {
+            // The download may have been removed while the subtitle was in
+            // flight; the file it left behind is the next sweep's problem.
+            val entry = current(media.videoId) ?: return
+            if (entry.subtitle != null) return
+            put(entry.copy(subtitle = found, updatedAt = clock.nowMs()))
+        }
     }
 
     /** Stops a transfer, keeping what it has already written for the resume. */
@@ -303,6 +345,15 @@ internal class DownloadsCoordinator(
     private fun failureMessage(failure: Throwable): String =
         (failure as? DownloadTransferException)?.message
             ?: "This download could not be completed."
+
+    private companion object {
+        /**
+         * Headroom left free after a download. A device with nothing spare
+         * cannot install an update or write a log, and a video is not worth
+         * that.
+         */
+        const val SpaceReserveBytes = 256L * 1024 * 1024
+    }
 }
 
 /** Blocking file access, on whichever dispatcher the caller provides. */
