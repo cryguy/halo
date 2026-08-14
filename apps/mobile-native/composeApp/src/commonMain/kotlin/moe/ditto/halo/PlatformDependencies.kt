@@ -11,8 +11,10 @@ import moe.ditto.halo.auth.SecureStorage
 import moe.ditto.halo.storage.KeyValueStore
 import moe.ditto.halo.player.PlayerEvent
 import moe.ditto.halo.player.NoPlayerSystemPort
+import moe.ditto.halo.player.NoVideoFrameSource
 import moe.ditto.halo.player.PlayerPort
 import moe.ditto.halo.player.PlayerSystemPort
+import moe.ditto.halo.player.VideoFrameSource
 
 internal data class PlatformDependencies(
     val authConfigSource: AuthConfigSource,
@@ -42,6 +44,13 @@ internal data class PlatformDependencies(
      * without an implementation should do rather than pretend.
      */
     val playerSystemPort: PlayerSystemPort = NoPlayerSystemPort,
+    /**
+     * Frames for the scrub preview, read out of band from playback; see
+     * [VideoFrameSource]. Separate from [playerPort] for the same reason
+     * [playerSystemPort] is, and defaulting to no frames at all, which leaves
+     * the scrub card exactly as it ships without one.
+     */
+    val videoFrameSource: VideoFrameSource = NoVideoFrameSource,
     /**
      * Subtitle typefaces the platform actually ships to the caption renderer.
      *

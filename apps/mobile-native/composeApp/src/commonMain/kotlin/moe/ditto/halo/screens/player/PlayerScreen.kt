@@ -26,6 +26,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -43,6 +44,7 @@ import moe.ditto.halo.player.PlaybackStatus
 import moe.ditto.halo.player.PlayerState
 import moe.ditto.halo.player.PlayerSystemPort
 import moe.ditto.halo.player.PlayerTracks
+import moe.ditto.halo.player.VideoFrameSource
 import moe.ditto.halo.ui.HaloColors
 
 /** How far the bottom bar rises as it appears. */
@@ -105,6 +107,8 @@ internal fun PlayerScreen(
     bundledSubtitleFonts: Set<String>,
     /** Brightness, volume, orientation and the sleep timer. */
     system: PlayerSystemPort,
+    /** Frames behind the scrub preview; see [VideoFrameSource]. */
+    videoFrames: VideoFrameSource,
     /**
      * Where choosing another episode goes. Resolved here rather than by the
      * caller because finding the same release is a question about the source
@@ -142,6 +146,23 @@ internal fun PlayerScreen(
     // release names, and the regexes over them are not free.
     val streamBadges = remember(context) {
         streamBadges(filename = context.filename, title = context.streamTitle, name = context.streamName)
+    }
+    // Frames behind the scrub card, read out of band from playback and sized to
+    // the card so nothing decodes a picture larger than what is shown. Keyed to
+    // the item: changing episode must drop the previous source's frames rather
+    // than leave them under the new one's timecodes.
+    val density = LocalDensity.current
+    val scrubFrames = remember(item, videoFrames, density) {
+        ScrubPreviewFrames(
+            source = videoFrames,
+            url = context.url,
+            frameWidthPx = with(density) { ScrubPreviewWidth.roundToPx() },
+            frameHeightPx = with(density) { ScrubPreviewHeight.roundToPx() },
+            scope = scope,
+        )
+    }
+    DisposableEffect(scrubFrames) {
+        onDispose { scrubFrames.close() }
     }
 
     // Stored appearance first, then the source: applying it afterwards would
@@ -517,8 +538,21 @@ internal fun PlayerScreen(
                     state.durationSeconds,
                 ),
                 scrubFraction = controller.scrubFraction,
-                onScrubStart = controller::beginScrub,
-                onScrubMove = controller::updateScrub,
+                scrubPreviewFrame = controller.scrubFraction?.let { fraction ->
+                    scrubFrames.frameFor(secondsAt(fraction, state.durationSeconds))
+                },
+                // Requested as the finger moves rather than when it stops. A
+                // frame takes long enough to decode that waiting for the end of
+                // the gesture would put the picture on screen after the scrub it
+                // was meant to aim.
+                onScrubStart = { fraction ->
+                    controller.beginScrub(fraction)
+                    scrubFrames.request(secondsAt(fraction, state.durationSeconds))
+                },
+                onScrubMove = { fraction ->
+                    controller.updateScrub(fraction)
+                    scrubFrames.request(secondsAt(fraction, state.durationSeconds))
+                },
                 onScrubEnd = {
                     val committed = controller.endScrub()
                     if (committed != null) {

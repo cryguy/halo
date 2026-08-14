@@ -2,6 +2,7 @@ package moe.ditto.halo.screens.player
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,8 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -382,6 +385,8 @@ internal fun PlayerBottomBar(
     durationSeconds: Double?,
     bufferedFraction: Float,
     scrubFraction: Float?,
+    /** The picture behind the scrub card; null keeps its placeholder. */
+    scrubPreviewFrame: ImageBitmap? = null,
     onScrubStart: (Float) -> Unit,
     onScrubMove: (Float) -> Unit,
     onScrubEnd: () -> Unit,
@@ -416,6 +421,7 @@ internal fun PlayerBottomBar(
             durationSeconds = durationSeconds,
             bufferedFraction = bufferedFraction,
             scrubFraction = scrubFraction,
+            scrubPreviewFrame = scrubPreviewFrame,
             onScrubStart = onScrubStart,
             onScrubMove = onScrubMove,
             onScrubEnd = onScrubEnd,
@@ -467,8 +473,11 @@ private val TransportTrackHeight = 6.dp
 private val TransportHitHeight = 34.dp
 private val ThumbSize = 14.dp
 private val ThumbScrubbingSize = 18.dp
-private val PreviewWidth = 176.dp
-private val PreviewHeight = 99.dp
+
+// Not private: the frames behind the card are decoded at exactly this size, and
+// the screen that asks for them has to know it.
+internal val ScrubPreviewWidth = 176.dp
+internal val ScrubPreviewHeight = 99.dp
 
 @Composable
 private fun TransportRow(
@@ -477,6 +486,7 @@ private fun TransportRow(
     durationSeconds: Double?,
     bufferedFraction: Float,
     scrubFraction: Float?,
+    scrubPreviewFrame: ImageBitmap?,
     onScrubStart: (Float) -> Unit,
     onScrubMove: (Float) -> Unit,
     onScrubEnd: () -> Unit,
@@ -583,6 +593,7 @@ private fun TransportRow(
                     fraction = scrubFraction,
                     trackWidthPx = trackWidthPx,
                     targetSeconds = scrubTarget(scrubFraction, durationSeconds),
+                    frame = scrubPreviewFrame,
                     modifier = Modifier.align(Alignment.BottomStart),
                 )
             }
@@ -606,9 +617,13 @@ private fun scrubTarget(fraction: Float, durationSeconds: Double?): Double {
 /**
  * The card that floats over the track while scrubbing.
  *
- * It shows the target timecode over a neutral frame rather than the frame at
- * that position: extracting frames from the running core is a separate piece of
- * work. The affordance is worth having before the picture is, because the
+ * [frame] is the picture at the position being aimed at, when one has been
+ * decoded; the card keeps its placeholder until then and for sources whose
+ * frames cannot be read at all. Frames swap without a crossfade: during a drag
+ * they arrive one after another, and fading between them would leave the card
+ * showing a blend of two moments rather than either of them.
+ *
+ * The timecode is drawn whether or not there is a picture under it, because the
  * timecode is what a scrub is actually aimed with.
  */
 @Composable
@@ -616,24 +631,38 @@ private fun ScrubPreview(
     fraction: Float,
     trackWidthPx: Int,
     targetSeconds: Double,
+    frame: ImageBitmap?,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .offset {
                 IntOffset(
-                    x = (fraction * trackWidthPx - PreviewWidth.toPx() / 2f).roundToInt(),
+                    x = (fraction * trackWidthPx - ScrubPreviewWidth.toPx() / 2f).roundToInt(),
                     y = -30.dp.roundToPx(),
                 )
             }
             // Required, not plain size: the card is a child of the 34dp-tall
             // hit area for the track, so ordinary size constraints would clamp
             // it to that height instead of letting it stand above the bar.
-            .requiredSize(width = PreviewWidth, height = PreviewHeight)
+            .requiredSize(width = ScrubPreviewWidth, height = ScrubPreviewHeight)
             .clip(RoundedCornerShape(10.dp))
-            .placeholderStripes()
             .border(1.dp, PreviewBorder, RoundedCornerShape(10.dp)),
     ) {
+        if (frame == null) {
+            Box(Modifier.fillMaxSize().placeholderStripes())
+        } else {
+            // Fit rather than crop, over black. Cropping a scope-ratio film to
+            // the card's 16:9 throws away the sides of a frame whose only job
+            // is to be recognised, and a letterboxed picture inside a bordered
+            // card reads as the shape of the film rather than as a mistake.
+            Image(
+                bitmap = frame,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().background(Color.Black),
+                contentScale = ContentScale.Fit,
+            )
+        }
         Text(
             text = formatTimecode(targetSeconds),
             style = monoStyle(fontSize = 10.sp, color = Color(0xFFE7EAF1)),

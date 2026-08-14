@@ -59,6 +59,7 @@ import moe.ditto.halo.screens.HomeScreen
 import moe.ditto.halo.screens.LibraryScreen
 import moe.ditto.halo.screens.MetaRef
 import moe.ditto.halo.player.PlayerSystemPort
+import moe.ditto.halo.player.VideoFrameSource
 import moe.ditto.halo.screens.player.EpisodeChoice
 import moe.ditto.halo.screens.player.PlayerScreen
 import moe.ditto.halo.screens.SearchScreen
@@ -93,6 +94,8 @@ internal fun HaloShell(
     bundledSubtitleFonts: Set<String>,
     /** The device side of playback: brightness, volume, orientation, sleep. */
     playerSystem: PlayerSystemPort,
+    /** Frames behind the player's scrub preview; see [VideoFrameSource]. */
+    videoFrames: VideoFrameSource,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
     /**
@@ -185,6 +188,7 @@ internal fun HaloShell(
                         surface = playerSurface,
                         bundledSubtitleFonts = bundledSubtitleFonts,
                         system = playerSystem,
+                        videoFrames = videoFrames,
                         context = route.playbackContext(),
                         // Both outcomes replace the player rather than stacking
                         // on it, so back still returns to the title rather than

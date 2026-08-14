@@ -33,9 +33,9 @@ over a placeholder rather than the engine. Debug builds only.
 What is already driven by the engine: position, duration, play state, seeking, the audio and
 subtitle track lists, subtitle scale/delay/font, and the error card.
 
-All required Phase 2 controls are now backed by the Android engine or real API data. The
-remaining unchecked work is optional Android PiP and scrub-preview frame extraction, plus the
-iOS follow-ups listed at the end of this plan.
+All required Phase 2 controls are now backed by the Android engine or real API data, and the
+scrub preview shows real frames on Android (D2). The remaining unchecked work is optional
+Android PiP (D1), plus the iOS follow-ups listed at the end of this plan.
 
 Read the per-slice notes at the end of Phase 1 before starting: they record decisions that
 Phase 2 has to keep (no blur over video, opaque rail and drawer fills, where `requiredSize` is
@@ -319,8 +319,21 @@ presenter/controller tests.
 
 - [ ] **D1 Real Android PiP** — `PictureInPictureParams`, activity plumbing, the in-app
   presentation switches to the OS handoff.
-- [ ] **D2 Scrub-preview frames** — mpv frame extraction or sprite sheets; card already ships
-  timecode-only.
+- [x] **D2 Scrub-preview frames** — **done 2026-08-15, not via mpv.** The Android JNI binding has
+  no data-returning command (`command(String[])` returns nothing; there is no `mpv_command_ret`),
+  so `screenshot-raw` cannot be read back, and the core that is playing must not be seeked to
+  fetch a frame from elsewhere in the timeline — any mpv route therefore meant a second core
+  writing a screenshot file per frame. Instead: new `VideoFrameSource`/`VideoFrameReader` port
+  (`player/VideoFrameSource.kt`, sibling of `PlayerSystemPort`, not part of `PlayerPort`), Android
+  implementation over `MediaMetadataRetriever` on a confined thread, iOS left on the no-op default.
+  `ScrubPreviewFrames` (commonTest-covered) quantises requests to 10 s slots, honours only the
+  newest while one decode is in flight, caches twelve frames, opens on the first scrub and releases
+  the reader 20 s after the last one — it holds a second connection to the source, which some hosts
+  count. `frameFor` answers only for the slot asked about, so the card never shows a picture from
+  elsewhere under an exact timecode; a missing or undecodable frame keeps `placeholderStripes`.
+  Verified on `Pixel_10_Pro_XL` against the fixture API with a timecode-burned test video: the card
+  at target 6:55 showed the 6:50 keyframe, playback was undisturbed, and a target whose frame had
+  not arrived showed the placeholder rather than a stale picture.
 
 ## Mac session follow-ups (iOS half — tracked, not done here)
 
@@ -329,6 +342,10 @@ presenter/controller tests.
   fit mode, `PlayerSystemPort` (brightness/volume/orientation/idle-timer), then replace the
   Kotlin no-ops in `IosHostBridge.kt`. Real iOS PiP (`AVPictureInPictureController`). Run the
   ownership/playback XCUITest suites; add the three new player cases from 2.13.
+- `VideoFrameSource` for iOS (D2's other half): `AVAssetImageGenerator` with
+  `requestedTimeToleranceBefore/After` left generous so it returns keyframes,
+  `maximumSize` set to the card, injected from `MainViewController` in place of
+  `NoVideoFrameSource`. Pure Kotlin/Native + AVFoundation; no Swift file has to change.
 
 ## Risks / honest limits
 

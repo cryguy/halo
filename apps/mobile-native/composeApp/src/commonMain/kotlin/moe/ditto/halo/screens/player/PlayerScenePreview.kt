@@ -247,6 +247,10 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
                 bufferedFraction = progressFraction(state.positionSeconds, state.durationSeconds) +
                     PlayerFixtures.BufferedLeadFraction,
                 scrubFraction = controller.scrubFraction,
+                // The harness owns no source to read frames out of, so the
+                // scrub card is reviewed in the state it also has on a real
+                // source whose frames the device cannot decode.
+                scrubPreviewFrame = null,
                 onScrubStart = controller::beginScrub,
                 onScrubMove = controller::updateScrub,
                 onScrubEnd = { controller.endScrub() },

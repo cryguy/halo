@@ -11,13 +11,13 @@ private val StripeLight = Color(0xFF161A22)
 private val StripeWidth = 10.dp
 
 /**
- * Diagonal stripes standing in for artwork that does not exist yet: episode
- * stills, and the frame under a scrub preview.
+ * Diagonal stripes standing in for artwork that is absent: an episode with no
+ * still, and the scrub card before its frame has been decoded or on a source
+ * whose frames cannot be read at all.
  *
  * It is deliberately not a flat fill or a spinner. A blank rectangle is
- * indistinguishable from an image that failed to load, and during design review
- * that difference matters: this says "nothing is meant to be here yet" at a
- * glance. Both call sites lose it when their real source lands.
+ * indistinguishable from an image that failed to load, and that difference
+ * matters here: this says "nothing is meant to be here" at a glance.
  *
  * The angle approximates the design's, which is not exactly 45 degrees. It is a
  * placeholder, so the band spacing is what carries the meaning, not the tilt.
