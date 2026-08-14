@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.10 complete.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.11 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -304,7 +304,7 @@ presenter/controller tests.
   `getMeta` via the existing browse/query cache, progress bars from watch state, current-episode
   highlight from route context. Episode select: fetch that episode's streams, prefer same
   `bingeGroup` + addon, else navigate to the stream picker (replace, like `StreamsScreen` does).
-- [ ] **2.11 Up next** — at playback start call `getNextEpisode(type, metaId, videoId, addonId,
+- [x] **2.11 Up next** — at playback start call `getNextEpisode(type, metaId, videoId, addonId,
   bingeGroup)`; hold next episode + matched stream. On `NaturalEnd` show the card (video keeps
   its last frame behind it), 8 s countdown; countdown/`Play now`/`Cancel` funnel through the
   one-shot guard; advance = `playback.play(next)` + route-context update. Presenter: stop

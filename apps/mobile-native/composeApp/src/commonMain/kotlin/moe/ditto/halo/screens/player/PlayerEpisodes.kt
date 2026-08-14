@@ -185,3 +185,64 @@ internal suspend fun reportProgress(
         poster = meta?.poster,
     )
 }
+
+/**
+ * What follows the episode playing, ready to start.
+ *
+ * The server answers with the next video and, when it can, a stream from the
+ * same addon in the same binge group. Null here means there is nothing to
+ * autoplay, and every reason for that is the same to the caller: a film, the
+ * last episode of a season, an addon that offers nothing matching, or a lookup
+ * that failed. Autoplay is a convenience, so none of those is worth an error
+ * state on top of a picture that has just ended.
+ */
+internal suspend fun nextEpisodePlayback(
+    graph: SignedInGraph,
+    current: PlaybackContext,
+): PlaybackContext? {
+    val result = try {
+        graph.client.getNextEpisode(
+            type = current.type,
+            metaId = current.metaId,
+            videoId = current.videoId,
+            addonId = current.addonId,
+            bingeGroup = current.bingeGroup,
+        )
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Throwable) {
+        return null
+    }
+
+    val video = result.video ?: return null
+    val stream = result.stream ?: return null
+    return nextPlaybackContext(current, video, stream)
+}
+
+/**
+ * Replaces every source-shaped field when advancing, while retaining the title
+ * identity and the addon that the server matched within. Keeping even one hint
+ * from the previous episode would hash, badge or restore subtitles against the
+ * wrong file.
+ */
+internal fun nextPlaybackContext(
+    current: PlaybackContext,
+    video: MetaVideo,
+    stream: Stream,
+): PlaybackContext? {
+    val url = stream.url ?: return null
+    val tag = episodeTag(video)
+    val hints = stream.behaviorHints
+    return current.copy(
+        url = url,
+        videoId = video.id,
+        episodeTag = tag,
+        episodeName = video.displayTitle?.takeIf { it != tag },
+        bingeGroup = hints?.bingeGroup,
+        filename = hints?.filename,
+        videoSize = hints?.videoSize,
+        videoHash = hints?.videoHash,
+        streamName = stream.name,
+        streamTitle = stream.title ?: stream.description,
+    )
+}

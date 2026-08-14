@@ -251,6 +251,25 @@ internal fun PlayerScreen(
         }
     }
 
+    // What follows this episode, looked up while it is still playing so the
+    // card has something to offer the moment it ends. Null covers every "there
+    // is nothing to autoplay" case at once: films, the last episode, and a
+    // lookup that failed.
+    var upNext by remember(item) { mutableStateOf<PlaybackContext?>(null) }
+    LaunchedEffect(item) {
+        if (!context.isEpisode) return@LaunchedEffect
+        upNext = nextEpisodePlayback(graph, context)
+    }
+
+    // The engine reaching the end is what raises the card; the countdown, both
+    // buttons and the advance all run through the controller's single claim, so
+    // whichever happens first wins and the rest become no-ops.
+    LaunchedEffect(state.status, upNext) {
+        val next = upNext ?: return@LaunchedEffect
+        if (state.status != PlaybackStatus.Ended) return@LaunchedEffect
+        controller.showUpNext { onSelectEpisode(EpisodeChoice.Resolved(next)) }
+    }
+
     // Landscape and a display that will not sleep, for as long as this screen
     // exists. Disposal rather than the back handler, because the error card's
     // exit and a system-initiated one leave the same way and would otherwise
@@ -571,10 +590,11 @@ internal fun PlayerScreen(
         }
 
         controller.upNextSecondsRemaining?.let { remaining ->
+            val next = upNext ?: return@let
             UpNextCard(
                 metrics = metrics,
-                episodeTag = PlayerFixtures.NextEpisode.tag,
-                episodeName = PlayerFixtures.NextEpisode.name,
+                episodeTag = next.episodeTag.orEmpty(),
+                episodeName = next.episodeName ?: next.showTitle,
                 secondsRemaining = remaining,
                 totalSeconds = UpNextSeconds,
                 onCancel = controller::dismissUpNext,

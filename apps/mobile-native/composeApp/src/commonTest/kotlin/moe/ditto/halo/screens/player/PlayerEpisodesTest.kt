@@ -146,6 +146,62 @@ class PlayerEpisodesTest {
     }
 
     @Test
+    fun nextPlaybackReplacesEveryFileSpecificField() {
+        val current = PlaybackContext(
+            url = "https://a.test/e1.mkv",
+            type = "series",
+            metaId = "tt0903747",
+            videoId = "tt0903747:2:1",
+            showTitle = "Breaking Bad",
+            episodeTag = "S02E01",
+            episodeName = "Seven Thirty-Seven",
+            addonId = "torrentio",
+            bingeGroup = "old-group",
+            filename = "old.mkv",
+            videoSize = 10,
+            videoHash = "old-hash",
+            streamName = "old name",
+            streamTitle = "old title",
+        )
+        val stream = Stream(
+            url = "https://a.test/e2.mkv",
+            name = "new name",
+            description = "new description",
+            behaviorHints = StreamBehaviorHints(
+                bingeGroup = "new-group",
+                filename = "new.mkv",
+                videoSize = 20,
+                videoHash = "new-hash",
+            ),
+        )
+
+        val next = nextPlaybackContext(current, meta.videos[2], stream)
+
+        assertEquals("tt0903747:2:2", next?.videoId)
+        assertEquals("S02E02", next?.episodeTag)
+        assertEquals("Grilled", next?.episodeName)
+        assertEquals("https://a.test/e2.mkv", next?.url)
+        assertEquals("new-group", next?.bingeGroup)
+        assertEquals("new.mkv", next?.filename)
+        assertEquals(20, next?.videoSize)
+        assertEquals("new-hash", next?.videoHash)
+        assertEquals("new name", next?.streamName)
+        assertEquals("new description", next?.streamTitle)
+        // Title and addon identity survive the episode change.
+        assertEquals("tt0903747", next?.metaId)
+        assertEquals("torrentio", next?.addonId)
+    }
+
+    @Test
+    fun nextPlaybackWithoutAUrlCannotPlay() {
+        assertNull(nextPlaybackContext(
+            PlaybackContext("https://a.test/e1", "series", "show", "e1", "Show", addonId = "addon"),
+            MetaVideo(id = "e2", season = 1, episode = 2),
+            Stream(),
+        ))
+    }
+
+    @Test
     fun theNextEpisodeStaysInsideTheSeason() {
         assertEquals("tt0903747:2:3", nextEpisodeAfter(meta.videos, "tt0903747:2:2")?.id)
         // Last of the season: nothing follows, rather than the first of the next.
