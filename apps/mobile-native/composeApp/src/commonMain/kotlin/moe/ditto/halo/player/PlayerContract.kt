@@ -99,6 +99,9 @@ interface PlayerPort {
     /** Applies to the running core; one second of media takes `1 / rate` seconds. */
     suspend fun setPlaybackRate(rate: Double)
 
+    /** Shifts the sound against the picture. Positive plays the sound later. */
+    suspend fun setAudioDelay(seconds: Double)
+
     // Live subtitle controls: these must apply to the running core without
     // recreating it — the exact capability libVLC lacked on mobile.
     suspend fun setSubtitleDelay(seconds: Double)

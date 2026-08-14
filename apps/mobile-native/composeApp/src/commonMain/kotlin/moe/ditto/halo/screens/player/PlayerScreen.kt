@@ -334,7 +334,7 @@ internal fun PlayerScreen(
                 trackStyling = state.subtitleTrackStyling,
                 selectedAddonSubtitleId = controller.selectedAddonSubtitleId,
                 bundledSubtitleFonts = bundledSubtitleFonts,
-                audioDelaySeconds = controller.audioDelaySeconds,
+                audioDelaySeconds = state.audioDelaySeconds,
                 playbackRate = state.playbackRate,
                 onSelectTab = controller::openRail,
                 onClose = controller::closeRail,
@@ -345,14 +345,14 @@ internal fun PlayerScreen(
                 onSelectAddonSubtitle = controller::selectAddonSubtitle,
                 onSubtitleScaleChange = { scale -> scope.launch { playback.setSubtitleScale(scale) } },
                 onSubtitleDelayChange = { seconds ->
-                    scope.launch {
-                        playback.setSubtitleDelay(seconds.coerceIn(-MaxDelaySeconds, MaxDelaySeconds))
-                    }
+                    scope.launch { playback.setSubtitleDelay(clampedDelay(seconds)) }
                 },
                 onTrackStylingChange = { keep -> scope.launch { playback.setSubtitleTrackStyling(keep) } },
                 onSubtitleFontChange = { font -> scope.launch { playback.setSubtitleFont(font) } },
                 onSelectAudioTrack = { id -> scope.launch { playback.selectAudioTrack(id) } },
-                onAudioDelayChange = controller::setAudioDelay,
+                onAudioDelayChange = { seconds ->
+                    scope.launch { playback.setAudioDelay(clampedDelay(seconds)) }
+                },
                 onPlaybackRateChange = { rate -> scope.launch { playback.setPlaybackRate(rate) } },
             )
         }

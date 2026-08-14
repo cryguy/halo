@@ -184,6 +184,11 @@ internal class MpvCore private constructor(
         mpv.setPropertyDouble("speed", rate)
     }
 
+    fun setAudioDelay(seconds: Double) {
+        if (destroyed) return
+        mpv.setPropertyDouble("audio-delay", seconds)
+    }
+
     // Live subtitle controls — the exact capability libVLC lacked on mobile:
     // these apply to the running core with no recreation.
     fun setSubtitleDelay(seconds: Double) {

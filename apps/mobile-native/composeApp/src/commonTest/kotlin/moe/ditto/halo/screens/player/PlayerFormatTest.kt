@@ -127,6 +127,15 @@ class PlayerFormatTest {
     }
 
     @Test
+    fun delaysAreClampedToWhatTheStepperCanExpress() {
+        assertEquals(MaxDelaySeconds, clampedDelay(9.0))
+        assertEquals(-MaxDelaySeconds, clampedDelay(-9.0))
+        assertEquals(0.25, clampedDelay(0.25))
+        // Not a shift anyone asked for, so it means no shift at all.
+        assertEquals(0.0, clampedDelay(Double.NaN))
+    }
+
+    @Test
     fun progressIsClampedWhenPositionOverrunsDuration() {
         // Live edges and rounding both produce a position past the reported
         // duration; a fraction over 1 would draw the played fill past the track.

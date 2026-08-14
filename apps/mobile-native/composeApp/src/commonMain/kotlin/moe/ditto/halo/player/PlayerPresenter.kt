@@ -26,6 +26,7 @@ data class PlayerState(
     // of truth; these exist so the shell can display what it asked for without
     // waiting for a property observation that some platform hosts cannot emit.
     val playbackRate: Double = 1.0,
+    val audioDelaySeconds: Double = 0.0,
     val subtitleDelaySeconds: Double = 0.0,
     val subtitleScale: Double = 1.0,
     val subtitleFont: String? = null,
@@ -74,6 +75,12 @@ class PlayerPresenter(
         if (state.status == PlaybackStatus.Released || !rate.isFinite() || rate <= 0.0) return
         player.setPlaybackRate(rate)
         state = state.copy(playbackRate = rate)
+    }
+
+    suspend fun setAudioDelay(seconds: Double) {
+        if (state.status == PlaybackStatus.Released || !seconds.isFinite()) return
+        player.setAudioDelay(seconds)
+        state = state.copy(audioDelaySeconds = seconds)
     }
 
     suspend fun setSubtitleDelay(seconds: Double) {

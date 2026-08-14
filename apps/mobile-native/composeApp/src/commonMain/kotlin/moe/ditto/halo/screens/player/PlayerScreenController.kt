@@ -55,17 +55,10 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
         private set
 
     /**
-     * Rail choices the engine cannot hold yet.
-     *
-     * Audio delay is a real mpv property that `PlayerPort` does not expose yet,
-     * and the addon subtitle list is not fetched at all. Playback rate and the
-     * subtitle track-styling override are absent from this group because they
-     * go through the live engine path and the screen reads their echoes from
-     * `PlayerState`.
+     * The one rail choice the engine cannot hold yet: the addon subtitle list is
+     * not fetched at all. Everything else the rail offers now goes through the
+     * live engine path, and the screen reads its echo from `PlayerState`.
      */
-    var audioDelaySeconds by mutableStateOf(0.0)
-        private set
-
     var selectedAddonSubtitleId by mutableStateOf<String?>(null)
         private set
 
@@ -206,12 +199,6 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
     }
 
     // --- Rail choices ----------------------------------------------------
-
-    /** Clamped the same way the subtitle delay is, and for the same reason. */
-    fun setAudioDelay(seconds: Double) {
-        if (!seconds.isFinite()) return
-        audioDelaySeconds = seconds.coerceIn(-MaxDelaySeconds, MaxDelaySeconds)
-    }
 
     /**
      * Choosing an addon subtitle clears the in-file selection in the UI, since

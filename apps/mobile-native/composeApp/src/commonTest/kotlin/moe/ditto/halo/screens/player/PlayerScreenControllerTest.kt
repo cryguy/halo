@@ -163,30 +163,6 @@ class PlayerScreenControllerTest {
     }
 
     @Test
-    fun audioDelayIsClampedToFiveSecondsEitherWay() = runTest {
-        val controller = PlayerScreenController(backgroundScope)
-
-        controller.setAudioDelay(9.0)
-        assertEquals(MaxDelaySeconds, controller.audioDelaySeconds)
-
-        controller.setAudioDelay(-9.0)
-        assertEquals(-MaxDelaySeconds, controller.audioDelaySeconds)
-
-        controller.setAudioDelay(0.25)
-        assertEquals(0.25, controller.audioDelaySeconds)
-    }
-
-    @Test
-    fun anUnusableDelayLeavesTheCurrentOneAlone() = runTest {
-        val controller = PlayerScreenController(backgroundScope)
-        controller.setAudioDelay(0.5)
-
-        controller.setAudioDelay(Double.NaN)
-
-        assertEquals(0.5, controller.audioDelaySeconds)
-    }
-
-    @Test
     fun lockingPutsEveryPanelAndTheChromeAway() = runTest {
         val controller = PlayerScreenController(backgroundScope)
         controller.openRail(RailTab.Audio)

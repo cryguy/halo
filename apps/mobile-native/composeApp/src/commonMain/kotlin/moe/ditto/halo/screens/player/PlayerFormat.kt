@@ -51,6 +51,16 @@ internal fun formatDelay(seconds: Double): String {
     return "$sign${abs(millis)} ms"
 }
 
+/**
+ * A track delay the steppers can actually express. Both steppers share the
+ * limit, and both send it straight to the engine, so clamping is the boundary
+ * between "shift the track" and "ask for a track that is not there".
+ */
+internal fun clampedDelay(seconds: Double): Double {
+    if (!seconds.isFinite()) return 0.0
+    return seconds.coerceIn(-MaxDelaySeconds, MaxDelaySeconds)
+}
+
 /** A subtitle scale as the percentage the slider is labelled in. */
 internal fun formatScalePercent(scale: Double): String {
     if (!scale.isFinite() || scale <= 0.0) return "100%"

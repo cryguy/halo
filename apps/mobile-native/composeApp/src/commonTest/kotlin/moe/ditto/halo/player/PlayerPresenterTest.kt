@@ -253,6 +253,22 @@ class PlayerPresenterTest {
     }
 
     @Test
+    fun audioDelayPassesThroughInBothDirectionsAndEchoesIntoState() = runTest {
+        val port = RecordingPlayerPort()
+        val presenter = PlayerPresenter(port)
+        presenter.start(first)
+
+        // Negative is the common case: sound that arrives late needs pulling
+        // forward, so a delay that only went one way would fix half the desyncs.
+        presenter.setAudioDelay(-0.15)
+        presenter.setAudioDelay(0.25)
+        presenter.setAudioDelay(Double.NaN)
+
+        assertEquals(listOf(-0.15, 0.25), port.audioDelays)
+        assertEquals(0.25, presenter.state.audioDelaySeconds)
+    }
+
+    @Test
     fun trackStylingPassesThroughAndEchoesIntoState() = runTest {
         val port = RecordingPlayerPort()
         val presenter = PlayerPresenter(port)
@@ -337,6 +353,7 @@ class PlayerPresenterTest {
     private class RecordingPlayerPort : PlayerPort {
         val loads = mutableListOf<MediaItem>()
         val playbackRates = mutableListOf<Double>()
+        val audioDelays = mutableListOf<Double>()
         val subtitleDelays = mutableListOf<Double>()
         val subtitleScales = mutableListOf<Double>()
         val subtitleFonts = mutableListOf<String?>()
@@ -359,6 +376,10 @@ class PlayerPresenterTest {
 
         override suspend fun setPlaybackRate(rate: Double) {
             playbackRates += rate
+        }
+
+        override suspend fun setAudioDelay(seconds: Double) {
+            audioDelays += seconds
         }
 
         override suspend fun setSubtitleDelay(seconds: Double) {

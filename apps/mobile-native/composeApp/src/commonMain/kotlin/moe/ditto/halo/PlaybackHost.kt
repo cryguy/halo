@@ -106,6 +106,11 @@ internal class PlaybackHost(private val playerPort: PlayerPort) {
         publish()
     }
 
+    suspend fun setAudioDelay(seconds: Double) {
+        playerPresenter.setAudioDelay(seconds)
+        publish()
+    }
+
     suspend fun setSubtitleScale(scale: Double) {
         playerPresenter.setSubtitleScale(scale)
         publish()
