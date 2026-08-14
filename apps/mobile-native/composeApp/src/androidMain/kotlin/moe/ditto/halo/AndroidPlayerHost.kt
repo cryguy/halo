@@ -135,6 +135,10 @@ internal class AndroidMpvPlayerHost(
     fun setSubtitleDelay(seconds: Double) = core.setSubtitleDelay(seconds)
     fun setSubtitleScale(scale: Double) = core.setSubtitleScale(scale)
     fun setSubtitleFont(font: String?) = core.setSubtitleFont(font)
+    fun setSubtitleTrackStyling(keepScript: Boolean) = core.setSubtitleTrackStyling(keepScript)
+    fun setSubtitleOutline(widthPixels: Double) = core.setSubtitleOutline(widthPixels)
+    fun setSubtitleShadow(offsetPixels: Double) = core.setSubtitleShadow(offsetPixels)
+    fun setSubtitleLift(percent: Int) = core.setSubtitleLift(percent)
     fun addSubtitle(url: String) = core.addSubtitle(url)
 
     fun teardown() {
@@ -248,6 +252,10 @@ internal class AndroidPlayerPort(
     override suspend fun setSubtitleDelay(seconds: Double) = host.setSubtitleDelay(seconds)
     override suspend fun setSubtitleScale(scale: Double) = host.setSubtitleScale(scale)
     override suspend fun setSubtitleFont(font: String?) = host.setSubtitleFont(font)
+    override suspend fun setSubtitleTrackStyling(keepScript: Boolean) = host.setSubtitleTrackStyling(keepScript)
+    override suspend fun setSubtitleOutline(widthPixels: Double) = host.setSubtitleOutline(widthPixels)
+    override suspend fun setSubtitleShadow(offsetPixels: Double) = host.setSubtitleShadow(offsetPixels)
+    override suspend fun setSubtitleLift(percent: Int) = host.setSubtitleLift(percent)
     override suspend fun addSubtitle(url: String) = host.addSubtitle(url)
 
     override suspend fun releaseVideoOutput() = withContext(Dispatchers.Default) {

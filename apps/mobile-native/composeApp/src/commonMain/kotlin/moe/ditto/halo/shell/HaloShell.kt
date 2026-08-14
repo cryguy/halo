@@ -87,6 +87,8 @@ internal fun HaloShell(
     /** The app's one playback owner; the player route drives it, nothing else does. */
     playback: PlaybackHost,
     playerSurface: NativePlayerSurface,
+    /** See [moe.ditto.halo.PlatformDependencies.bundledSubtitleFonts]. */
+    bundledSubtitleFonts: Set<String>,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
     /**
@@ -174,8 +176,10 @@ internal fun HaloShell(
                 composable<PlayerRoute> { entry ->
                     val route = entry.toRoute<PlayerRoute>()
                     PlayerScreen(
+                        graph = graph,
                         playback = playback,
                         surface = playerSurface,
+                        bundledSubtitleFonts = bundledSubtitleFonts,
                         context = route.playbackContext(),
                         onBack = { navController.popBackStack() },
                     )

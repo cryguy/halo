@@ -10,6 +10,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import moe.ditto.halo.auth.AndroidSecureStorage
 import moe.ditto.halo.auth.KtorAndroidOidcWire
 import moe.ditto.halo.auth.KtorAuthConfigSource
+import moe.ditto.halo.player.SubtitleFontLibrary
 import moe.ditto.halo.storage.AndroidPreferencesStore
 import java.io.File
 
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
             diagnosticsEnabled =
                 (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0,
             playerPort = AndroidPlayerPort(playerHost),
+            bundledSubtitleFonts = SubtitleFontLibrary.bundledFamilies(),
             playerEvents = playerHost.playerEvents,
             oidcSessionPort = authHost,
             authEvents = authHost.events,

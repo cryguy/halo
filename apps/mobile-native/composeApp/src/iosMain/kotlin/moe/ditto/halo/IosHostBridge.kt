@@ -336,6 +336,14 @@ internal class IosPlayerHostAdapter(
         host.setSubtitleFont(font)
     }
 
+    // Android-only for now; the Mac follow-up adds each of these to the Swift
+    // host. Silence is the right no-op: a caption that keeps its script's own
+    // styling is what the renderer already does.
+    override suspend fun setSubtitleTrackStyling(keepScript: Boolean) = Unit
+    override suspend fun setSubtitleOutline(widthPixels: Double) = Unit
+    override suspend fun setSubtitleShadow(offsetPixels: Double) = Unit
+    override suspend fun setSubtitleLift(percent: Int) = Unit
+
     override suspend fun addSubtitle(url: String) {
         host.addSubtitle(url)
     }

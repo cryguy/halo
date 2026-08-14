@@ -188,6 +188,7 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
     val metrics = rememberPlayerMetrics()
     val state = PlayerFixtures.State
     val chromeUp = controller.chromeVisible
+    var trackStylingPreview by remember { mutableStateOf(state.subtitleTrackStyling) }
 
     Box(Modifier.fillMaxSize()) {
         // Stands in for the picture. The real screen has a native surface here,
@@ -275,8 +276,9 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
                 subtitleScale = state.subtitleScale,
                 subtitleDelaySeconds = state.subtitleDelaySeconds,
                 subtitleFont = state.subtitleFont,
-                trackStyling = controller.subtitleTrackStyling,
+                trackStyling = trackStylingPreview,
                 selectedAddonSubtitleId = controller.selectedAddonSubtitleId,
+                bundledSubtitleFonts = PlayerFixtures.BundledSubtitleFonts,
                 audioDelaySeconds = controller.audioDelaySeconds,
                 playbackRate = state.playbackRate,
                 onSelectTab = controller::openRail,
@@ -285,7 +287,10 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
                 onSelectAddonSubtitle = controller::selectAddonSubtitle,
                 onSubtitleScaleChange = {},
                 onSubtitleDelayChange = {},
-                onTrackStylingChange = controller::setTrackStyling,
+                // Held locally rather than sent anywhere: the switch changes the
+                // card's hint text for every format, which is the thing being
+                // reviewed here, and the harness owns no engine to send it to.
+                onTrackStylingChange = { trackStylingPreview = it },
                 onSubtitleFontChange = {},
                 onSelectAudioTrack = {},
                 onAudioDelayChange = controller::setAudioDelay,

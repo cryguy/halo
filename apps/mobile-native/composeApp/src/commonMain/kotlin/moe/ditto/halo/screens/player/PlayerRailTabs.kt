@@ -60,6 +60,7 @@ internal fun SubtitlesTab(
     subtitleFont: String?,
     trackStyling: Boolean,
     selectedAddonId: String?,
+    bundledFonts: Set<String>,
     captionBaseSize: TextUnit,
     onSelectTrack: (String?) -> Unit,
     onSelectAddonSubtitle: (String) -> Unit,
@@ -165,12 +166,26 @@ internal fun SubtitlesTab(
         // With a script's own styling in force, a font choice is ignored: the
         // chips stay so the current selection is still readable, but they are
         // dimmed to say they are not in effect.
+        val chipsInert = bitmap || (format == SubtitleFormat.Ass && trackStyling)
         RailFontChips(
             selected = subtitleFont,
             onSelect = onFontChange,
             modifier = Modifier.padding(top = 10.dp),
-            inert = bitmap || (format == SubtitleFormat.Ass && trackStyling),
+            inert = chipsInert,
         )
+        // A family the app does not ship is a request the caption renderer
+        // substitutes for silently, so the chip would look applied and change
+        // nothing. Only said when it is actually the case.
+        if (!chipsInert) {
+            unbundledFontNotice(subtitleFont, bundledFonts)?.let { notice ->
+                Text(
+                    text = notice,
+                    color = HaloColors.TextDim,
+                    fontSize = 11.5.sp,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        }
     }
 
     RailCard {
@@ -209,6 +224,21 @@ private fun trackStylingHint(format: SubtitleFormat, enabled: Boolean): String =
     SubtitleFormat.Text -> "Plain text track: Halo styling always applies"
     SubtitleFormat.Bitmap -> "PGS is rendered images: font and outline do not apply"
     SubtitleFormat.Unknown -> "Applies to styled tracks only"
+}
+
+/**
+ * Null when the choice will be honoured, which is the ordinary case and gets no
+ * text at all. "Default" is always honoured: it asks for nothing in particular.
+ *
+ * The substitute is deliberately not named. The renderer picks it, and what it
+ * picks depends on what else is loaded, so promising a particular typeface here
+ * would be a guess. Observed on Android: an unbundled name falls back to
+ * whichever bundled font is present, not to a system face.
+ */
+internal fun unbundledFontNotice(selected: String?, bundled: Set<String>): String? {
+    val family = selected ?: return null
+    if (family in bundled) return null
+    return "$family is not bundled, so captions use a substitute typeface."
 }
 
 internal fun subtitleFormat(codec: String?): SubtitleFormat = when (codec?.lowercase()) {

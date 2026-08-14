@@ -201,6 +201,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                         graph = sessionGraph,
                         playback = playback,
                         playerSurface = dependencies.nativePlayerSurface,
+                        bundledSubtitleFonts = dependencies.bundledSubtitleFonts,
                         onSignOut = { sessionController.signOut() },
                         // Null in a shipped build, which removes the row entirely
                         // rather than hiding a live one behind a flag.

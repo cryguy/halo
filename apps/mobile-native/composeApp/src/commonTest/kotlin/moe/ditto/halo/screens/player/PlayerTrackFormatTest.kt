@@ -48,6 +48,26 @@ class PlayerTrackFormatTest {
     }
 
     @Test
+    fun onlyAFontTheAppCannotSupplyIsCalledOut() {
+        val bundled = setOf("JetBrains Mono")
+
+        // The ordinary cases say nothing: no choice at all, and a choice that
+        // is honoured.
+        assertEquals(null, unbundledFontNotice(null, bundled))
+        assertEquals(null, unbundledFontNotice("JetBrains Mono", bundled))
+
+        assertEquals(
+            "Inter is not bundled, so captions use a substitute typeface.",
+            unbundledFontNotice("Inter", bundled),
+        )
+        // A platform that ships nothing cannot honour any name.
+        assertEquals(
+            "JetBrains Mono is not bundled, so captions use a substitute typeface.",
+            unbundledFontNotice("JetBrains Mono", emptySet()),
+        )
+    }
+
+    @Test
     fun subtitleDetailCombinesLanguageAndFormat() {
         assertEquals(
             "eng · ASS",

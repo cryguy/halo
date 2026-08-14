@@ -27,9 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
+import moe.ditto.halo.SignedInGraph
 import moe.ditto.halo.player.MediaItem
 import moe.ditto.halo.player.PlaybackStatus
 import moe.ditto.halo.player.PlayerState
@@ -42,6 +46,18 @@ private const val BottomBarRiseMillis = 220
 private const val RailEnterMillis = 220
 private const val DrawerEnterMillis = 240
 private const val SeekStepSeconds = 10.0
+
+/**
+ * How far the caption steps up while the chrome is showing. Enough to clear the
+ * transport row, which is what lands on it.
+ */
+private const val ChromeCaptionLiftPercent = 12
+
+/**
+ * How long an appearance change has to settle before it is written. A drag
+ * across the size slider is one decision, not forty.
+ */
+private const val SettingsWriteDelayMillis = 800L
 
 /**
  * The playback screen.
@@ -70,8 +86,11 @@ private const val SeekStepSeconds = 10.0
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun PlayerScreen(
+    graph: SignedInGraph,
     playback: PlaybackHost,
     surface: NativePlayerSurface,
+    /** See [moe.ditto.halo.PlatformDependencies.bundledSubtitleFonts]. */
+    bundledSubtitleFonts: Set<String>,
     /** What is being played and what to call it; see [PlaybackContext]. */
     context: PlaybackContext,
     onBack: () -> Unit,
@@ -96,8 +115,30 @@ internal fun PlayerScreen(
         streamBadges(filename = context.filename, title = context.streamTitle, name = context.streamName)
     }
 
+    // Stored appearance first, then the source: applying it afterwards would
+    // show the first caption in the wrong size and correct it a frame later.
+    // The write-back is debounced because the size slider emits continuously
+    // and every settings write is a whole-document PUT.
     LaunchedEffect(item) {
+        val stored = subtitleStyleOf(graph.settings.current())
+        playback.applySubtitleStyle(stored)
         playback.play(item)
+
+        val storedPreference = SubtitlePreference(stored.scale, stored.font)
+        playback.state
+            .map { SubtitlePreference(it.subtitleScale, it.subtitleFont) }
+            .distinctUntilChanged()
+            .debounce(SettingsWriteDelayMillis)
+            .collect { preference ->
+                if (preference == storedPreference) return@collect
+                graph.settings.update { it.withSubtitlePreference(preference) }
+            }
+    }
+
+    // The bottom bar sits exactly where captions do, so the caption steps up
+    // out of its way while the chrome is up and drops back when it goes.
+    LaunchedEffect(controller.chromeVisible) {
+        playback.setSubtitleLift(if (controller.chromeVisible) ChromeCaptionLiftPercent else 0)
     }
 
     // The chrome starts up and hides itself once playback settles; pausing
@@ -290,8 +331,9 @@ internal fun PlayerScreen(
                 subtitleScale = state.subtitleScale,
                 subtitleDelaySeconds = state.subtitleDelaySeconds,
                 subtitleFont = state.subtitleFont,
-                trackStyling = controller.subtitleTrackStyling,
+                trackStyling = state.subtitleTrackStyling,
                 selectedAddonSubtitleId = controller.selectedAddonSubtitleId,
+                bundledSubtitleFonts = bundledSubtitleFonts,
                 audioDelaySeconds = controller.audioDelaySeconds,
                 playbackRate = state.playbackRate,
                 onSelectTab = controller::openRail,
@@ -307,7 +349,7 @@ internal fun PlayerScreen(
                         playback.setSubtitleDelay(seconds.coerceIn(-MaxDelaySeconds, MaxDelaySeconds))
                     }
                 },
-                onTrackStylingChange = controller::setTrackStyling,
+                onTrackStylingChange = { keep -> scope.launch { playback.setSubtitleTrackStyling(keep) } },
                 onSubtitleFontChange = { font -> scope.launch { playback.setSubtitleFont(font) } },
                 onSelectAudioTrack = { id -> scope.launch { playback.selectAudioTrack(id) } },
                 onAudioDelayChange = controller::setAudioDelay,

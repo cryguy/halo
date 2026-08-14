@@ -29,6 +29,12 @@ internal object PlayerFixtures {
     val StreamBadges = listOf("1080p", "HEVC 10-bit")
 
     /**
+     * Stands in for the platform's real answer, so the harness shows the
+     * unbundled-font notice on the chips that would trigger it.
+     */
+    val BundledSubtitleFonts = setOf("JetBrains Mono")
+
+    /**
      * How far ahead of the playhead the scene harness draws the transport's
      * buffered fill. The real screen reads the engine's demuxer cache instead;
      * this exists so the harness, which has no engine, still shows the fill.

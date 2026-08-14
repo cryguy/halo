@@ -29,6 +29,8 @@ data class PlayerState(
     val subtitleDelaySeconds: Double = 0.0,
     val subtitleScale: Double = 1.0,
     val subtitleFont: String? = null,
+    /** True while a styled script keeps its own fonts and positions. */
+    val subtitleTrackStyling: Boolean = true,
 )
 
 class PlayerPresenter(
@@ -90,6 +92,32 @@ class PlayerPresenter(
         if (state.status == PlaybackStatus.Released) return
         player.setSubtitleFont(font)
         state = state.copy(subtitleFont = font)
+    }
+
+    suspend fun setSubtitleTrackStyling(keepScript: Boolean) {
+        if (state.status == PlaybackStatus.Released) return
+        player.setSubtitleTrackStyling(keepScript)
+        state = state.copy(subtitleTrackStyling = keepScript)
+    }
+
+    /**
+     * Outline and shadow have no echo in [PlayerState]: nothing on screen shows
+     * them back, and a field no reader consults is a second source of truth
+     * waiting to disagree with the engine.
+     */
+    suspend fun setSubtitleOutline(widthPixels: Double) {
+        if (state.status == PlaybackStatus.Released || !widthPixels.isFinite() || widthPixels < 0.0) return
+        player.setSubtitleOutline(widthPixels)
+    }
+
+    suspend fun setSubtitleShadow(offsetPixels: Double) {
+        if (state.status == PlaybackStatus.Released || !offsetPixels.isFinite() || offsetPixels < 0.0) return
+        player.setSubtitleShadow(offsetPixels)
+    }
+
+    suspend fun setSubtitleLift(percent: Int) {
+        if (state.status == PlaybackStatus.Released) return
+        player.setSubtitleLift(percent.coerceIn(0, MaxSubtitleLiftPercent))
     }
 
     suspend fun addSubtitle(url: String) {
@@ -161,6 +189,13 @@ class PlayerPresenter(
         return PlayerState(current = next, status = PlaybackStatus.Loading)
     }
 }
+
+/**
+ * Half the picture is as far as a caption can sensibly be pushed; past that it
+ * is no longer a caption, and a bad persisted value must not be able to send it
+ * off the top of the frame.
+ */
+private const val MaxSubtitleLiftPercent = 50
 
 /**
  * Drops the figures a host reported as unusable, so the state never carries a

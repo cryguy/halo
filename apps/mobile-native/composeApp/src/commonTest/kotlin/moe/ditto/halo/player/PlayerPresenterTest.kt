@@ -253,6 +253,54 @@ class PlayerPresenterTest {
     }
 
     @Test
+    fun trackStylingPassesThroughAndEchoesIntoState() = runTest {
+        val port = RecordingPlayerPort()
+        val presenter = PlayerPresenter(port)
+        presenter.start(first)
+
+        // The switch defaults on, so the first meaningful move is off.
+        presenter.setSubtitleTrackStyling(false)
+
+        assertEquals(listOf(false), port.trackStylings)
+        assertEquals(false, presenter.state.subtitleTrackStyling)
+    }
+
+    @Test
+    fun negativeOutlineAndShadowNeverReachTheCore() = runTest {
+        val port = RecordingPlayerPort()
+        val presenter = PlayerPresenter(port)
+        presenter.start(first)
+
+        presenter.setSubtitleOutline(0.0)
+        presenter.setSubtitleOutline(-1.0)
+        presenter.setSubtitleOutline(Double.NaN)
+        presenter.setSubtitleShadow(2.0)
+        presenter.setSubtitleShadow(-2.0)
+
+        // Zero is a real choice (no outline); a negative one is a bad reading.
+        assertEquals(listOf(0.0), port.outlineWidths)
+        assertEquals(listOf(2.0), port.shadowOffsets)
+    }
+
+    @Test
+    fun subtitleStylingAfterReleaseIsDropped() = runTest {
+        val port = RecordingPlayerPort()
+        val presenter = PlayerPresenter(port)
+        presenter.start(first)
+        presenter.close()
+
+        presenter.setSubtitleTrackStyling(false)
+        presenter.setSubtitleOutline(1.0)
+        presenter.setSubtitleShadow(2.0)
+        presenter.setSubtitleLift(12)
+
+        assertEquals(emptyList<Boolean>(), port.trackStylings)
+        assertEquals(emptyList<Double>(), port.outlineWidths)
+        assertEquals(emptyList<Double>(), port.shadowOffsets)
+        assertEquals(emptyList<Int>(), port.lifts)
+    }
+
+    @Test
     fun invalidSubtitleValuesNeverReachTheCore() = runTest {
         val port = RecordingPlayerPort()
         val presenter = PlayerPresenter(port)
@@ -292,6 +340,10 @@ class PlayerPresenterTest {
         val subtitleDelays = mutableListOf<Double>()
         val subtitleScales = mutableListOf<Double>()
         val subtitleFonts = mutableListOf<String?>()
+        val trackStylings = mutableListOf<Boolean>()
+        val outlineWidths = mutableListOf<Double>()
+        val shadowOffsets = mutableListOf<Double>()
+        val lifts = mutableListOf<Int>()
         val addedSubtitles = mutableListOf<String>()
         var teardownCount = 0
             private set
@@ -319,6 +371,22 @@ class PlayerPresenterTest {
 
         override suspend fun setSubtitleFont(font: String?) {
             subtitleFonts += font
+        }
+
+        override suspend fun setSubtitleTrackStyling(keepScript: Boolean) {
+            trackStylings += keepScript
+        }
+
+        override suspend fun setSubtitleOutline(widthPixels: Double) {
+            outlineWidths += widthPixels
+        }
+
+        override suspend fun setSubtitleShadow(offsetPixels: Double) {
+            shadowOffsets += offsetPixels
+        }
+
+        override suspend fun setSubtitleLift(percent: Int) {
+            lifts += percent
         }
 
         override suspend fun addSubtitle(url: String) {

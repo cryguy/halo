@@ -11,6 +11,7 @@ import moe.ditto.halo.player.PlayerEvent
 import moe.ditto.halo.player.PlayerPort
 import moe.ditto.halo.player.PlayerPresenter
 import moe.ditto.halo.player.PlayerState
+import moe.ditto.halo.player.SubtitleStyle
 
 /**
  * The app's single playback owner: one presenter over the one native core the
@@ -117,6 +118,44 @@ internal class PlaybackHost(private val playerPort: PlayerPort) {
 
     suspend fun setSubtitleFont(font: String?) {
         playerPresenter.setSubtitleFont(font)
+        publish()
+    }
+
+    /**
+     * The stored caption appearance, applied as one step. Callers restore this
+     * before starting a source so the first caption is already right, rather
+     * than correcting itself a moment after it appears.
+     */
+    suspend fun applySubtitleStyle(style: SubtitleStyle) {
+        playerPresenter.setSubtitleScale(style.scale)
+        playerPresenter.setSubtitleFont(style.font)
+        playerPresenter.setSubtitleOutline(style.outlineWidthPixels)
+        playerPresenter.setSubtitleShadow(style.shadowOffsetPixels)
+        publish()
+    }
+
+    suspend fun setSubtitleTrackStyling(keepScript: Boolean) {
+        playerPresenter.setSubtitleTrackStyling(keepScript)
+        publish()
+    }
+
+    suspend fun setSubtitleOutline(widthPixels: Double) {
+        playerPresenter.setSubtitleOutline(widthPixels)
+        publish()
+    }
+
+    suspend fun setSubtitleShadow(offsetPixels: Double) {
+        playerPresenter.setSubtitleShadow(offsetPixels)
+        publish()
+    }
+
+    suspend fun setSubtitleLift(percent: Int) {
+        playerPresenter.setSubtitleLift(percent)
+        publish()
+    }
+
+    suspend fun addSubtitle(url: String) {
+        playerPresenter.addSubtitle(url)
         publish()
     }
 

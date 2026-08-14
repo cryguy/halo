@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.4 complete.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.5 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -272,7 +272,7 @@ presenter/controller tests.
   `PlayerEvent.BufferingChanged(active, percent, bytesPerSecond, cachedSeconds)`;
   presenter state; buffering overlay goes live. Also observe `demuxer-cache-time` for the
   transport bar's buffered fill.
-- [ ] **2.5 Subtitle styling engine knobs** —
+- [x] **2.5 Subtitle styling engine knobs** —
   `setSubtitleTrackStyling(keepScript: Boolean)` → `sub-ass-override` `no`/`force`;
   `setSubtitleOutline(outline)` + shadow → `sub-border-size`/`sub-shadow-offset` (reuse the
   `SubtitleOutline` enum from `ApiDtos.kt`); caption lift when chrome shows → `sub-pos`/margin.

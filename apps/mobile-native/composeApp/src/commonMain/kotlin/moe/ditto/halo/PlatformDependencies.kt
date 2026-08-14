@@ -31,6 +31,16 @@ internal data class PlatformDependencies(
      */
     val oidcSessionPort: OidcSessionPort = NoOidcSessionPort,
     val playerPort: PlayerPort,
+    /**
+     * Subtitle typefaces the platform actually ships to the caption renderer.
+     *
+     * Naming a family the device does not have is not an error anywhere: the
+     * renderer quietly substitutes, so a font control would appear to work and
+     * change nothing. Knowing which names are real is what lets the screen say
+     * so. Empty means the platform bundles none and every choice is a request
+     * the system may or may not honour.
+     */
+    val bundledSubtitleFonts: Set<String> = emptySet(),
     val playerEvents: Flow<PlayerEvent> = emptyFlow(),
     val authEvents: Flow<AuthEvent> = emptyFlow(),
     val nativePlayerSurface: NativePlayerSurface,

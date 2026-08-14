@@ -198,7 +198,37 @@ internal class MpvCore private constructor(
 
     fun setSubtitleFont(font: String?) {
         if (destroyed) return
-        mpv.setPropertyString("sub-font", font ?: "sans-serif")
+        mpv.setPropertyString("sub-font", font ?: DefaultSubtitleFont)
+    }
+
+    /**
+     * `no` leaves a script's own styling alone; `force` replaces its fonts,
+     * sizes and positions with the player's. mpv has no third state, and the
+     * two names read backwards from the switch, which is why the mapping is
+     * here rather than at the call site.
+     */
+    fun setSubtitleTrackStyling(keepScript: Boolean) {
+        if (destroyed) return
+        mpv.setPropertyString("sub-ass-override", if (keepScript) "no" else "force")
+    }
+
+    fun setSubtitleOutline(widthPixels: Double) {
+        if (destroyed) return
+        mpv.setPropertyDouble("sub-border-size", widthPixels)
+    }
+
+    fun setSubtitleShadow(offsetPixels: Double) {
+        if (destroyed) return
+        mpv.setPropertyDouble("sub-shadow-offset", offsetPixels)
+    }
+
+    /**
+     * mpv counts `sub-pos` downwards from the top, so a lift is a subtraction.
+     * 100 is the resting place at the bottom edge.
+     */
+    fun setSubtitleLift(percent: Int) {
+        if (destroyed) return
+        mpv.setPropertyInt("sub-pos", 100 - percent)
     }
 
     fun addSubtitle(url: String) {
@@ -295,6 +325,9 @@ internal class MpvCore private constructor(
         const val LOG_TAG = "HALO_MPV"
         private const val VO = "gpu"
 
+        /** What "no particular font" means to the renderer. */
+        private const val DefaultSubtitleFont = "sans-serif"
+
         /** Create + configure + initialize a fresh core with a stable [id]. */
         fun create(context: Context, id: String): MpvCore {
             val mpv = MPVLib.create(context) ?: error("MPVLib.create returned null")
@@ -312,6 +345,10 @@ internal class MpvCore private constructor(
             mpv.setOptionString("slang", "eng,en")
             mpv.setOptionString("subs-fallback", "yes")
             mpv.setOptionString("embeddedfonts", "yes")
+            // Fonts the app ships, so a chosen family resolves to that family
+            // rather than to whichever system face fontconfig settles on.
+            // Pre-init: libass builds its font provider during initialisation.
+            SubtitleFontLibrary.prepare(context)?.let { mpv.setOptionString("sub-fonts-dir", it) }
 
             val core = MpvCore(mpv, id)
             mpv.addLogObserver(core.logObserver)

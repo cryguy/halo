@@ -41,6 +41,23 @@ data class PlayerBuffering(
     val cachedSeconds: Double? = null,
 )
 
+/**
+ * How captions are drawn, as one value because the four settings are stored,
+ * restored and applied together: applying them one at a time on load would
+ * repaint the caption in three intermediate looks first.
+ */
+data class SubtitleStyle(
+    val scale: Double = 1.0,
+    val font: String? = null,
+    val outlineWidthPixels: Double = DefaultOutlineWidthPixels,
+    val shadowOffsetPixels: Double = 0.0,
+) {
+    companion object {
+        /** The renderer's own outline weight, which is what "normal" means. */
+        const val DefaultOutlineWidthPixels = 3.0
+    }
+}
+
 sealed interface PlayerEvent {
     data class Ready(val durationSeconds: Double?) : PlayerEvent
     data class PositionChanged(val positionSeconds: Double) : PlayerEvent
@@ -87,6 +104,29 @@ interface PlayerPort {
     suspend fun setSubtitleDelay(seconds: Double)
     suspend fun setSubtitleScale(scale: Double)
     suspend fun setSubtitleFont(font: String?)
+
+    /**
+     * Whether a styled script keeps its own fonts and positions, or is
+     * overridden with the app's styling. Only script formats (ASS/SSA) carry
+     * styling to keep; for everything else this is inert by construction.
+     */
+    suspend fun setSubtitleTrackStyling(keepScript: Boolean)
+
+    /**
+     * Outline and drop shadow, in the same pixel units the renderer draws them
+     * in. Named in pixels rather than as a preset because the engine has no
+     * opinion about what "thick" means; the screen owns that mapping.
+     */
+    suspend fun setSubtitleOutline(widthPixels: Double)
+    suspend fun setSubtitleShadow(offsetPixels: Double)
+
+    /**
+     * Lifts the caption off the bottom edge by [percent] of the video height,
+     * so the chrome's bottom bar does not land on top of it. Zero is the
+     * renderer's own resting place.
+     */
+    suspend fun setSubtitleLift(percent: Int)
+
     suspend fun addSubtitle(url: String)
 
     /**
