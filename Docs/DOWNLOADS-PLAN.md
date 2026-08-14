@@ -126,18 +126,31 @@ with every canned stream pointing at one local video over byte ranges. An emulat
 
 ## Slice 1 — engine, index, storage port (no UI)
 
-- [ ] `DownloadStoragePort` + `NoDownloadStorage`; `AndroidDownloadStorage` (filesDir) and
+- [x] `DownloadStoragePort` + `NoDownloadStorage`; `AndroidDownloadStorage` (filesDir) and
   `IosDownloadStorage` (Documents, backup-excluded); wired through `PlatformDependencies`,
   `MainActivity` and `MainViewController`.
-- [ ] `DownloadEntry`, `DownloadStatus`, `StorageKeys.Downloads`, `DownloadIndex`.
-- [ ] `DownloadPaths`: naming, whitelist, join, orphan sweep.
-- [ ] `DownloadTransfer` + `HttpRangeTransfer`: `Range` + `If-Range` resume, `.part` file, atomic
+- [x] `DownloadEntry`, `DownloadStatus`, `StorageKeys.Downloads`, `DownloadIndex`.
+- [x] `DownloadPaths`: naming, whitelist, join, orphan sweep.
+- [x] `DownloadTransfer` + `HttpRangeTransfer`: `Range` + `If-Range` resume, `.part` file, atomic
   move, throttled progress, stall watchdog.
-- [ ] `DownloadsCoordinator` in `SignedInGraph`: queue of one, single writer, state flow,
+- [x] `DownloadsCoordinator` in `SignedInGraph`: queue of one, single writer, state flow,
   cold-start `Downloading → Paused` reconcile.
-- [ ] commonTest over okio `FakeFileSystem` and Ktor `MockEngine`: resume from partial, server
+- [x] commonTest over okio `FakeFileSystem` and Ktor `MockEngine`: resume from partial, server
   ignoring `Range`, changed validator, pause mid-transfer, queue ordering, cold-start reconcile,
   index round-trip, corrupt-entry tolerance, sweep leaving referenced files alone.
+
+**Done 2026-08-15.** 464 unit tests pass (33 new), common metadata, iOS simulator Kotlin and the
+debug APK all build. Notes worth carrying:
+
+- `runTest`'s `backgroundScope` is not advanced by the scheduler, so a coordinator given that
+  scope never runs its queue and every queue assertion sees nothing happen. The tests give it a
+  scope of their own built on the test dispatcher.
+- The first progress report is emitted before the first byte, because it is what carries the
+  validator: a transfer paused inside the throttle window would otherwise have nothing to guard
+  its own resume with.
+- `remove` stops the transfer before deleting its files rather than under it.
+- Entries restored as paused are re-measured from their partial file, and a finished entry whose
+  file has gone stops claiming to be on the device.
 
 ## Slice 2 — the Downloads tab
 

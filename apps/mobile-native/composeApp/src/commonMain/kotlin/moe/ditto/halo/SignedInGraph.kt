@@ -12,6 +12,12 @@ import moe.ditto.halo.auth.TokenProvider
 import moe.ditto.halo.browse.AddonsRepository
 import moe.ditto.halo.browse.BrowseRepository
 import moe.ditto.halo.cache.QueryCache
+import moe.ditto.halo.downloads.DownloadIndex
+import moe.ditto.halo.downloads.DownloadStoragePort
+import moe.ditto.halo.downloads.DownloadsCoordinator
+import moe.ditto.halo.downloads.HttpRangeTransfer
+import moe.ditto.halo.downloads.NoDownloadStorage
+import moe.ditto.halo.downloads.downloadFileSystem
 import moe.ditto.halo.player.StreamVideoHasher
 import moe.ditto.halo.player.SubtitleFileCache
 import moe.ditto.halo.storage.KeyValueStore
@@ -45,6 +51,7 @@ internal class SignedInGraph(
     onUnauthorized: suspend () -> Unit,
     keyValueStore: KeyValueStore,
     subtitleCacheDirectory: String,
+    downloadStorage: DownloadStoragePort = NoDownloadStorage,
     clock: EpochClock = SystemEpochClock,
 ) {
     /**
@@ -78,6 +85,21 @@ internal class SignedInGraph(
      */
     val videoHasher = StreamVideoHasher(httpClient)
     val subtitleFiles = SubtitleFileCache(client, subtitleCacheDirectory)
+
+    /**
+     * The one downloads owner. Session-scoped like everything else here, which
+     * means signing out cancels whatever was transferring: the entries are
+     * device-local and survive, but a different user must not inherit the
+     * previous one's transfers. Shares the session's HTTP client because a
+     * download talks to the source host, exactly as the hasher does.
+     */
+    val downloads = DownloadsCoordinator(
+        index = DownloadIndex(keyValueStore),
+        storage = downloadStorage,
+        transfer = HttpRangeTransfer(httpClient, downloadFileSystem(), clock),
+        clock = clock,
+        scope = scope,
+    )
 
     /**
      * Device-local, so they are not per-user the way the cache is; they are

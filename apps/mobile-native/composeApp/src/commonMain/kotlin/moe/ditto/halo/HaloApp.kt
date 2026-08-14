@@ -185,6 +185,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                     onUnauthorized = { sessionController.rejectSession(sessionGeneration) },
                     keyValueStore = dependencies.keyValueStore,
                     subtitleCacheDirectory = dependencies.subtitleCacheDirectory,
+                    downloadStorage = dependencies.downloadStorage,
                 )
             }
         }

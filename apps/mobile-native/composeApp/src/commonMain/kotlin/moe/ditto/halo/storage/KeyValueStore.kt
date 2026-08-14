@@ -38,4 +38,11 @@ object StorageKeys {
 
     /** Player framing on this device. It is intentionally not synced. */
     const val VideoFitMode = "halo.videoFitMode.v1"
+
+    /**
+     * Downloaded videos and their transfer state. Device-local of necessity:
+     * it describes files on this device, so syncing it would tell another
+     * device it holds media it has never seen.
+     */
+    const val Downloads = "halo.downloads.v1"
 }

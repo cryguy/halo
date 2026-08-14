@@ -4,6 +4,7 @@ import androidx.compose.ui.window.ComposeUIViewController
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.Platform
 import moe.ditto.halo.auth.IosKeychainStorage
+import moe.ditto.halo.downloads.IosDownloadStorage
 import moe.ditto.halo.storage.IosUserDefaultsStore
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
@@ -48,6 +49,10 @@ fun MainViewController(
         keyValueStore = IosUserDefaultsStore(),
         imageCacheDirectory = imageCacheDirectory(),
         subtitleCacheDirectory = subtitleCacheDirectory(),
+        // Documents, not Caches: the system purges Caches, and downloaded media
+        // is the one thing here that cannot be fetched again on demand. The
+        // port marks the directory as excluded from backup for the same reason.
+        downloadStorage = IosDownloadStorage(),
         // Whether the Kotlin framework itself was linked debug. Taken from the
         // binary rather than plumbed down from Swift so the host cannot pass
         // the wrong answer, and so a release framework has no way to say yes.

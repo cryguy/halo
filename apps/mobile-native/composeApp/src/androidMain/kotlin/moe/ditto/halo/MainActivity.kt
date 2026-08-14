@@ -10,6 +10,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import moe.ditto.halo.auth.AndroidSecureStorage
 import moe.ditto.halo.auth.KtorAndroidOidcWire
 import moe.ditto.halo.auth.KtorAuthConfigSource
+import moe.ditto.halo.downloads.AndroidDownloadStorage
 import moe.ditto.halo.player.AndroidPlayerSystemPort
 import moe.ditto.halo.player.AndroidVideoFrameSource
 import moe.ditto.halo.player.SubtitleFontLibrary
@@ -62,6 +63,10 @@ class MainActivity : ComponentActivity() {
             // system may reclaim it, which suits re-fetchable poster art.
             imageCacheDirectory = File(applicationContext.cacheDir, "halo-images").path,
             subtitleCacheDirectory = File(applicationContext.cacheDir, "halo-subtitles").path,
+            // filesDir, not cacheDir: the system may reclaim a cache at any
+            // time, and a downloaded film is the one thing here that cannot be
+            // fetched again on demand.
+            downloadStorage = AndroidDownloadStorage(applicationContext),
             // The manifest's own debuggable flag, so a release build cannot
             // reach the diagnostics harness. Read from ApplicationInfo rather
             // than BuildConfig, which this module does not generate.

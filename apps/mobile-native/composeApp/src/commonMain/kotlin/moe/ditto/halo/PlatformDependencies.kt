@@ -8,6 +8,8 @@ import moe.ditto.halo.auth.NativeHostRequests
 import moe.ditto.halo.auth.NoOidcSessionPort
 import moe.ditto.halo.auth.OidcSessionPort
 import moe.ditto.halo.auth.SecureStorage
+import moe.ditto.halo.downloads.DownloadStoragePort
+import moe.ditto.halo.downloads.NoDownloadStorage
 import moe.ditto.halo.storage.KeyValueStore
 import moe.ditto.halo.player.PlayerEvent
 import moe.ditto.halo.player.NoPlayerSystemPort
@@ -31,6 +33,14 @@ internal data class PlatformDependencies(
     val imageCacheDirectory: String,
     /** App-private, purgeable storage for authenticated external subtitles. */
     val subtitleCacheDirectory: String,
+    /**
+     * Where downloaded media is kept, and how much room is left for more. Not a
+     * plain path like the two caches above, because the answer can be "this
+     * platform has nowhere to put them"; see [DownloadStoragePort]. Defaults to
+     * exactly that, which is what a platform without an implementation should
+     * say rather than write files somewhere the system may reclaim.
+     */
+    val downloadStorage: DownloadStoragePort = NoDownloadStorage,
     /**
      * Native OIDC session owner; [NoOidcSessionPort] where the platform has
      * no OIDC host yet (Android until its port, fakes in tests).
