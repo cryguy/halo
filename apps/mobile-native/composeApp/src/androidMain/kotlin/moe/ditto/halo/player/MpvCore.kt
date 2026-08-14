@@ -47,12 +47,10 @@ internal class MpvCore private constructor(
     // the overlay needs both at once.
     @Volatile private var pausedForCache = false
     @Volatile private var cacheFillPercent: Int? = null
-    // END_FILE's reason is hidden by this JNI binding, so preserve mpv's own
-    // last error line and combine it with the two facts the binding does expose:
-    // whether EOF was reached and whether this app explicitly stopped it.
-    @Volatile private var lastErrorMessage: String? = null
-    @Volatile private var eofReached = false
-    @Volatile private var stoppedByApp = false
+    // END_FILE's reason is hidden by this JNI binding. The small state machine
+    // distinguishes a real failure from the END_FILE that loadfile emits for
+    // the file it replaced, and serializes the caller, event and log threads.
+    private val fileLifecycle = MpvFileLifecycle()
 
     private val eventObserver = object : MPVLib.EventObserver {
         /**
@@ -101,8 +99,7 @@ internal class MpvCore private constructor(
         override fun eventProperty(property: String, value: Boolean) {
             when (property) {
                 "pause" -> listener?.onPauseChanged(value)
-                "eof-reached" -> if (value) {
-                    eofReached = true
+                "eof-reached" -> if (value && fileLifecycle.markEofReached()) {
                     listener?.onEnded()
                 }
                 "paused-for-cache" -> {
@@ -116,12 +113,10 @@ internal class MpvCore private constructor(
 
         override fun event(eventId: Int) {
             when (eventId) {
+                MPVLib.MpvEvent.MPV_EVENT_START_FILE -> fileLifecycle.onFileStarted()
                 MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> onFileLoaded()
-                MPVLib.MpvEvent.MPV_EVENT_END_FILE -> {
-                    if (!stoppedByApp && !eofReached) {
-                        listener?.onError(lastErrorMessage ?: "Playback ended unexpectedly.")
-                    }
-                }
+                MPVLib.MpvEvent.MPV_EVENT_END_FILE ->
+                    fileLifecycle.endFileFailure()?.let { listener?.onError(it) }
                 MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> listener?.onEnded()
             }
         }
@@ -137,14 +132,10 @@ internal class MpvCore private constructor(
             Log.i(LOG_TAG, "[$id][$prefix] $message")
             // Preserve exactly what mpv said. No URL, HTTP status or host is
             // added by this layer; the error card prints this string verbatim.
-            if (lastErrorMessage == null &&
-                level in MPVLib.MpvLogLevel.MPV_LOG_LEVEL_FATAL..MPVLib.MpvLogLevel.MPV_LOG_LEVEL_ERROR &&
+            if (level in MPVLib.MpvLogLevel.MPV_LOG_LEVEL_FATAL..MPVLib.MpvLogLevel.MPV_LOG_LEVEL_ERROR &&
                 message.isNotEmpty()
             ) {
-                // The first error is the one that caused the failure. Hooks that
-                // react afterwards may log their own generic failures, and the
-                // last of those would hide the actual cause on the card.
-                lastErrorMessage = message
+                fileLifecycle.recordError(message)
             }
         }
     }
@@ -192,15 +183,13 @@ internal class MpvCore private constructor(
 
     fun load(url: String) {
         if (destroyed) return
-        lastErrorMessage = null
-        eofReached = false
-        stoppedByApp = false
+        fileLifecycle.onLoadRequested()
         mpv.command(arrayOf("loadfile", url))
     }
 
     fun stop() {
         if (destroyed) return
-        stoppedByApp = true
+        fileLifecycle.onStopRequested()
         mpv.command(arrayOf("stop"))
     }
 
@@ -434,5 +423,67 @@ internal class MpvCore private constructor(
             mpv.observeProperty("demuxer-cache-time", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)
             return core
         }
+    }
+}
+
+/**
+ * Attributes mpv file-ending events when the Android binding exposes only the
+ * event id, not `mpv_end_file_reason`.
+ *
+ * `loadfile` ends the old file before starting its replacement. That expected
+ * END_FILE must not fail the new item. The counter, rather than a Boolean,
+ * also handles two rapid replacements before mpv's event thread catches up.
+ */
+internal class MpvFileLifecycle {
+    private val lock = Any()
+    private var fileActive = false
+    private var expectedReplacementEndFiles = 0
+    private var lastErrorMessage: String? = null
+    private var eofReached = false
+
+    fun onLoadRequested() = synchronized(lock) {
+        if (fileActive) expectedReplacementEndFiles += 1
+        fileActive = true
+        lastErrorMessage = null
+        eofReached = false
+    }
+
+    fun onStopRequested() = synchronized(lock) {
+        if (!fileActive) return@synchronized
+        expectedReplacementEndFiles += 1
+        fileActive = false
+    }
+
+    /**
+     * START_FILE separates diagnostics from the replaced connection and the
+     * new one. Harmless TLS close noise from the old stream must not be shown
+     * if the new stream later has a genuine failure.
+     */
+    fun onFileStarted() = synchronized(lock) {
+        lastErrorMessage = null
+        eofReached = false
+    }
+
+    /** Keeps the first useful diagnostic because later hooks are often generic. */
+    fun recordError(message: String) = synchronized(lock) {
+        if (lastErrorMessage == null) lastErrorMessage = message
+    }
+
+    /** True only for the first EOF observation for the current file. */
+    fun markEofReached(): Boolean = synchronized(lock) {
+        if (eofReached) return@synchronized false
+        eofReached = true
+        true
+    }
+
+    /** A real current-file failure, or null for replacement and natural endings. */
+    fun endFileFailure(): String? = synchronized(lock) {
+        if (expectedReplacementEndFiles > 0) {
+            expectedReplacementEndFiles -= 1
+            return@synchronized null
+        }
+        fileActive = false
+        if (eofReached) return@synchronized null
+        lastErrorMessage ?: "Playback ended unexpectedly."
     }
 }

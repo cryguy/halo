@@ -149,6 +149,33 @@ class PlayerOwnershipInstrumentedTest {
         rule.onNode(hasText("create 1", substring = true)).assertExists()
     }
 
+    @Test
+    fun replacingPlayingFileDoesNotFailTheReplacement() {
+        gotoPlayer()
+        rule.waitUntil(25_000) {
+            rule.onAllNodes(hasText("Status: Playing", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // This is the production failure sequence: loadfile ends the old file
+        // before starting the replacement. The Android binding does not expose
+        // mpv_end_file_reason, so the old END_FILE used to make the presenter
+        // terminally Failed even while the replacement's audio kept playing.
+        rule.onNodeWithContentDescription("Load ASS (HTTP)").performClick()
+        refreshUntil("Playback: load 2")
+
+        rule.waitUntil(25_000) {
+            rule.onAllNodes(hasText("Status: Playing", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+        // Give the replaced file's delayed END_FILE enough time to arrive. A
+        // check made immediately after the new FILE_LOADED event would miss the
+        // exact race this test is meant to catch.
+        Thread.sleep(1_500)
+        rule.waitForIdle()
+
+        rule.onNode(hasText("Status: Playing", substring = true)).assertExists()
+        rule.onNode(hasText("Status: Failed", substring = true)).assertDoesNotExist()
+    }
+
     /**
      * DEVICE-ONLY. Recreating the core exercises mpv core-lifecycle churn
      * (`mpv.detachSurface()` + a second `MPVLib.create`/`init`), which hangs on
