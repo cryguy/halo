@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.7 complete.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.8 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -288,7 +288,7 @@ presenter/controller tests.
   FROM ADDONS section live; selection → `addSubtitle(url)` (proxied via `proxyUrl` when needed);
   explicit choices → `SubtitleChoiceStore` (exists); restore per video→item on start;
   preferred-language default never writes memory.
-- [ ] **2.8 Gestures + system services** — new commonMain `PlayerSystemPort` (not `PlayerPort`:
+- [x] **2.8 Gestures + system services** — new commonMain `PlayerSystemPort` (not `PlayerPort`:
   none of this is the media engine): window brightness get/set, system media volume get/set/steps,
   landscape lock/unlock, keep-screen-on. Android impl (Activity window attrs, `AudioManager`,
   `requestedOrientation` SENSOR_LANDSCAPE, `FLAG_KEEP_SCREEN_ON`); iOS no-op for now; inject via

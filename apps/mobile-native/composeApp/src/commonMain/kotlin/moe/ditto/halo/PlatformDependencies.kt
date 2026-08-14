@@ -10,7 +10,9 @@ import moe.ditto.halo.auth.OidcSessionPort
 import moe.ditto.halo.auth.SecureStorage
 import moe.ditto.halo.storage.KeyValueStore
 import moe.ditto.halo.player.PlayerEvent
+import moe.ditto.halo.player.NoPlayerSystemPort
 import moe.ditto.halo.player.PlayerPort
+import moe.ditto.halo.player.PlayerSystemPort
 
 internal data class PlatformDependencies(
     val authConfigSource: AuthConfigSource,
@@ -31,6 +33,13 @@ internal data class PlatformDependencies(
      */
     val oidcSessionPort: OidcSessionPort = NoOidcSessionPort,
     val playerPort: PlayerPort,
+    /**
+     * Brightness, volume, orientation and the sleep timer. Separate from
+     * [playerPort] because none of it is the media engine; see
+     * [PlayerSystemPort]. Defaults to doing nothing, which is what a platform
+     * without an implementation should do rather than pretend.
+     */
+    val playerSystemPort: PlayerSystemPort = NoPlayerSystemPort,
     /**
      * Subtitle typefaces the platform actually ships to the caption renderer.
      *

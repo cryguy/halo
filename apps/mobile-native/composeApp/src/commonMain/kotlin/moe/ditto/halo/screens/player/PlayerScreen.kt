@@ -9,11 +9,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,7 +26,6 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -38,6 +37,7 @@ import moe.ditto.halo.cache.QueryState
 import moe.ditto.halo.player.MediaItem
 import moe.ditto.halo.player.PlaybackStatus
 import moe.ditto.halo.player.PlayerState
+import moe.ditto.halo.player.PlayerSystemPort
 import moe.ditto.halo.player.PlayerTracks
 import moe.ditto.halo.ui.HaloColors
 
@@ -92,6 +92,8 @@ internal fun PlayerScreen(
     surface: NativePlayerSurface,
     /** See [moe.ditto.halo.PlatformDependencies.bundledSubtitleFonts]. */
     bundledSubtitleFonts: Set<String>,
+    /** Brightness, volume, orientation and the sleep timer. */
+    system: PlayerSystemPort,
     /** What is being played and what to call it; see [PlaybackContext]. */
     context: PlaybackContext,
     onBack: () -> Unit,
@@ -102,6 +104,10 @@ internal fun PlayerScreen(
     val metrics = rememberPlayerMetrics()
     val controller = remember(scope) { PlayerScreenController(scope) }
     var leaving by remember { mutableStateOf(false) }
+    // Held across the frames of one drag; null between gestures, and null
+    // during one the platform could not give a starting value for.
+    var dragAdjustment by remember { mutableStateOf<VerticalDragAdjustment?>(null) }
+    var dragTarget by remember { mutableStateOf<VerticalDragTarget?>(null) }
 
     // The video is the item, so the video id names it. The URL is one way to
     // reach that item and not what it is. Two sources for the same episode are
@@ -187,6 +193,22 @@ internal fun PlayerScreen(
         playback.setSubtitleLift(if (controller.chromeVisible) ChromeCaptionLiftPercent else 0)
     }
 
+    // Landscape and a display that will not sleep, for as long as this screen
+    // exists. Disposal rather than the back handler, because the error card's
+    // exit and a system-initiated one leave the same way and would otherwise
+    // strand the device in landscape with the screen pinned on.
+    DisposableEffect(system) {
+        system.lockLandscape()
+        system.setKeepScreenOn(true)
+        onDispose {
+            system.restoreOrientation()
+            system.setKeepScreenOn(false)
+            // The window's brightness override belongs to the player, not to
+            // the app: leaving it set would dim every other screen.
+            system.clearScreenBrightnessOverride()
+        }
+    }
+
     // The chrome starts up and hides itself once playback settles; pausing
     // suppresses that, which is why the controller is told about it rather than
     // reading playback state itself.
@@ -237,14 +259,45 @@ internal fun PlayerScreen(
         // The engine paints the whole box; everything else sits on top of it.
         surface.Content(Modifier.fillMaxSize())
 
-        // The video is also the control that shows and hides the chrome. This
-        // sits below the chrome, so a tap on a button reaches the button.
+        // The video is also the control surface. This sits below the chrome, so
+        // a tap on a button reaches the button rather than the video.
         Box(
             Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures { controller.toggleChrome() }
-                },
+                .playerGestures(
+                    onTap = controller::toggleChrome,
+                    onDoubleTapLeft = {
+                        scope.launch { playback.seekTo(state.positionSeconds - SeekStepSeconds) }
+                    },
+                    onDoubleTapRight = {
+                        scope.launch { playback.seekTo(state.positionSeconds + SeekStepSeconds) }
+                    },
+                    onDragStart = { target, heightPx ->
+                        val baseline = when (target) {
+                            VerticalDragTarget.Brightness -> system.screenBrightness()
+                            VerticalDragTarget.Volume -> system.volume()
+                        }
+                        // A platform that will not report the current value has
+                        // nothing to adjust from, and guessing one would make
+                        // the first movement of the drag a jump.
+                        dragAdjustment = baseline?.let { VerticalDragAdjustment(it, heightPx) }
+                        dragTarget = target
+                        if (baseline != null) controller.showHud(target.hudKind(), baseline)
+                    },
+                    onDrag = { totalDragPx ->
+                        val value = dragAdjustment?.advance(totalDragPx) ?: return@playerGestures
+                        val target = dragTarget ?: return@playerGestures
+                        when (target) {
+                            VerticalDragTarget.Brightness -> system.setScreenBrightness(value)
+                            VerticalDragTarget.Volume -> system.setVolume(value)
+                        }
+                        controller.showHud(target.hudKind(), value)
+                    },
+                    onDragEnd = {
+                        dragAdjustment = null
+                        dragTarget = null
+                    },
+                ),
         )
 
         AnimatedVisibility(

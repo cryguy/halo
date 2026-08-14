@@ -58,6 +58,7 @@ import moe.ditto.halo.screens.DownloadsScreen
 import moe.ditto.halo.screens.HomeScreen
 import moe.ditto.halo.screens.LibraryScreen
 import moe.ditto.halo.screens.MetaRef
+import moe.ditto.halo.player.PlayerSystemPort
 import moe.ditto.halo.screens.player.PlayerScreen
 import moe.ditto.halo.screens.SearchScreen
 import moe.ditto.halo.screens.SettingsScreen
@@ -89,6 +90,8 @@ internal fun HaloShell(
     playerSurface: NativePlayerSurface,
     /** See [moe.ditto.halo.PlatformDependencies.bundledSubtitleFonts]. */
     bundledSubtitleFonts: Set<String>,
+    /** The device side of playback: brightness, volume, orientation, sleep. */
+    playerSystem: PlayerSystemPort,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
     /**
@@ -180,6 +183,7 @@ internal fun HaloShell(
                         playback = playback,
                         surface = playerSurface,
                         bundledSubtitleFonts = bundledSubtitleFonts,
+                        system = playerSystem,
                         context = route.playbackContext(),
                         onBack = { navController.popBackStack() },
                     )
