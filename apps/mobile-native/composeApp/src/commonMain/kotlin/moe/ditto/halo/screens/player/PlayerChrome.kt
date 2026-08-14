@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -500,10 +502,13 @@ private fun TransportRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val elapsed = formatTimecode(positionSeconds)
         Text(
-            text = formatTimecode(positionSeconds),
+            text = elapsed,
             style = monoStyle(fontSize = metrics.transportTextSize),
-            modifier = Modifier.widthIn(min = 52.dp),
+            modifier = Modifier
+                .widthIn(min = 52.dp)
+                .semantics { contentDescription = "Elapsed $elapsed" },
         )
 
         var trackWidthPx by remember { mutableIntStateOf(0) }

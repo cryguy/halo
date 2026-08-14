@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.12 complete.
+an Android emulator, not just compiled. Phase 2 is complete through 2.13.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -33,12 +33,9 @@ over a placeholder rather than the engine. Debug builds only.
 What is already driven by the engine: position, duration, play state, seeking, the audio and
 subtitle track lists, subtitle scale/delay/font, and the error card.
 
-What is still fixture or inert, and which slice fixes each: show and episode names (2.1),
-playback rate (2.2), track format badges (2.3), buffering figures (2.4), ASS override and
-outline (2.5), audio delay (2.6), addon subtitles (2.7), gestures and the brightness/volume
-readout (2.8), fit mode (2.9), episode stills and drawer data (2.10), the up-next contents
-(2.11), and where "Pick another source" navigates (2.12). Everything not yet real is grouped
-on `PlayerScreenController` under a comment saying so, or lives in `PlayerFixtures`.
+All required Phase 2 controls are now backed by the Android engine or real API data. The
+remaining unchecked work is optional Android PiP and scrub-preview frame extraction, plus the
+iOS follow-ups listed at the end of this plan.
 
 Read the per-slice notes at the end of Phase 1 before starting: they record decisions that
 Phase 2 has to keep (no blur over video, opaque rail and drawer fills, where `requiredSize` is
@@ -312,9 +309,11 @@ presenter/controller tests.
   `advanceOrEnd` + `PlayerPresenterTest` accordingly.
 - [x] **2.12 Error card wiring** — mpv's message verbatim (no HTTP codes/hosts added);
   `Retry` = reload same item; `Pick another source` = navigate to `StreamsRoute` (replace).
-- [ ] **2.13 Instrumented tests** — extend the Android instrumented suite (pattern:
-  `PlayerOwnershipInstrumentedTest`): chrome auto-hides, rail applies without reload
-  (track switch keeps position), back winds down. Mirror XCUITest cases belong to the Mac list.
+- [x] **2.13 Instrumented tests** — `PlayerScreenInstrumentedTest` covers chrome auto-hide,
+  a live subtitle-rail switch that keeps playback position, and back wind-down including
+  orientation and keep-screen-on cleanup. The three tests passed against the real fixture API
+  and libmpv on `Pixel_10_Pro_XL` (Android 17) with `connectedDebugAndroidTest`. Mirror XCUITest
+  cases belong to the Mac list.
 
 ## Deferred (optional, end of plan)
 
