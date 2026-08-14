@@ -44,6 +44,29 @@ class PlayerSubtitleOptionsTest {
         ),
     )
 
+    /** A popular film's worth of results: several languages, uneven counts. */
+    private val manyAddons = addonSubtitleOptions(
+        listOf(
+            AddonSubtitles(
+                addon = AddonSource("opensubtitles", "OpenSubtitles"),
+                subtitles = listOf(
+                    Subtitle(id = "en-1", url = "https://subs.test/en-1.srt", lang = "eng"),
+                    Subtitle(id = "en-2", url = "https://subs.test/en-2.srt", lang = "eng"),
+                    Subtitle(id = "es-1", url = "https://subs.test/es-1.srt", lang = "spa"),
+                    Subtitle(id = "jp-1", url = "https://subs.test/jp-1.ass", lang = "jpn"),
+                ),
+            ),
+            AddonSubtitles(
+                addon = AddonSource("subdl", "SubDL"),
+                subtitles = listOf(Subtitle(id = "en-3", url = "https://subs.test/en-3.srt", lang = "eng")),
+            ),
+            AddonSubtitles(
+                addon = AddonSource("kitsunekko", "Kitsunekko"),
+                subtitles = listOf(Subtitle(id = "jp-2", url = "https://subs.test/jp-2.ass", lang = "jpn")),
+            ),
+        ),
+    )
+
     @Test
     fun optionsAreScopedByAddonSoTwoAddonsCannotCollide() {
         assertEquals(
@@ -141,6 +164,63 @@ class PlayerSubtitleOptionsTest {
                 preferredLang = null,
             ),
         )
+    }
+
+    @Test
+    fun groupsLeadWithThePreferredLanguageThenWithTheFullestList() {
+        val groups = subtitleLanguageGroups(manyAddons, preferredLang = "spa")
+
+        assertEquals(listOf("Spanish", "English", "Japanese"), groups.map { it.language })
+        assertEquals(listOf(1, 3, 2), groups.map { it.options.size })
+        // Inside a group the addon's own ranking survives.
+        assertEquals(
+            listOf("opensubtitles:en-1", "opensubtitles:en-2", "subdl:en-3"),
+            groups[1].options.map { it.id },
+        )
+    }
+
+    @Test
+    fun groupsWithNoPreferenceLeadWithTheFullestListThenAlphabetically() {
+        val groups = subtitleLanguageGroups(manyAddons, preferredLang = null)
+
+        assertEquals(listOf("English", "Japanese", "Spanish"), groups.map { it.language })
+    }
+
+    @Test
+    fun codesTheLabelMapCallsOneLanguageShareAGroup() {
+        val options = addonSubtitleOptions(
+            listOf(
+                AddonSubtitles(
+                    addon = AddonSource("opensubtitles", "OpenSubtitles"),
+                    subtitles = listOf(
+                        Subtitle(id = "a", url = "https://subs.test/a.srt", lang = "ger"),
+                        Subtitle(id = "b", url = "https://subs.test/b.srt", lang = "deu"),
+                        // Unknown to the map, so it stands on its own rather
+                        // than being guessed into someone else's group.
+                        Subtitle(id = "c", url = "https://subs.test/c.srt", lang = "xx"),
+                    ),
+                ),
+            ),
+        )
+
+        val groups = subtitleLanguageGroups(options, preferredLang = null)
+
+        assertEquals(listOf("German", "xx"), groups.map { it.language })
+        assertEquals(2, groups[0].options.size)
+    }
+
+    @Test
+    fun onlyTheGroupHoldingTheCurrentChoiceOpensItself() {
+        val groups = subtitleLanguageGroups(manyAddons, preferredLang = null)
+
+        assertEquals(
+            setOf("Japanese"),
+            defaultExpandedSubtitleLanguages(groups, selectedAddonId = "kitsunekko:jp-2"),
+        )
+        // Nothing chosen yet: the first group, which is the preferred language
+        // when there is one and the fullest list when there is not.
+        assertEquals(setOf("English"), defaultExpandedSubtitleLanguages(groups, selectedAddonId = null))
+        assertEquals(emptySet(), defaultExpandedSubtitleLanguages(emptyList(), selectedAddonId = null))
     }
 
     @Test

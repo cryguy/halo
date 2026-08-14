@@ -15,6 +15,17 @@ internal enum class RailTab {
     Speed,
 }
 
+/**
+ * The two halves of the subtitle tab. They are separated because they are used
+ * at different moments and at different rates: a track is chosen once, while
+ * size and delay are nudged, watched, and nudged again. Behind a list of addon
+ * results the second of those is a scroll every time.
+ */
+internal enum class SubtitlePane {
+    Tracks,
+    Appearance,
+}
+
 /** How long chrome stays up with nothing touching it. */
 private const val ChromeIdleMillis = 3_000L
 
@@ -45,6 +56,24 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
         private set
 
     var rail by mutableStateOf<RailTab?>(null)
+        private set
+
+    /**
+     * Kept across openings of the rail rather than reset to [SubtitlePane.Tracks]
+     * each time. Delay and size are set by trying a value against the picture and
+     * coming back, and sending that viewer through the track list on every return
+     * is the scroll this split exists to remove.
+     */
+    var subtitlePane by mutableStateOf(SubtitlePane.Tracks)
+        private set
+
+    /**
+     * Which addon languages are unfolded, or null while the viewer has not said.
+     * Null is not the same as "none": until then the list decides for itself
+     * (see `defaultExpandedSubtitleLanguages`), and it has to keep deciding as
+     * results arrive, which a set fixed at first composition could not do.
+     */
+    var expandedSubtitleLanguages by mutableStateOf<Set<String>?>(null)
         private set
 
     var episodeDrawerOpen by mutableStateOf(false)
@@ -208,6 +237,25 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
      */
     fun selectAddonSubtitle(id: String?) {
         selectedAddonSubtitleId = id
+    }
+
+    fun selectSubtitlePane(pane: SubtitlePane) {
+        subtitlePane = pane
+        showChrome()
+    }
+
+    /**
+     * Folding is per language and not exclusive: comparing two languages' offers
+     * means having both open, and a group that closed the others as it opened
+     * would make that impossible.
+     */
+    fun toggleSubtitleLanguage(language: String, currentlyExpanded: Set<String>) {
+        expandedSubtitleLanguages = if (language in currentlyExpanded) {
+            currentlyExpanded - language
+        } else {
+            currentlyExpanded + language
+        }
+        showChrome()
     }
 
     // --- Locking ---------------------------------------------------------

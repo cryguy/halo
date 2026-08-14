@@ -52,6 +52,69 @@ internal fun subtitleFileFormat(url: String): String? {
     }
 }
 
+/** Addon results that are all in one language, under the name of that language. */
+internal data class SubtitleLanguageGroup(
+    val language: String,
+    val options: List<AddonSubtitleOption>,
+)
+
+/**
+ * Addon results folded into one row per language.
+ *
+ * A popular film comes back with twenty-odd results, nearly all of them the
+ * same language and told apart only by an id, and a flat list of those is a
+ * scroll with nothing to aim at. Folded, the choice a viewer is actually making
+ * comes first — which language — and the rail is a handful of rows again.
+ *
+ * Grouped by the displayed name rather than the code the addon sent, so the
+ * codes the label map treats as one language ("chi" and "zho", "ger" and "deu")
+ * land in one group: two headers both reading Chinese is a list a viewer has to
+ * open twice to learn they are the same thing. A code the map does not know is
+ * its own group under the code itself, which is honest — nothing here can tell
+ * whether an unknown code is a language it already has.
+ *
+ * Ordered the way someone hunting for a subtitle scans: the language they said
+ * they prefer, then whichever has the most on offer, then alphabetically so the
+ * order cannot depend on the order addons happened to answer in. Results keep
+ * their original order inside a group, which is the addon's own ranking.
+ */
+internal fun subtitleLanguageGroups(
+    options: List<AddonSubtitleOption>,
+    preferredLang: String?,
+): List<SubtitleLanguageGroup> {
+    if (options.isEmpty()) return emptyList()
+    val preferred = preferredLang?.takeIf { it.isNotBlank() }?.let(::languageLabel)
+    return options
+        .groupBy { languageLabel(it.lang) }
+        .map { (language, group) -> SubtitleLanguageGroup(language, group) }
+        .sortedWith(
+            compareBy(
+                { it.language != preferred },
+                { -it.options.size },
+                { it.language },
+            ),
+        )
+}
+
+/**
+ * Which groups a freshly opened rail shows the contents of: the one holding the
+ * current choice, so a viewer can see what is playing without hunting for it,
+ * and otherwise the first, which is their language or the richest list.
+ *
+ * Everything else stays folded. That is the point of folding: a rail that opens
+ * with every group expanded is the flat list again.
+ */
+internal fun defaultExpandedSubtitleLanguages(
+    groups: List<SubtitleLanguageGroup>,
+    selectedAddonId: String?,
+): Set<String> {
+    if (groups.isEmpty()) return emptySet()
+    val holdingSelection = groups.firstOrNull { group ->
+        group.options.any { it.id == selectedAddonId }
+    }
+    return setOf((holdingSelection ?: groups.first()).language)
+}
+
 internal fun addonSubtitleOptions(results: List<AddonSubtitles>): List<AddonSubtitleOption> =
     results.flatMap { group ->
         group.subtitles.map { subtitle ->

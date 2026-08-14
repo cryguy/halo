@@ -271,6 +271,7 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
         controller.rail?.let { tab ->
             PlayerRail(
                 tab = tab,
+                subtitlePane = controller.subtitlePane,
                 metrics = metrics,
                 tracks = state.tracks,
                 subtitleScale = state.subtitleScale,
@@ -282,12 +283,18 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
                 addonSubtitles = PlayerFixtures.AddonSubtitles,
                 addonSubtitlesFetching = false,
                 subtitleLoadError = null,
+                // The harness reviews the folded list, so it names a preference
+                // the fixtures actually contain rather than leaving it null.
+                preferredSubtitleLang = "eng",
+                expandedSubtitleLanguages = controller.expandedSubtitleLanguages,
                 audioDelaySeconds = state.audioDelaySeconds,
                 playbackRate = state.playbackRate,
                 onSelectTab = controller::openRail,
+                onSelectSubtitlePane = controller::selectSubtitlePane,
                 onClose = controller::closeRail,
                 onSelectSubtitleTrack = {},
                 onSelectAddonSubtitle = { controller.selectAddonSubtitle(it.id) },
+                onToggleSubtitleLanguage = controller::toggleSubtitleLanguage,
                 onSubtitleScaleChange = {},
                 onSubtitleDelayChange = {},
                 // Held locally rather than sent anywhere: the switch changes the

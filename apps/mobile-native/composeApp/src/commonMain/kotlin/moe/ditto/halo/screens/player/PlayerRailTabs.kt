@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,30 +61,23 @@ internal enum class SubtitleFormat {
     Unknown,
 }
 
+/**
+ * Every subtitle there is to choose from: the file's own tracks, then what the
+ * addons offered, folded by language.
+ */
 @Composable
-internal fun SubtitlesTab(
+internal fun SubtitleTracksTab(
     tracks: PlayerTracks,
-    subtitleScale: Double,
-    subtitleDelaySeconds: Double,
-    subtitleFont: String?,
-    trackStyling: Boolean,
     selectedAddonId: String?,
-    bundledFonts: Set<String>,
     addonSubtitles: List<AddonSubtitleOption>,
     addonSubtitlesFetching: Boolean,
     subtitleLoadError: String?,
-    captionBaseSize: TextUnit,
+    preferredLang: String?,
+    expandedLanguages: Set<String>?,
     onSelectTrack: (String?) -> Unit,
     onSelectAddonSubtitle: (AddonSubtitleOption) -> Unit,
-    onScaleChange: (Double) -> Unit,
-    onDelayChange: (Double) -> Unit,
-    onTrackStylingChange: (Boolean) -> Unit,
-    onFontChange: (String?) -> Unit,
+    onToggleLanguage: (String, Set<String>) -> Unit,
 ) {
-    val selectedTrack = tracks.subtitles.firstOrNull { it.id == tracks.selectedSubtitleId }
-    val format = subtitleFormat(selectedTrack?.codec)
-    val bitmap = format == SubtitleFormat.Bitmap
-
     RailSectionLabel("IN THIS FILE")
     RailSelectableRow(
         label = "Off",
@@ -101,7 +95,7 @@ internal fun SubtitlesTab(
         )
     }
 
-    RailSectionLabel("FROM ADDONS")
+    RailSectionLabel("FROM ADDONS", modifier = Modifier.padding(top = 4.dp))
     // Three states, and they are not the same thing: still asking, asked and
     // told nothing, and told something. Showing an empty section while the
     // request is in flight reads as "there are none".
@@ -117,14 +111,37 @@ internal fun SubtitlesTab(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
         )
     }
-    addonSubtitles.forEach { subtitle ->
-        RailSelectableRow(
-            label = subtitle.addonName,
-            detail = subtitle.detail,
-            selected = subtitle.id == selectedAddonId,
-            onClick = { onSelectAddonSubtitle(subtitle) },
-            format = subtitle.format,
+
+    val groups = remember(addonSubtitles, preferredLang) {
+        subtitleLanguageGroups(addonSubtitles, preferredLang)
+    }
+    // Recomputed rather than remembered: results arrive after the rail is
+    // already open, and the group holding the current choice is only knowable
+    // once they have.
+    val expanded = expandedLanguages ?: defaultExpandedSubtitleLanguages(groups, selectedAddonId)
+    groups.forEach { group ->
+        val open = group.language in expanded
+        RailGroupHeader(
+            label = group.language,
+            count = group.options.size,
+            expanded = open,
+            holdsSelection = group.options.any { it.id == selectedAddonId },
+            onToggle = { onToggleLanguage(group.language, expanded) },
         )
+        if (!open) return@forEach
+        group.options.forEach { subtitle ->
+            RailSelectableRow(
+                // The addon is the useful name inside a language group: the
+                // language is the header, so repeating it in every row would
+                // leave the addon and its id to fight for one line.
+                label = subtitle.addonName,
+                detail = subtitle.subId,
+                selected = subtitle.id == selectedAddonId,
+                onClick = { onSelectAddonSubtitle(subtitle) },
+                format = subtitle.format,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+        }
     }
     if (subtitleLoadError != null) {
         Text(
@@ -134,9 +151,29 @@ internal fun SubtitlesTab(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
+}
 
-    RailHairline(Modifier.padding(vertical = 2.dp))
-    RailSectionLabel("APPEARANCE")
+/**
+ * How the captions look, which is judged against the picture and so lives one
+ * tap away rather than below however many results an addon returned.
+ */
+@Composable
+internal fun SubtitleAppearanceTab(
+    tracks: PlayerTracks,
+    subtitleScale: Double,
+    subtitleDelaySeconds: Double,
+    subtitleFont: String?,
+    trackStyling: Boolean,
+    bundledFonts: Set<String>,
+    captionBaseSize: TextUnit,
+    onScaleChange: (Double) -> Unit,
+    onDelayChange: (Double) -> Unit,
+    onTrackStylingChange: (Boolean) -> Unit,
+    onFontChange: (String?) -> Unit,
+) {
+    val selectedTrack = tracks.subtitles.firstOrNull { it.id == tracks.selectedSubtitleId }
+    val format = subtitleFormat(selectedTrack?.codec)
+    val bitmap = format == SubtitleFormat.Bitmap
 
     RailCard {
         RailCardHeader(

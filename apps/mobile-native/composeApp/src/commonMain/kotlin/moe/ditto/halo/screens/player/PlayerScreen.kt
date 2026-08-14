@@ -205,6 +205,12 @@ internal fun PlayerScreen(
         addonSubtitleOptions(addonSubtitleState.value.orEmpty())
     }
 
+    // The standing language preference, read here only to order the rail's
+    // languages. Applying it to a track is a separate decision, made once when
+    // the file loads and never re-made from this value.
+    val settingsState by remember(graph) { graph.settings.observe() }.collectAsState(QueryState())
+    val preferredSubtitleLang = settingsState.value?.preferredSubtitleLang
+
     // Applied once the engine has reported this file's own tracks, because the
     // choice is between those and the addon results and both have to be known
     // to pick between them. Re-running on a later track list would fight the
@@ -566,6 +572,7 @@ internal fun PlayerScreen(
             val tab = controller.rail ?: lastRailTab
             PlayerRail(
                 tab = tab,
+                subtitlePane = controller.subtitlePane,
                 metrics = metrics,
                 tracks = state.tracks,
                 subtitleScale = state.subtitleScale,
@@ -577,10 +584,14 @@ internal fun PlayerScreen(
                 audioDelaySeconds = state.audioDelaySeconds,
                 playbackRate = state.playbackRate,
                 onSelectTab = controller::openRail,
+                onSelectSubtitlePane = controller::selectSubtitlePane,
                 onClose = controller::closeRail,
                 addonSubtitles = addonSubtitles,
                 addonSubtitlesFetching = addonSubtitleState.isFetching,
                 subtitleLoadError = subtitleLoadError,
+                preferredSubtitleLang = preferredSubtitleLang,
+                expandedSubtitleLanguages = controller.expandedSubtitleLanguages,
+                onToggleSubtitleLanguage = controller::toggleSubtitleLanguage,
                 onSelectSubtitleTrack = { id ->
                     externalSubtitleSelection.supersede()
                     externalSubtitleJob?.cancel()

@@ -113,7 +113,14 @@ class PlayerScreenInstrumentedTest {
         rule.waitUntil(10_000) { nodesWithText("Fixture Subs").isNotEmpty() }
 
         val before = waitForElapsedAtLeast(5)
-        rule.onAllNodes(hasText("Fixture Subs") and hasClickAction()).onFirst().performClick()
+        // Scrolled to rather than clicked where it happens to be: the addon
+        // results sit under their language's header, far enough down a short
+        // landscape rail that a click aimed at the node's own centre lands
+        // outside the window and is swallowed.
+        rule.onAllNodes(hasText("Fixture Subs") and hasClickAction())
+            .onFirst()
+            .performScrollTo()
+            .performClick()
         rule.waitUntil(10_000) {
             var cached = false
             activityRule.scenario.onActivity { activity ->

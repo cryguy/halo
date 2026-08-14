@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -59,6 +59,8 @@ private val RailCornerRadius = 22.dp
 private const val AudioLabel = "Audio"
 private const val SubtitlesLabel = "Subtitles"
 private const val SpeedLabel = "Speed"
+private const val TracksLabel = "Tracks"
+private const val AppearanceLabel = "Appearance"
 
 /**
  * The one panel for audio, subtitles and speed.
@@ -76,6 +78,7 @@ private const val SpeedLabel = "Speed"
 @Composable
 internal fun PlayerRail(
     tab: RailTab,
+    subtitlePane: SubtitlePane,
     metrics: PlayerMetrics,
     tracks: PlayerTracks,
     subtitleScale: Double,
@@ -87,12 +90,18 @@ internal fun PlayerRail(
     addonSubtitles: List<AddonSubtitleOption>,
     addonSubtitlesFetching: Boolean,
     subtitleLoadError: String?,
+    /** The standing preference, which decides the order the languages fold in. */
+    preferredSubtitleLang: String?,
+    expandedSubtitleLanguages: Set<String>?,
     audioDelaySeconds: Double,
     playbackRate: Double,
     onSelectTab: (RailTab) -> Unit,
+    onSelectSubtitlePane: (SubtitlePane) -> Unit,
     onClose: () -> Unit,
     onSelectSubtitleTrack: (String?) -> Unit,
     onSelectAddonSubtitle: (AddonSubtitleOption) -> Unit,
+    /** Carries the set it saw, so a toggle cannot act on a stale expansion. */
+    onToggleSubtitleLanguage: (String, Set<String>) -> Unit,
     onSubtitleScaleChange: (Double) -> Unit,
     onSubtitleDelayChange: (Double) -> Unit,
     onTrackStylingChange: (Boolean) -> Unit,
@@ -149,33 +158,58 @@ internal fun PlayerRail(
                 modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 14.dp),
             )
 
+            // Pinned above the scroll, which is the whole point: appearance is
+            // reached by a tap rather than by scrolling past however many
+            // results the addons returned.
+            if (tab == RailTab.Subtitles) {
+                Segmented(
+                    options = listOf(TracksLabel, AppearanceLabel),
+                    value = subtitlePane.label(),
+                    onChange = { label -> onSelectSubtitlePane(label.toSubtitlePane()) },
+                    modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 14.dp),
+                )
+            }
+
+            // One scroll position per pane, not one for the panel. Shared, a
+            // switch lands wherever the previous list had been scrolled to,
+            // which put Appearance's first control above the visible area — the
+            // scroll this split exists to remove, arriving by another route.
+            val scroll = remember(tab, subtitlePane) { ScrollState(0) }
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scroll)
                     .padding(start = 18.dp, end = 18.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 when (tab) {
-                    RailTab.Subtitles -> SubtitlesTab(
-                        tracks = tracks,
-                        subtitleScale = subtitleScale,
-                        subtitleDelaySeconds = subtitleDelaySeconds,
-                        subtitleFont = subtitleFont,
-                        trackStyling = trackStyling,
-                        selectedAddonId = selectedAddonSubtitleId,
-                        bundledFonts = bundledSubtitleFonts,
-                        addonSubtitles = addonSubtitles,
-                        addonSubtitlesFetching = addonSubtitlesFetching,
-                        subtitleLoadError = subtitleLoadError,
-                        captionBaseSize = metrics.captionSize,
-                        onSelectTrack = onSelectSubtitleTrack,
-                        onSelectAddonSubtitle = onSelectAddonSubtitle,
-                        onScaleChange = onSubtitleScaleChange,
-                        onDelayChange = onSubtitleDelayChange,
-                        onTrackStylingChange = onTrackStylingChange,
-                        onFontChange = onSubtitleFontChange,
-                    )
+                    RailTab.Subtitles -> when (subtitlePane) {
+                        SubtitlePane.Tracks -> SubtitleTracksTab(
+                            tracks = tracks,
+                            selectedAddonId = selectedAddonSubtitleId,
+                            addonSubtitles = addonSubtitles,
+                            addonSubtitlesFetching = addonSubtitlesFetching,
+                            subtitleLoadError = subtitleLoadError,
+                            preferredLang = preferredSubtitleLang,
+                            expandedLanguages = expandedSubtitleLanguages,
+                            onSelectTrack = onSelectSubtitleTrack,
+                            onSelectAddonSubtitle = onSelectAddonSubtitle,
+                            onToggleLanguage = onToggleSubtitleLanguage,
+                        )
+                        SubtitlePane.Appearance -> SubtitleAppearanceTab(
+                            tracks = tracks,
+                            subtitleScale = subtitleScale,
+                            subtitleDelaySeconds = subtitleDelaySeconds,
+                            subtitleFont = subtitleFont,
+                            trackStyling = trackStyling,
+                            bundledFonts = bundledSubtitleFonts,
+                            captionBaseSize = metrics.captionSize,
+                            onScaleChange = onSubtitleScaleChange,
+                            onDelayChange = onSubtitleDelayChange,
+                            onTrackStylingChange = onTrackStylingChange,
+                            onFontChange = onSubtitleFontChange,
+                        )
+                    }
                     RailTab.Audio -> AudioTab(
                         tracks = tracks,
                         audioDelaySeconds = audioDelaySeconds,
@@ -242,4 +276,14 @@ private fun String.toRailTab(): RailTab = when (this) {
     AudioLabel -> RailTab.Audio
     SpeedLabel -> RailTab.Speed
     else -> RailTab.Subtitles
+}
+
+private fun SubtitlePane.label(): String = when (this) {
+    SubtitlePane.Tracks -> TracksLabel
+    SubtitlePane.Appearance -> AppearanceLabel
+}
+
+private fun String.toSubtitlePane(): SubtitlePane = when (this) {
+    AppearanceLabel -> SubtitlePane.Appearance
+    else -> SubtitlePane.Tracks
 }

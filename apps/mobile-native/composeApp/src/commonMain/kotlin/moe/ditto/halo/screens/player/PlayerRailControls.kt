@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
@@ -164,6 +165,64 @@ internal fun RailSelectableRow(
         }
         if (format != null) FormatBadge(format)
         if (selected) {
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .clip(RoundedCornerShape(HaloRadius.Pill))
+                    .background(HaloColors.Accent),
+            )
+        }
+    }
+}
+
+/**
+ * One language's worth of addon results, folded away.
+ *
+ * The count is on the header because it is what decides whether opening the
+ * group is worth anything, and the dot marks the group holding what is playing
+ * so a folded rail still says where the current subtitle came from.
+ */
+@Composable
+internal fun RailGroupHeader(
+    label: String,
+    count: Int,
+    expanded: Boolean,
+    holdsSelection: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(HaloRadius.Md))
+            .clickable(role = Role.Button, onClickLabel = if (expanded) "Collapse" else "Expand", onClick = onToggle)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // One glyph turned rather than two glyphs swapped, so the state reads as
+        // the same control in two positions.
+        Icon(
+            imageVector = HaloIcons.ChevronDown,
+            contentDescription = null,
+            tint = HaloColors.TextDim,
+            modifier = Modifier.size(14.dp).rotate(if (expanded) 0f else -90f),
+        )
+        Text(
+            text = label,
+            color = RowLabel,
+            fontSize = 13.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        Text(
+            text = count.toString(),
+            style = monoStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = HaloColors.TextMeta),
+        )
+        Box(Modifier.weight(1f))
+        if (holdsSelection) {
             Box(
                 Modifier
                     .size(8.dp)
