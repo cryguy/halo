@@ -60,10 +60,10 @@ private val ProgressBarHeight = 3.dp
 internal fun PlayerEpisodeDrawer(
     metrics: PlayerMetrics,
     seasonTitle: String,
-    episodes: List<FixtureEpisode>,
+    episodes: List<PlayerEpisode>,
     currentTag: String,
     onClose: () -> Unit,
-    onSelectEpisode: (FixtureEpisode) -> Unit,
+    onSelectEpisode: (PlayerEpisode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(topStart = DrawerCornerRadius, topEnd = DrawerCornerRadius)
@@ -156,7 +156,7 @@ internal fun PlayerEpisodeDrawer(
  * A permanent "0 downloaded" would read as a broken counter rather than as the
  * absence of a feature being used.
  */
-private fun episodeSummary(episodes: List<FixtureEpisode>): String {
+private fun episodeSummary(episodes: List<PlayerEpisode>): String {
     val downloaded = episodes.count { it.downloaded }
     val count = "${episodes.size} episodes"
     if (downloaded == 0) return count
@@ -165,7 +165,7 @@ private fun episodeSummary(episodes: List<FixtureEpisode>): String {
 
 @Composable
 private fun EpisodeCard(
-    episode: FixtureEpisode,
+    episode: PlayerEpisode,
     current: Boolean,
     metrics: PlayerMetrics,
     onClick: () -> Unit,

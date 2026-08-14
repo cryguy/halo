@@ -59,6 +59,7 @@ import moe.ditto.halo.screens.HomeScreen
 import moe.ditto.halo.screens.LibraryScreen
 import moe.ditto.halo.screens.MetaRef
 import moe.ditto.halo.player.PlayerSystemPort
+import moe.ditto.halo.screens.player.EpisodeChoice
 import moe.ditto.halo.screens.player.PlayerScreen
 import moe.ditto.halo.screens.SearchScreen
 import moe.ditto.halo.screens.SettingsScreen
@@ -185,6 +186,21 @@ internal fun HaloShell(
                         bundledSubtitleFonts = bundledSubtitleFonts,
                         system = playerSystem,
                         context = route.playbackContext(),
+                        // Both outcomes replace the player rather than stacking
+                        // on it, so back still returns to the title rather than
+                        // walking every episode watched in this sitting.
+                        onSelectEpisode = { choice ->
+                            when (choice) {
+                                is EpisodeChoice.Resolved ->
+                                    navController.navigate(route.withContext(choice.context)) {
+                                        popUpTo<PlayerRoute> { inclusive = true }
+                                    }
+                                is EpisodeChoice.NeedsSource ->
+                                    navController.navigate(route.episodeSources(choice)) {
+                                        popUpTo<PlayerRoute> { inclusive = true }
+                                    }
+                            }
+                        },
                         onBack = { navController.popBackStack() },
                     )
                 }

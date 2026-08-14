@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
@@ -60,6 +61,13 @@ private const val ChromeCaptionLiftPercent = 12
  * across the size slider is one decision, not forty.
  */
 private const val SettingsWriteDelayMillis = 800L
+
+/**
+ * How often progress is recorded while watching. Frequent enough that an app
+ * killed mid-episode resumes somewhere useful, rare enough that a two-hour film
+ * is a couple of hundred writes rather than thousands.
+ */
+private const val WatchStateReportMillis = 30_000L
 
 /**
  * The playback screen.
@@ -95,6 +103,12 @@ internal fun PlayerScreen(
     bundledSubtitleFonts: Set<String>,
     /** Brightness, volume, orientation and the sleep timer. */
     system: PlayerSystemPort,
+    /**
+     * Where choosing another episode goes. Resolved here rather than by the
+     * caller because finding the same release is a question about the source
+     * that is playing, which only this screen holds.
+     */
+    onSelectEpisode: (EpisodeChoice) -> Unit,
     /** What is being played and what to call it; see [PlaybackContext]. */
     context: PlaybackContext,
     onBack: () -> Unit,
@@ -192,7 +206,7 @@ internal fun PlayerScreen(
         if (state.tracks.subtitles.isEmpty() && addonSubtitles.isEmpty()) return@LaunchedEffect
 
         val selection = resolveSubtitleSelection(
-            remembered = graph.subtitleChoices.choiceFor(context.videoId, context.metaId),
+            remembered = graph.subtitleChoices.choiceFor(context.videoId, context.itemId),
             tracks = state.tracks,
             addonSubtitles = addonSubtitles,
             preferredLang = graph.settings.current().preferredSubtitleLang,
@@ -211,16 +225,42 @@ internal fun PlayerScreen(
         playback.setSubtitleLift(if (controller.chromeVisible) ChromeCaptionLiftPercent else 0)
     }
 
+    // The season this episode belongs to, for the drawer. Films have no
+    // drawer, so nothing is fetched for them.
+    val metaState by remember(context) {
+        graph.browse.meta(context.type, context.metaId, enabled = context.isEpisode)
+    }.collectAsState(QueryState())
+    val watchStateList by remember(graph) { graph.watchStates.observe() }.collectAsState(QueryState())
+    val episodes = remember(metaState.value, watchStateList.value, context.videoId) {
+        playerEpisodes(metaState.value, context.videoId, watchStateList.value)
+    }
+
+    // Progress is reported while watching, when it pauses, and once on the way
+    // out. The periodic sample is what survives the app being killed; the pause
+    // and exit samples are what make the common cases exact rather than up to
+    // half a minute stale.
+    LaunchedEffect(item) {
+        while (true) {
+            delay(WatchStateReportMillis)
+            reportProgress(graph, context, playback.state.value, metaState.value)
+        }
+    }
+    LaunchedEffect(item, state.status) {
+        if (state.status != PlaybackStatus.Playing) {
+            reportProgress(graph, context, playback.state.value, metaState.value)
+        }
+    }
+
     // Landscape and a display that will not sleep, for as long as this screen
     // exists. Disposal rather than the back handler, because the error card's
     // exit and a system-initiated one leave the same way and would otherwise
     // strand the device in landscape with the screen pinned on.
     DisposableEffect(system) {
         system.lockLandscape()
-        system.setKeepScreenOn(true)
+        system.keepScreenOn()
         onDispose {
-            system.restoreOrientation()
-            system.setKeepScreenOn(false)
+            system.releaseLandscape()
+            system.releaseScreenOn()
             // The window's brightness override belongs to the player, not to
             // the app: leaving it set would dim every other screen.
             system.clearScreenBrightnessOverride()
@@ -253,6 +293,10 @@ internal fun PlayerScreen(
         if (!leaving) {
             leaving = true
             scope.launch {
+                // Before the wind-down: pausing moves nothing, but the state
+                // read has to happen while the position is still the one the
+                // viewer stopped at.
+                reportProgress(graph, context, playback.state.value, metaState.value)
                 playback.windDownForExit()
                 onBack()
             }
@@ -424,13 +468,17 @@ internal fun PlayerScreen(
         ) {
             PlayerEpisodeDrawer(
                 metrics = metrics,
-                seasonTitle = PlayerFixtures.SeasonTitle,
-                episodes = PlayerFixtures.Episodes,
-                currentTag = PlayerFixtures.CurrentEpisode.tag,
+                seasonTitle = playerSeasonTitle(metaState.value, context.videoId, context.showTitle),
+                episodes = episodes,
+                currentTag = episodes.firstOrNull { it.videoId == context.videoId }?.tag.orEmpty(),
                 onClose = controller::closeEpisodeDrawer,
-                // Choosing an episode has to resolve a stream for it before
-                // anything can play, so for now it only closes the drawer.
-                onSelectEpisode = { controller.closeEpisodeDrawer() },
+                onSelectEpisode = { episode ->
+                    controller.closeEpisodeDrawer()
+                    if (episode.videoId == context.videoId) return@PlayerEpisodeDrawer
+                    val video = metaState.value?.videos?.firstOrNull { it.id == episode.videoId }
+                        ?: return@PlayerEpisodeDrawer
+                    scope.launch { onSelectEpisode(resolveEpisodePlayback(graph, context, video)) }
+                },
             )
         }
 
@@ -472,7 +520,7 @@ internal fun PlayerScreen(
                     val track = state.tracks.subtitles.firstOrNull { it.id == id }
                     graph.subtitleChoices.remember(
                         videoId = context.videoId,
-                        itemId = context.metaId,
+                        itemId = context.itemId,
                         choice = track?.let(::embeddedChoice) ?: OffChoice,
                     )
                 },
@@ -481,7 +529,7 @@ internal fun PlayerScreen(
                     scope.launch { playback.addSubtitle(option.url) }
                     graph.subtitleChoices.remember(
                         videoId = context.videoId,
-                        itemId = context.metaId,
+                        itemId = context.itemId,
                         choice = externalChoice(option),
                     )
                 },

@@ -3,6 +3,7 @@ package moe.ditto.halo.shell
 import kotlinx.serialization.Serializable
 import moe.ditto.halo.api.AddonSource
 import moe.ditto.halo.api.Stream
+import moe.ditto.halo.screens.player.EpisodeChoice
 import moe.ditto.halo.screens.player.PlaybackContext
 
 /**
@@ -182,3 +183,35 @@ internal fun StreamsRoute.playerRoute(addon: AddonSource, stream: Stream, url: S
  */
 internal val ChromeCoveringRoutes =
     listOf(SearchRoute::class, DetailRoute::class, StreamsRoute::class, PlayerRoute::class)
+
+/**
+ * The same player, playing something else. Used when another episode resolved
+ * to a source without asking, so nothing about the journey changes except what
+ * is playing.
+ */
+internal fun PlayerRoute.withContext(context: PlaybackContext): PlayerRoute = PlayerRoute(
+    url = context.url,
+    type = context.type,
+    metaId = context.metaId,
+    videoId = context.videoId,
+    showTitle = context.showTitle,
+    episodeTag = context.episodeTag,
+    episodeName = context.episodeName,
+    addonId = context.addonId,
+    bingeGroup = context.bingeGroup,
+    filename = context.filename,
+    videoSize = context.videoSize ?: 0,
+    videoHash = context.videoHash,
+    streamName = context.streamName,
+    streamTitle = context.streamTitle,
+)
+
+/** The source picker for another episode of the title already playing. */
+internal fun PlayerRoute.episodeSources(choice: EpisodeChoice.NeedsSource): StreamsRoute = StreamsRoute(
+    type = type,
+    metaId = metaId,
+    videoId = choice.videoId,
+    showTitle = showTitle,
+    episodeTag = choice.episodeTag,
+    episodeName = choice.episodeName,
+)

@@ -70,13 +70,22 @@ internal object PlayerFixtures {
     const val SeasonTitle = "Season 2"
 
     val Episodes = listOf(
-        FixtureEpisode(tag = "S02E01", name = "Ground Truth", progress = 1f, downloaded = true),
-        FixtureEpisode(tag = "S02E02", name = "Ninety Seconds", progress = 1f, downloaded = true),
-        FixtureEpisode(tag = "S02E03", name = "Carrier Lost", progress = 1f, downloaded = true),
-        FixtureEpisode(tag = "S02E04", name = "Pale Blue Dot", progress = 0.42f, downloaded = false),
-        FixtureEpisode(tag = "S02E05", name = "The Long Signal", progress = 0f, downloaded = false),
-        FixtureEpisode(tag = "S02E06", name = "Dust Season", progress = 0f, downloaded = false),
+        episode("S02E01", "Ground Truth", progress = 1f, downloaded = true),
+        episode("S02E02", "Ninety Seconds", progress = 1f, downloaded = true),
+        episode("S02E03", "Carrier Lost", progress = 1f, downloaded = true),
+        episode("S02E04", "Pale Blue Dot", progress = 0.42f, downloaded = false),
+        episode("S02E05", "The Long Signal", progress = 0f, downloaded = false),
+        episode("S02E06", "Dust Season", progress = 0f, downloaded = false),
     )
+
+    private fun episode(tag: String, name: String, progress: Float, downloaded: Boolean) =
+        PlayerEpisode(
+            videoId = "tt-fixture:2:${tag.substringAfter('E').trimStart('0')}",
+            tag = tag,
+            name = name,
+            progress = progress,
+            downloaded = downloaded,
+        )
 
     /** The episode the fixture session is playing. */
     val CurrentEpisode = Episodes[3]
@@ -116,10 +125,3 @@ internal object PlayerFixtures {
         ),
     )
 }
-
-internal data class FixtureEpisode(
-    val tag: String,
-    val name: String,
-    val progress: Float,
-    val downloaded: Boolean,
-)

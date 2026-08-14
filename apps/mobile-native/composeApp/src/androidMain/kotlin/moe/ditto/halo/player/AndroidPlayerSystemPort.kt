@@ -20,6 +20,11 @@ internal class AndroidPlayerSystemPort(private val activity: Activity) : PlayerS
 
     private val audio = activity.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
+    // Claims outstanding, not booleans: see PlayerSystemPort. Main thread only,
+    // which is where every caller of these already is.
+    private var landscapeHolders = 0
+    private var screenOnHolders = 0
+
     /**
      * The window's own override if it has one, otherwise the device's current
      * setting, so a brightness drag starts from what is actually on screen
@@ -61,19 +66,23 @@ internal class AndroidPlayerSystemPort(private val activity: Activity) : PlayerS
      * turned end for end; what is locked out is portrait.
      */
     override fun lockLandscape() {
+        if (landscapeHolders++ > 0) return
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
     }
 
-    override fun restoreOrientation() {
+    override fun releaseLandscape() {
+        if (landscapeHolders <= 0 || --landscapeHolders > 0) return
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
 
-    override fun setKeepScreenOn(enabled: Boolean) {
-        if (enabled) {
-            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
+    override fun keepScreenOn() {
+        if (screenOnHolders++ > 0) return
+        activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    override fun releaseScreenOn() {
+        if (screenOnHolders <= 0 || --screenOnHolders > 0) return
+        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     private fun applyWindowBrightness(value: Float) {

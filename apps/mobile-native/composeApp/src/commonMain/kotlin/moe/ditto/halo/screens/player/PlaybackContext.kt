@@ -1,6 +1,7 @@
 package moe.ditto.halo.screens.player
 
 import moe.ditto.halo.player.VideoFingerprint
+import moe.ditto.halo.sync.LibraryRepository
 
 /**
  * What the player is playing, beyond the URL it plays.
@@ -47,6 +48,16 @@ internal data class PlaybackContext(
      */
     val displayTitle: String
         get() = if (episodeTag == null) showTitle else "$showTitle · $episodeTag"
+
+    /**
+     * The library item this video belongs to.
+     *
+     * Not the same string as [metaId]: library ids are scoped by type, and
+     * every reader of a watch state joins on this one. Writing a bare meta id
+     * produces rows that match nothing, which is invisible until a row that
+     * should be in "continue watching" simply is not.
+     */
+    val itemId: String get() = LibraryRepository.itemId(type, metaId)
 
     /**
      * What the addon already knew about the file, when it knew both halves.

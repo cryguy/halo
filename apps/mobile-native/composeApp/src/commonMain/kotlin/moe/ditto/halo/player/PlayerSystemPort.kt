@@ -44,12 +44,25 @@ interface PlayerSystemPort {
      */
     fun volumeSteps(): Int
 
-    /** Landscape for the duration of playback, restored on the way out. */
+    /**
+     * Landscape and a display that stays awake, for as long as something needs
+     * them.
+     *
+     * These are claims rather than settings, and every claim has to be
+     * released. Counting matters because two players can overlap: navigating
+     * from one episode to the next composes the new screen before the old one
+     * is disposed, so the release of the outgoing screen arrives after the
+     * claim of the incoming one. Treated as a plain setting, that release turns
+     * the device back to portrait underneath a player that is still playing,
+     * which is what happens on a real device rather than in a test.
+     */
     fun lockLandscape()
 
-    fun restoreOrientation()
+    fun releaseLandscape()
 
-    fun setKeepScreenOn(enabled: Boolean)
+    fun keepScreenOn()
+
+    fun releaseScreenOn()
 }
 
 /**
@@ -65,6 +78,7 @@ object NoPlayerSystemPort : PlayerSystemPort {
     override fun setVolume(value: Float) = Unit
     override fun volumeSteps(): Int = 0
     override fun lockLandscape() = Unit
-    override fun restoreOrientation() = Unit
-    override fun setKeepScreenOn(enabled: Boolean) = Unit
+    override fun releaseLandscape() = Unit
+    override fun keepScreenOn() = Unit
+    override fun releaseScreenOn() = Unit
 }
