@@ -2,6 +2,7 @@ package moe.ditto.halo.downloads
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import moe.ditto.halo.sync.LibraryRepository
 
 /** Where a download has got to. */
@@ -115,6 +116,14 @@ internal data class DownloadEntry(
     val failureMessage: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
+    /**
+     * How fast bytes are currently arriving, smoothed over the last few
+     * samples. Deliberately not persisted: it describes a transfer that is
+     * running right now, and a speed restored from disk would be a number about
+     * a connection that no longer exists.
+     */
+    @Transient
+    val bytesPerSecond: Long = 0,
 ) {
     val videoId: String get() = media.videoId
     val itemId: String get() = media.itemId
@@ -127,5 +136,18 @@ internal data class DownloadEntry(
         get() {
             if (totalBytes <= 0) return null
             return (downloadedBytes.toDouble() / totalBytes.toDouble()).coerceIn(0.0, 1.0).toFloat()
+        }
+
+    /**
+     * Seconds until this finishes at the current rate, or null when either half
+     * of that division is unknown. A guess made from no measurement is worse
+     * than no guess.
+     */
+    val secondsRemaining: Long?
+        get() {
+            if (bytesPerSecond <= 0 || totalBytes <= 0) return null
+            val remaining = totalBytes - downloadedBytes
+            if (remaining <= 0) return null
+            return remaining / bytesPerSecond
         }
 }

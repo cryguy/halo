@@ -193,13 +193,33 @@ Notes:
 
 ## Slice 4 — offline playback
 
-- [ ] A finished row enters the real player with a `file://` URL and the stored context, so badges,
+- [x] A finished row enters the real player with a `file://` URL and the stored context, so badges,
   the episode drawer and the next-episode lookup all behave.
-- [ ] The downloaded subtitle is offered and remembered as `SubtitleChoiceKind.Downloaded`, which
-  already exists in `SubtitleChoiceStore` and is currently unreachable.
+- [x] The downloaded subtitle is added to the engine directly at playback start.
+- [ ] Remembering a downloaded subtitle as `SubtitleChoiceKind.Downloaded`, which exists in
+  `SubtitleChoiceStore` and is still unreachable.
 - [ ] The episode drawer's download ticks stop being fixtures and read real entries.
-- [ ] Instrumented test on a device: download a fixture-server video, drop the network, play it with
-  its subtitle.
+- [ ] Instrumented test on a device: download a fixture-server video, drop the network, play it
+  with its subtitle.
+
+**Partly done 2026-08-15.** Playing a download works end to end in code: the row and its play
+button both enter the player with the local file, the subtitle stored beside it is handed to the
+engine straight after the source, and a local file skips hashing the source and searching addons
+for subtitles, because the point of a download is that it needs no network.
+
+## Slice 5 — what the first real use asked for
+
+Raised after installing on a device, all three from watching it in use:
+
+- [x] **Speed and time left.** `TransferRate` smooths the rate out of the progress reports the
+  transfer already makes, and it is carried on the entry as a `@Transient` field: a speed restored
+  from disk would describe a connection that no longer exists. Rows read
+  "512 MB of 1.5 GB · 12 MB/s · 2 min left", with a percentage beside the bar.
+- [x] **Only the source that was actually downloaded is marked.** Marking every row in the picker
+  claimed something about sources nobody fetched. Other rows keep an active, dimmed glyph, and
+  tapping one offers to replace what is on the device rather than doing nothing.
+- [x] **The Downloads tab reads as the rest of the app.** Rows sit in a per-title glass card like
+  the source picker's, instead of hairline-separated rows floating on the background.
 
 ## Risks / honest limits
 

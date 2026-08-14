@@ -28,6 +28,7 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CancellationException
@@ -37,6 +38,7 @@ import kotlinx.coroutines.launch
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
 import moe.ditto.halo.SignedInGraph
+import moe.ditto.halo.api.AddonSubtitles
 import moe.ditto.halo.api.VideoFitMode
 import moe.ditto.halo.cache.QueryState
 import moe.ditto.halo.player.MediaItem
@@ -176,6 +178,10 @@ internal fun PlayerScreen(
         val stored = subtitleStyleOf(settings)
         playback.applySubtitleStyle(stored)
         playback.play(item)
+        // A downloaded video carries its subtitle beside it. Added straight
+        // after the source rather than through the addon path: the file is
+        // already here, and the network this would otherwise ask may not be.
+        context.localSubtitlePath?.let { playback.addSubtitle(it) }
 
         val storedPreference = SubtitlePreference(stored.scale, stored.font)
         playback.state
@@ -211,6 +217,9 @@ internal fun PlayerScreen(
     // to no subtitles.
     var fingerprint by remember(item) { mutableStateOf(context.fingerprint()) }
     LaunchedEffect(item) {
+        // Nothing to hash for a file already on the device, and nobody to ask
+        // about it: the point of a download is that it plays with no network.
+        if (context.isDownload) return@LaunchedEffect
         // The size the addon declared is handed over rather than rediscovered:
         // hashing already costs two range reads against the same host the engine
         // is streaming from, and asking it for a number we were given is two
@@ -220,6 +229,7 @@ internal fun PlayerScreen(
         }
     }
     val addonSubtitleState by remember(item, fingerprint) {
+        if (context.isDownload) return@remember flowOf(QueryState<List<AddonSubtitles>>())
         graph.browse.subtitles(
             type = context.type,
             videoId = context.videoId,

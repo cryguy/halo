@@ -3,6 +3,8 @@ package moe.ditto.halo.shell
 import kotlinx.serialization.Serializable
 import moe.ditto.halo.api.AddonSource
 import moe.ditto.halo.api.Stream
+import moe.ditto.halo.downloads.DownloadEntry
+import moe.ditto.halo.downloads.DownloadFiles
 import moe.ditto.halo.downloads.DownloadMedia
 import moe.ditto.halo.screens.player.EpisodeChoice
 import moe.ditto.halo.screens.player.PlaybackContext
@@ -129,6 +131,17 @@ data class PlayerRoute(
      */
     val streamName: String? = null,
     val streamTitle: String? = null,
+    /**
+     * True when [url] is a file on this device rather than a source to stream.
+     *
+     * Carried rather than sniffed from the URL: what changes is not how the
+     * file opens but what the player may assume, namely that there is no
+     * network worth asking. It skips hashing the source and searching addons
+     * for subtitles, both of which would be requests made on a train.
+     */
+    val isDownload: Boolean = false,
+    /** A subtitle file stored beside a download, added to the engine directly. */
+    val localSubtitlePath: String? = null,
 )
 
 /**
@@ -154,6 +167,8 @@ internal fun PlayerRoute.playbackContext(): PlaybackContext = PlaybackContext(
     videoHash = videoHash,
     streamName = streamName,
     streamTitle = streamTitle,
+    isDownload = isDownload,
+    localSubtitlePath = localSubtitlePath,
 )
 
 /**
@@ -183,6 +198,32 @@ internal fun StreamsRoute.playerRoute(addon: AddonSource, stream: Stream, url: S
         streamTitle = stream.title ?: stream.description,
     )
 }
+
+/**
+ * Playback of a finished download, straight off the device.
+ *
+ * Everything the player needs was resolved when the download was started, which
+ * is what makes this route buildable with no network at all.
+ */
+internal fun DownloadEntry.playerRoute(files: DownloadFiles): PlayerRoute = PlayerRoute(
+    url = files.videoPath,
+    type = media.type,
+    metaId = media.metaId,
+    videoId = media.videoId,
+    showTitle = media.showTitle,
+    episodeTag = media.episodeTag,
+    episodeName = media.episodeName,
+    episodeThumbnail = media.episodeThumbnail,
+    addonId = media.addonId,
+    bingeGroup = media.bingeGroup,
+    filename = media.filename,
+    videoSize = media.videoSize ?: 0,
+    videoHash = media.videoHash,
+    streamName = media.streamName,
+    streamTitle = media.streamTitle,
+    isDownload = true,
+    localSubtitlePath = files.subtitlePath,
+)
 
 /**
  * The download this picker would start, from the source that was chosen for the

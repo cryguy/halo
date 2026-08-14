@@ -36,6 +36,9 @@ internal sealed interface DownloadStartResult {
     data class NotEnoughSpace(val requiredBytes: Long, val freeBytes: Long) : DownloadStartResult
 }
 
+/** The files a finished download consists of, as absolute paths. */
+internal data class DownloadFiles(val videoPath: String, val subtitlePath: String?)
+
 /**
  * The app's one downloads owner: the index, the queue, and the single transfer
  * that is allowed to run at a time.
@@ -80,6 +83,9 @@ internal class DownloadsCoordinator(
     private val mutex = Mutex()
     private var active: ActiveTransfer? = null
 
+    /** Measures the one transfer that runs at a time; see [TransferRate]. */
+    private val rate = TransferRate()
+
     private class ActiveTransfer(val videoId: String, val job: Job)
 
     init {
@@ -94,6 +100,22 @@ internal class DownloadsCoordinator(
     }
 
     fun entryFor(videoId: String): DownloadEntry? = _entries.value.firstOrNull { it.videoId == videoId }
+
+    /**
+     * Where this entry's files actually are, for the player to open.
+     *
+     * Absolute paths are built here and never stored, because only this object
+     * knows the directory and the directory is not stable across reinstalls.
+     * Null while the download is not finished; there is nothing whole to play.
+     */
+    fun playbackFiles(entry: DownloadEntry): DownloadFiles? {
+        val root = directory ?: return null
+        if (entry.status != DownloadStatus.Done) return null
+        return DownloadFiles(
+            videoPath = (root / entry.fileName).toString(),
+            subtitlePath = entry.subtitle?.let { (root / it.fileName).toString() },
+        )
+    }
 
     /**
      * Accepts a video for download, or explains why it did not.
@@ -158,7 +180,8 @@ internal class DownloadsCoordinator(
         val job = mutex.withLock {
             val entry = current(videoId) ?: return
             if (!entry.status.isActive) return
-            put(entry.copy(status = DownloadStatus.Paused, updatedAt = clock.nowMs()))
+            put(entry.copy(status = DownloadStatus.Paused, updatedAt = clock.nowMs(), bytesPerSecond = 0))
+            if (active?.videoId == videoId) rate.clear()
             active?.takeIf { it.videoId == videoId }?.job
         }
         job?.cancelAndJoin()
@@ -265,6 +288,7 @@ internal class DownloadsCoordinator(
             )
             mutex.withLock {
                 val current = current(videoId) ?: return@withLock
+                rate.clear()
                 put(
                     current.copy(
                         status = DownloadStatus.Done,
@@ -273,6 +297,7 @@ internal class DownloadsCoordinator(
                         resumeValidator = result.validator ?: current.resumeValidator,
                         failureMessage = null,
                         updatedAt = clock.nowMs(),
+                        bytesPerSecond = 0,
                     ),
                 )
             }
@@ -283,11 +308,13 @@ internal class DownloadsCoordinator(
         } catch (failure: Throwable) {
             mutex.withLock {
                 val current = current(videoId) ?: return@withLock
+                rate.clear()
                 put(
                     current.copy(
                         status = DownloadStatus.Failed,
                         failureMessage = failureMessage(failure),
                         updatedAt = clock.nowMs(),
+                        bytesPerSecond = 0,
                     ),
                 )
             }
@@ -306,12 +333,14 @@ internal class DownloadsCoordinator(
         mutex.withLock {
             val entry = current(videoId) ?: return
             if (entry.status != DownloadStatus.Downloading) return
+            val now = clock.nowMs()
             put(
                 entry.copy(
                     downloadedBytes = progress.downloadedBytes,
                     totalBytes = progress.totalBytes,
                     resumeValidator = progress.validator ?: entry.resumeValidator,
-                    updatedAt = clock.nowMs(),
+                    updatedAt = now,
+                    bytesPerSecond = rate.sample(videoId, progress.downloadedBytes, now),
                 ),
             )
         }

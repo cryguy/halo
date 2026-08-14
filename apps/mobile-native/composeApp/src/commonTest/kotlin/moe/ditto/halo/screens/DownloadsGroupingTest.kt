@@ -129,6 +129,42 @@ class DownloadsGroupingTest {
     fun anEmptyLibraryHasNothingToSummarise() {
         assertEquals("", downloadsSummary(emptyList()))
     }
+
+    @Test
+    fun aRunningDownloadShowsHowFastAndHowLong() {
+        val entry = movie("f", status = DownloadStatus.Downloading, total = 1_610_612_736, done = 536_870_912)
+            .copy(bytesPerSecond = 12_400_000)
+
+        assertEquals("512 MB of 1.5 GB · 12 MB/s · 2 min left", downloadStatusLabel(entry))
+    }
+
+    @Test
+    fun aRateThatHasNotBeenMeasuredIsNotInvented() {
+        val entry = movie("f", status = DownloadStatus.Downloading, total = 1_610_612_736, done = 536_870_912)
+
+        // No speed, and therefore no estimate: both are measurements, and a
+        // guess made from none is worse than silence.
+        assertEquals("512 MB of 1.5 GB", downloadStatusLabel(entry))
+    }
+
+    @Test
+    fun timeLeftIsCoarseEnoughToBeTrusted() {
+        assertEquals("less than a minute left", formatRemaining(41))
+        assertEquals("2 min left", formatRemaining(61))
+        assertEquals("59 min left", formatRemaining(59 * 60))
+        assertEquals("1 h left", formatRemaining(60 * 60))
+        assertEquals("2 h 5 min left", formatRemaining(125 * 60))
+    }
+
+    @Test
+    fun aTitleThatIsDownloadingSaysHowFastInItsSummary() {
+        val entries = listOf(
+            episode("s1e1", tag = "S01E01", status = DownloadStatus.Downloading, total = 1_073_741_824, done = 0)
+                .copy(bytesPerSecond = 5_000_000),
+        )
+
+        assertEquals("1 download · 1 in progress · 4.8 MB/s", downloadGroupSummary(entries))
+    }
 }
 
 private fun movie(

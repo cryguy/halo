@@ -218,6 +218,14 @@ internal fun HaloShell(
                     DownloadsScreen(
                         downloads = graph.downloads,
                         onOpenDetail = { navController.openDetail(it) },
+                        onPlay = { entry ->
+                            // Stacked rather than replacing: leaving playback
+                            // returns to the list it was started from, which is
+                            // the tab the viewer is standing in.
+                            graph.downloads.playbackFiles(entry)?.let { files ->
+                                navController.navigate(entry.playerRoute(files))
+                            }
+                        },
                     )
                 }
                 composable<SettingsRoute> {

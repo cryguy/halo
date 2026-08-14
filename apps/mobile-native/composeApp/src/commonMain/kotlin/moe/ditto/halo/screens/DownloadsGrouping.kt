@@ -3,6 +3,7 @@ package moe.ditto.halo.screens
 import moe.ditto.halo.downloads.DownloadEntry
 import moe.ditto.halo.downloads.DownloadStatus
 import moe.ditto.halo.ui.formatBytes
+import moe.ditto.halo.ui.formatSpeed
 
 /**
  * One title's downloads, as the screen shows them: a header for the title and
@@ -68,11 +69,21 @@ internal fun downloadStatusLabel(entry: DownloadEntry): String = when (entry.sta
         formatBytes(entry.totalBytes.takeIf { it > 0 } ?: entry.downloadedBytes).ifEmpty { null },
     ).joinToString(" · ")
 
-    DownloadStatus.Downloading -> when {
-        entry.totalBytes > 0 ->
-            "${formatBytes(entry.downloadedBytes)} of ${formatBytes(entry.totalBytes)}"
-        entry.downloadedBytes > 0 -> formatBytes(entry.downloadedBytes)
-        else -> "Starting…"
+    DownloadStatus.Downloading -> {
+        val progress = when {
+            entry.totalBytes > 0 ->
+                "${formatBytes(entry.downloadedBytes)} of ${formatBytes(entry.totalBytes)}"
+            entry.downloadedBytes > 0 -> formatBytes(entry.downloadedBytes)
+            else -> "Starting…"
+        }
+        // Speed and time only once they have been measured. A rate invented
+        // from a single sample swings by a factor of several, and an estimate
+        // that jumps between two minutes and twenty is worse than none.
+        listOfNotNull(
+            progress,
+            formatSpeed(entry.bytesPerSecond),
+            entry.secondsRemaining?.let { formatRemaining(it) },
+        ).joinToString(" · ")
     }
 
     DownloadStatus.Queued -> "Waiting for the current download"
@@ -82,6 +93,21 @@ internal fun downloadStatusLabel(entry: DownloadEntry): String = when (entry.sta
     ).joinToString(" · ")
 
     DownloadStatus.Failed -> entry.failureMessage ?: "This download did not finish."
+}
+
+/**
+ * `195` → `"3 min left"`. Rounded up, and coarse on purpose: the estimate is
+ * only as good as a rate that moves, and a readout counting individual seconds
+ * down invites watching it rather than trusting it.
+ */
+internal fun formatRemaining(seconds: Long): String {
+    if (seconds < 60) return "less than a minute left"
+    val minutes = (seconds + 59) / 60
+    if (minutes < 60) return "$minutes min left"
+    val hours = minutes / 60
+    val remainder = minutes % 60
+    if (remainder == 0L) return "$hours h left"
+    return "$hours h $remainder min left"
 }
 
 /**
@@ -106,6 +132,9 @@ internal fun downloadGroupSummary(entries: List<DownloadEntry>): String {
     formatBytes(entries.sumOf(::bytesOnDevice)).takeIf { it.isNotEmpty() }?.let(parts::add)
     val active = entries.count { it.status.isActive }
     if (active > 0) parts.add("$active in progress")
+    // One transfer runs at a time, so at most one row here has a rate, and it
+    // is the rate of this title rather than a sum of unrelated numbers.
+    entries.firstNotNullOfOrNull { formatSpeed(it.bytesPerSecond) }?.let(parts::add)
     return parts.joinToString(" · ")
 }
 

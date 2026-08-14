@@ -39,6 +39,15 @@ internal data class PlaybackContext(
     /** Raw source naming, for badge parsing only. Never displayed as given. */
     val streamName: String? = null,
     val streamTitle: String? = null,
+    /**
+     * True when [url] is a file on this device. What it changes is not how the
+     * file opens but what this screen may assume: there is no network worth
+     * asking, so the source is not hashed and no addon is searched for
+     * subtitles. Both of those would be requests made on a train.
+     */
+    val isDownload: Boolean = false,
+    /** A subtitle stored beside a download, handed to the engine directly. */
+    val localSubtitlePath: String? = null,
 ) {
     /** True when this is an episode of something rather than a film. */
     val isEpisode: Boolean

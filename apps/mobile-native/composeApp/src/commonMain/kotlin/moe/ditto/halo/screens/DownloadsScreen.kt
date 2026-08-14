@@ -1,6 +1,7 @@
 package moe.ditto.halo.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -47,6 +49,7 @@ import moe.ditto.halo.ui.HaloIcons
 import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
+import moe.ditto.halo.ui.monoStyle
 import moe.ditto.halo.ui.SelectOption
 import moe.ditto.halo.ui.SelectSheet
 import moe.ditto.halo.ui.rememberResponsive
@@ -63,6 +66,8 @@ import moe.ditto.halo.ui.rememberResponsive
 internal fun DownloadsScreen(
     downloads: DownloadsCoordinator,
     onOpenDetail: (MetaRef) -> Unit,
+    /** Plays a finished download from the device. Nothing here touches the network. */
+    onPlay: (DownloadEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val responsive = rememberResponsive()
@@ -111,23 +116,36 @@ internal fun DownloadsScreen(
                         )
                     }
                 }
-                groups.forEach { group ->
-                    item(key = "group-${group.itemId}") {
+                // One item per title rather than one per row: the group is a
+                // card, and a card cannot be assembled from separate items.
+                // Groups are a season at most, so nothing large is composed
+                // that is not on screen.
+                items(items = groups, key = { it.itemId }) { group ->
+                    Column(Modifier.padding(bottom = HaloSpacing.Md)) {
                         GroupHeader(
                             group = group,
                             onClick = { onOpenDetail(MetaRef(group.type, group.metaId)) },
                         )
-                    }
-                    items(
-                        count = group.entries.size,
-                        key = { index -> "entry-${group.entries[index].videoId}" },
-                    ) { index ->
-                        DownloadRow(
-                            entry = group.entries[index],
-                            onPause = { scope.launch { downloads.pause(it) } },
-                            onResume = { scope.launch { downloads.resume(it) } },
-                            onRemove = { pendingRemoval = group.entries[index] },
-                        )
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(HaloRadius.Lg))
+                                .background(HaloColors.Glass)
+                                .border(1.dp, HaloColors.GlassBorder, RoundedCornerShape(HaloRadius.Lg)),
+                        ) {
+                            group.entries.forEachIndexed { index, entry ->
+                                if (index > 0) {
+                                    Box(Modifier.fillMaxWidth().height(1.dp).background(HaloColors.Hairline))
+                                }
+                                DownloadRow(
+                                    entry = entry,
+                                    onPlay = { onPlay(entry) },
+                                    onPause = { scope.launch { downloads.pause(it) } },
+                                    onResume = { scope.launch { downloads.resume(it) } },
+                                    onRemove = { pendingRemoval = entry },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -205,19 +223,23 @@ private fun GroupHeader(group: DownloadGroup, onClick: () -> Unit) {
 @Composable
 private fun DownloadRow(
     entry: DownloadEntry,
+    onPlay: () -> Unit,
     onPause: (String) -> Unit,
     onResume: (String) -> Unit,
     onRemove: () -> Unit,
 ) {
+    val playable = entry.status == DownloadStatus.Done
     Column(
         Modifier
             .fillMaxWidth()
-            // Indented to sit under the title's text rather than under its
-            // poster, so the group reads as one block.
-            .padding(start = PosterWidth + HaloSpacing.Sm + 4.dp),
+            // The whole row plays, not just the button: a finished download is
+            // a thing to watch, and the row is what a thumb lands on.
+            .then(if (playable) Modifier.clickable(role = Role.Button, onClick = onPlay) else Modifier),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = HaloSpacing.Sm + 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = HaloSpacing.Md, vertical = HaloSpacing.Sm + 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(HaloSpacing.Sm),
         ) {
@@ -248,6 +270,14 @@ private fun DownloadRow(
                 if (entry.status != DownloadStatus.Done) {
                     ProgressTrack(entry)
                 }
+
+            }
+            if (playable) {
+                RowAction(
+                    icon = HaloIcons.Play,
+                    description = "Play this download",
+                    onClick = onPlay,
+                )
             }
             when (entry.status) {
                 DownloadStatus.Downloading, DownloadStatus.Queued -> RowAction(
@@ -275,7 +305,6 @@ private fun DownloadRow(
                 onClick = onRemove,
             )
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(HaloColors.Hairline))
     }
 }
 
@@ -287,21 +316,31 @@ private fun DownloadRow(
 @Composable
 private fun ProgressTrack(entry: DownloadEntry) {
     val fraction = entry.fraction ?: return
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = HaloSpacing.Sm)
-            .height(4.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(Color.White.copy(alpha = 0.16f)),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = HaloSpacing.Sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(HaloSpacing.Sm),
     ) {
         Box(
             Modifier
-                .fillMaxWidth(fraction)
+                .weight(1f)
                 .height(4.dp)
-                .background(
-                    if (entry.status == DownloadStatus.Downloading) HaloColors.Accent else HaloColors.TextDim,
-                ),
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color.White.copy(alpha = 0.16f)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(fraction)
+                    .height(4.dp)
+                    .background(
+                        if (entry.status == DownloadStatus.Downloading) HaloColors.Accent else HaloColors.TextDim,
+                    ),
+            )
+        }
+        // Tabular figures, so the number does not jitter sideways as it counts.
+        Text(
+            text = "${(fraction * 100).toInt()}%",
+            style = monoStyle(fontSize = 11.sp, color = HaloColors.TextDim),
         )
     }
 }

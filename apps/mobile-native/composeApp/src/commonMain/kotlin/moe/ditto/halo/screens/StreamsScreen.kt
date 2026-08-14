@@ -59,6 +59,8 @@ import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
 import moe.ditto.halo.ui.CenterMessage
+import moe.ditto.halo.ui.SelectOption
+import moe.ditto.halo.ui.SelectSheet
 import moe.ditto.halo.ui.formatBytes
 import kotlinx.coroutines.launch
 
@@ -104,8 +106,12 @@ internal fun StreamsScreen(
     val downloads by graph.downloads.entries.collectAsState()
     val download = remember(downloads, videoId) { downloads.firstOrNull { it.videoId == videoId } }
     var refusal by remember { mutableStateOf<String?>(null) }
+    // A second source for a video already held is a replacement, and a
+    // replacement throws away bytes someone waited for. Asked, never assumed.
+    var pendingReplacement by remember { mutableStateOf<DownloadMedia?>(null) }
 
-    Column(modifier.fillMaxSize().background(HaloColors.Background)) {
+    Box(modifier.fillMaxSize().background(HaloColors.Background)) {
+    Column(Modifier.fillMaxSize()) {
         // The header outlives every state below it: a screen that swaps itself
         // for a spinner takes its own way back with it.
         ScreenHeader(
@@ -125,11 +131,11 @@ internal fun StreamsScreen(
             onDownload = { addon, stream ->
                 val url = stream.url
                 if (url != null) {
-                    scope.launch {
-                        refusal = when (val result = graph.downloads.start(downloadMedia(addon, stream, url))) {
-                            is DownloadStartResult.NotEnoughSpace -> notEnoughSpaceMessage(result)
-                            else -> null
-                        }
+                    val media = downloadMedia(addon, stream, url)
+                    if (download != null && download.media.sourceUrl != url) {
+                        pendingReplacement = media
+                    } else {
+                        scope.launch { refusal = beginDownload(graph, media) }
                     }
                 }
             },
@@ -137,7 +143,43 @@ internal fun StreamsScreen(
             modifier = Modifier.fillMaxSize(),
         )
     }
+
+    val replacement = pendingReplacement
+    SelectSheet(
+        visible = replacement != null,
+        title = "Replace the download?",
+        description = "This video is already downloaded from another source.",
+        options = listOf(
+            SelectOption(
+                key = ReplaceKey,
+                label = "Download this source instead",
+                detail = "The file already on the device is deleted first.",
+                destructive = true,
+            ),
+        ),
+        onSelect = {
+            val media = replacement
+            pendingReplacement = null
+            if (media != null) {
+                scope.launch {
+                    graph.downloads.remove(media.videoId)
+                    refusal = beginDownload(graph, media)
+                }
+            }
+        },
+        onClose = { pendingReplacement = null },
+    )
+    }
 }
+
+private const val ReplaceKey = "replace"
+
+/** Starts a download and returns what stopped it, or null when it took. */
+private suspend fun beginDownload(graph: SignedInGraph, media: DownloadMedia): String? =
+    when (val result = graph.downloads.start(media)) {
+        is DownloadStartResult.NotEnoughSpace -> notEnoughSpaceMessage(result)
+        else -> null
+    }
 
 internal fun notEnoughSpaceMessage(result: DownloadStartResult.NotEnoughSpace): String =
     "This source needs ${formatBytes(result.requiredBytes)} and the device has " +
@@ -416,7 +458,11 @@ private fun AddonGroup(
                     stream = stream,
                     fallbackName = group.addon.name,
                     onClick = { onPlay(group.addon, stream) },
-                    download = download,
+                    // Only the row the download actually came from wears its
+                    // state. Marking every row "downloaded" claims something
+                    // about sources nobody fetched.
+                    download = download?.takeIf { it.media.sourceUrl == stream.url },
+                    heldElsewhere = download != null && download.media.sourceUrl != stream.url,
                     downloadsAvailable = downloadsAvailable,
                     onDownload = { onDownload(group.addon, stream) },
                 )
@@ -431,6 +477,7 @@ private fun StreamRow(
     fallbackName: String,
     onClick: () -> Unit,
     download: DownloadEntry?,
+    heldElsewhere: Boolean,
     downloadsAvailable: Boolean,
     onDownload: () -> Unit,
 ) {
@@ -483,7 +530,7 @@ private fun StreamRow(
             )
         }
         if (downloadsAvailable) {
-            DownloadAction(download = download, onDownload = onDownload)
+            DownloadAction(download = download, heldElsewhere = heldElsewhere, onDownload = onDownload)
         } else {
             Box(Modifier.width(HaloSpacing.Md))
         }
@@ -491,24 +538,32 @@ private fun StreamRow(
 }
 
 /**
- * The keep-it column at the end of every source row.
+ * The keep-it column at the end of a source row.
  *
- * It shows the state of the video rather than of the row, because only one
- * download per video exists: once one source is on the device, every row here
- * reports the same thing. The glyph is inert in that state, so there is no tap
- * that quietly does nothing, and a failed download is offered again because
- * asking a second time is how it is retried from here.
+ * [download] is this row's own download, so only the source that was actually
+ * fetched wears a state; [heldElsewhere] says the video is held from a
+ * different source, which dims this row's glyph without disabling it. Tapping
+ * it then offers to replace what is on the device, because one download per
+ * video is a rule about storage rather than a reason to refuse a better source.
  */
 @Composable
-private fun DownloadAction(download: DownloadEntry?, onDownload: () -> Unit) {
+private fun DownloadAction(download: DownloadEntry?, heldElsewhere: Boolean, onDownload: () -> Unit) {
     val column = Modifier.width(DownloadColumnWidth)
     val status = download?.status
     Box(column, contentAlignment = Alignment.Center) {
         when (status) {
             null, DownloadStatus.Failed -> Icon(
                 imageVector = HaloIcons.Download,
-                contentDescription = if (status == null) "Download this source" else "Retry this download",
-                tint = if (status == null) HaloColors.Accent else HaloColors.Danger,
+                contentDescription = when {
+                    status != null -> "Retry this download"
+                    heldElsewhere -> "Download this source instead"
+                    else -> "Download this source"
+                },
+                tint = when {
+                    status != null -> HaloColors.Danger
+                    heldElsewhere -> HaloColors.TextDim
+                    else -> HaloColors.Accent
+                },
                 modifier = Modifier
                     .clickable(role = Role.Button, onClick = onDownload)
                     .padding(HaloSpacing.Xs)
