@@ -17,6 +17,10 @@ data class PlayerState(
     val positionSeconds: Double = 0.0,
     val durationSeconds: Double? = null,
     val tracks: PlayerTracks = PlayerTracks(),
+    /** Non-null only while the cache is stalling playback. */
+    val buffering: PlayerBuffering? = null,
+    /** How far into the media the cache reaches, or null before the engine says. */
+    val bufferedPositionSeconds: Double? = null,
     val error: String? = null,
     // Local echoes of the last requested live controls. The core is the source
     // of truth; these exist so the shell can display what it asked for without
@@ -122,8 +126,21 @@ class PlayerPresenter(
                 status = if (event.paused) PlaybackStatus.Paused else PlaybackStatus.Playing,
             )
             is PlayerEvent.TracksChanged -> state.copy(tracks = event.tracks)
+            is PlayerEvent.BufferingChanged -> state.copy(buffering = event.toBuffering())
+            is PlayerEvent.BufferedPositionChanged -> state.copy(
+                bufferedPositionSeconds = event.positionSeconds
+                    .takeIf { it.isFinite() && it >= 0.0 }
+                    ?: state.bufferedPositionSeconds,
+            )
             PlayerEvent.NaturalEnd -> advanceOrEnd()
-            is PlayerEvent.Error -> state.copy(status = PlaybackStatus.Failed, error = event.message)
+            // Nothing is being filled once playback has failed, and a stall is
+            // a common way to arrive here, so the overlay must not survive
+            // underneath the error card.
+            is PlayerEvent.Error -> state.copy(
+                status = PlaybackStatus.Failed,
+                error = event.message,
+                buffering = null,
+            )
             PlayerEvent.Teardown -> state.copy(status = PlaybackStatus.Released, queuedNext = null)
         }
     }
@@ -138,8 +155,22 @@ class PlayerPresenter(
     }
 
     private suspend fun advanceOrEnd(): PlayerState {
-        val next = state.queuedNext ?: return state.copy(status = PlaybackStatus.Ended)
+        val next = state.queuedNext
+            ?: return state.copy(status = PlaybackStatus.Ended, buffering = null)
         player.load(next)
         return PlayerState(current = next, status = PlaybackStatus.Loading)
     }
+}
+
+/**
+ * Drops the figures a host reported as unusable, so the state never carries a
+ * negative rate or a non-finite cache depth into a formatter.
+ */
+private fun PlayerEvent.BufferingChanged.toBuffering(): PlayerBuffering? {
+    if (!active) return null
+    return PlayerBuffering(
+        percent = percent?.coerceIn(0, 100),
+        bytesPerSecond = bytesPerSecond?.takeIf { it >= 0L },
+        cachedSeconds = cachedSeconds?.takeIf { it.isFinite() && it >= 0.0 },
+    )
 }

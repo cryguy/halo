@@ -226,8 +226,13 @@ internal fun PlayerScreen(
                 chips = playerChips(state, controller, context),
                 positionSeconds = state.positionSeconds,
                 durationSeconds = state.durationSeconds,
-                bufferedFraction = progressFraction(state.positionSeconds, state.durationSeconds) +
-                    PlayerFixtures.BufferedLeadFraction,
+                // The cache's own reach. Before the engine reports one there is
+                // no lead to draw, and the bar's own floor keeps the fill from
+                // ever sitting behind the playhead after a backwards seek.
+                bufferedFraction = progressFraction(
+                    state.bufferedPositionSeconds ?: 0.0,
+                    state.durationSeconds,
+                ),
                 scrubFraction = controller.scrubFraction,
                 onScrubStart = controller::beginScrub,
                 onScrubMove = controller::updateScrub,
@@ -316,6 +321,15 @@ internal fun PlayerScreen(
         if (state.status == PlaybackStatus.Loading) {
             CircularProgressIndicator(
                 color = HaloColors.Accent,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+
+        state.buffering?.let { buffering ->
+            BufferingOverlay(
+                percent = buffering.percent,
+                throughput = formatThroughput(buffering.bytesPerSecond),
+                cached = formatCachedAhead(buffering.cachedSeconds),
                 modifier = Modifier.align(Alignment.Center),
             )
         }

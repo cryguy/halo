@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import moe.ditto.halo.player.MediaItem
 import moe.ditto.halo.player.MpvCore
+import moe.ditto.halo.player.PlayerBuffering
 import moe.ditto.halo.player.PlayerEvent
 import moe.ditto.halo.player.PlayerPort
 import moe.ditto.halo.player.PlayerTracks
@@ -76,6 +77,19 @@ internal class AndroidMpvPlayerHost(
     override fun onPosition(positionSeconds: Double) = emit(PlayerEvent.PositionChanged(positionSeconds))
     override fun onPauseChanged(paused: Boolean) = emit(PlayerEvent.PauseChanged(paused))
     override fun onTracks(tracks: PlayerTracks) = emit(PlayerEvent.TracksChanged(tracks))
+
+    override fun onBuffering(buffering: PlayerBuffering?) = emit(
+        PlayerEvent.BufferingChanged(
+            active = buffering != null,
+            percent = buffering?.percent,
+            bytesPerSecond = buffering?.bytesPerSecond,
+            cachedSeconds = buffering?.cachedSeconds,
+        ),
+    )
+
+    override fun onBufferedPosition(positionSeconds: Double) =
+        emit(PlayerEvent.BufferedPositionChanged(positionSeconds))
+
     override fun onEnded() = emit(PlayerEvent.NaturalEnd)
     override fun onError(message: String) = emit(PlayerEvent.Error(message))
 

@@ -73,6 +73,45 @@ internal fun formatRate(rate: Double): String {
 }
 
 /**
+ * The rate the cache is filling at, or null when the engine did not say, in
+ * which case the caller drops the figure rather than printing a zero.
+ *
+ * Units step at 1024 and are labelled KB/s and MB/s, which is what every
+ * download readout on both platforms does; the pedantically correct KiB/s would
+ * be the only place in the app that spelled it that way. One decimal below
+ * 10 MB/s, none above, so the line does not change width while it counts.
+ */
+internal fun formatThroughput(bytesPerSecond: Long?): String? {
+    val bytes = bytesPerSecond ?: return null
+    if (bytes < 0L) return null
+    if (bytes < 1_024L) return "$bytes B/s"
+
+    val kilobytes = bytes.toDouble() / 1_024.0
+    if (kilobytes < 1_024.0) return "${kilobytes.roundToInt()} KB/s"
+
+    val megabytes = kilobytes / 1_024.0
+    if (megabytes < 10.0) return "${formatOneDecimal(megabytes)} MB/s"
+    return "${megabytes.roundToInt()} MB/s"
+}
+
+/**
+ * How much media the cache holds ahead of the playhead, or null when unknown.
+ * This is the figure that separates "slow but recovering" from "stuck", so it
+ * is worth its own line even though the percentage sits right above it.
+ */
+internal fun formatCachedAhead(seconds: Double?): String? {
+    val cached = seconds ?: return null
+    if (!cached.isFinite() || cached < 0.0) return null
+    if (cached < 60.0) return "${cached.roundToInt()} s cached"
+    return "${(cached / 60.0).roundToInt()} min cached"
+}
+
+private fun formatOneDecimal(value: Double): String {
+    val tenths = (value * 10.0).roundToInt()
+    return "${tenths / 10}.${tenths % 10}"
+}
+
+/**
  * Playback progress as a 0..1 fraction, or 0 while the duration is unknown.
  * Callers draw a track from this, so it must never be NaN.
  */

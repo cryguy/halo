@@ -96,6 +96,37 @@ class PlayerFormatTest {
     }
 
     @Test
+    fun throughputStepsUnitsAndKeepsOneDecimalOnlyWhereItFits() {
+        assertEquals("0 B/s", formatThroughput(0))
+        assertEquals("900 B/s", formatThroughput(900))
+        assertEquals("1 KB/s", formatThroughput(1_024))
+        assertEquals("820 KB/s", formatThroughput(839_680))
+        assertEquals("1.8 MB/s", formatThroughput(1_887_437))
+        // Past 10 MB/s the decimal is dropped so the pill stops changing width
+        // while the figure jitters.
+        assertEquals("24 MB/s", formatThroughput(25_165_824))
+    }
+
+    @Test
+    fun throughputAndCacheDepthAreAbsentRatherThanZeroWhenUnreported() {
+        // A host that cannot report these must not be made to say "0 B/s",
+        // which describes a stall that is downloading nothing.
+        assertNull(formatThroughput(null))
+        assertNull(formatThroughput(-1))
+        assertNull(formatCachedAhead(null))
+        assertNull(formatCachedAhead(Double.NaN))
+        assertNull(formatCachedAhead(-2.0))
+    }
+
+    @Test
+    fun cacheDepthReadsInSecondsThenMinutes() {
+        assertEquals("0 s cached", formatCachedAhead(0.0))
+        assertEquals("12 s cached", formatCachedAhead(12.4))
+        assertEquals("59 s cached", formatCachedAhead(59.0))
+        assertEquals("2 min cached", formatCachedAhead(94.0))
+    }
+
+    @Test
     fun progressIsClampedWhenPositionOverrunsDuration() {
         // Live edges and rounding both produce a position past the reported
         // duration; a fraction over 1 would draw the played fill past the track.

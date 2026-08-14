@@ -76,11 +76,13 @@ private val CountdownTrack = Color.White.copy(alpha = 0.14f)
  *
  * The percentage is the whole point of this overlay. A spinner alone cannot
  * distinguish a seek that is making progress from a stream that has stalled, and
- * those two need completely different reactions from the viewer.
+ * those two need completely different reactions from the viewer. It is still
+ * nullable: an engine that stalls without reporting a fill level gets the bare
+ * ring, which is honest, rather than a `0%` that would read as no progress.
  */
 @Composable
 internal fun BufferingOverlay(
-    percent: Int,
+    percent: Int?,
     throughput: String?,
     cached: String?,
     modifier: Modifier = Modifier,
@@ -125,10 +127,12 @@ internal fun BufferingOverlay(
                     style = Stroke(width = stroke),
                 )
             }
-            Text(
-                text = "$percent%",
-                style = monoStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
-            )
+            if (percent != null) {
+                Text(
+                    text = "$percent%",
+                    style = monoStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                )
+            }
         }
 
         Column(

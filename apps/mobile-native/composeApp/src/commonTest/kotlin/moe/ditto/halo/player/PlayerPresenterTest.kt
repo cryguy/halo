@@ -150,6 +150,89 @@ class PlayerPresenterTest {
     }
 
     @Test
+    fun bufferingFiguresArriveTogetherAndClearCompletely() = runTest {
+        val presenter = PlayerPresenter(RecordingPlayerPort())
+        presenter.start(first)
+
+        presenter.onEvent(
+            PlayerEvent.BufferingChanged(
+                active = true,
+                percent = 62,
+                bytesPerSecond = 1_887_437,
+                cachedSeconds = 12.0,
+            ),
+        )
+
+        assertEquals(PlayerBuffering(62, 1_887_437, 12.0), presenter.state.buffering)
+
+        // Clearing must drop the figures with it: a stale rate left behind the
+        // "not buffering" flag is the one thing a later reader could misread.
+        presenter.onEvent(PlayerEvent.BufferingChanged(active = false))
+
+        assertNull(presenter.state.buffering)
+    }
+
+    @Test
+    fun bufferingFiguresAHostCannotReportStayAbsent() = runTest {
+        val presenter = PlayerPresenter(RecordingPlayerPort())
+        presenter.start(first)
+
+        presenter.onEvent(
+            PlayerEvent.BufferingChanged(
+                active = true,
+                percent = 140,
+                bytesPerSecond = -1,
+                cachedSeconds = Double.NaN,
+            ),
+        )
+
+        // The percentage is clamped because it is a real reading out of range;
+        // the other two are dropped because there is no honest value to show.
+        assertEquals(PlayerBuffering(100, null, null), presenter.state.buffering)
+    }
+
+    @Test
+    fun bufferingOverlayCannotSurviveUnderneathTheErrorCard() = runTest {
+        val presenter = PlayerPresenter(RecordingPlayerPort())
+        presenter.start(first)
+        presenter.onEvent(PlayerEvent.BufferingChanged(active = true, percent = 40))
+
+        // A stall that never recovers is exactly how a stream reports failure.
+        presenter.onEvent(PlayerEvent.Error("connection reset by peer"))
+
+        assertEquals(PlaybackStatus.Failed, presenter.state.status)
+        assertNull(presenter.state.buffering)
+    }
+
+    @Test
+    fun bufferedPositionTracksTheCacheAndIgnoresJunkReadings() = runTest {
+        val presenter = PlayerPresenter(RecordingPlayerPort())
+        presenter.start(first)
+
+        presenter.onEvent(PlayerEvent.BufferedPositionChanged(184.0))
+        assertEquals(184.0, presenter.state.bufferedPositionSeconds)
+
+        presenter.onEvent(PlayerEvent.BufferedPositionChanged(Double.NaN))
+        presenter.onEvent(PlayerEvent.BufferedPositionChanged(-3.0))
+
+        assertEquals(184.0, presenter.state.bufferedPositionSeconds)
+    }
+
+    @Test
+    fun bufferingStateDoesNotLeakAcrossAnAutoplayAdvance() = runTest {
+        val presenter = PlayerPresenter(RecordingPlayerPort())
+        presenter.start(first, second)
+        presenter.onEvent(PlayerEvent.BufferingChanged(active = true, percent = 30))
+        presenter.onEvent(PlayerEvent.BufferedPositionChanged(184.0))
+
+        presenter.onEvent(PlayerEvent.NaturalEnd)
+
+        assertEquals(second, presenter.state.current)
+        assertNull(presenter.state.buffering)
+        assertNull(presenter.state.bufferedPositionSeconds)
+    }
+
+    @Test
     fun liveSubtitleControlsPassThroughAndEchoIntoState() = runTest {
         val port = RecordingPlayerPort()
         val presenter = PlayerPresenter(port)

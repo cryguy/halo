@@ -29,10 +29,9 @@ internal object PlayerFixtures {
     val StreamBadges = listOf("1080p", "HEVC 10-bit")
 
     /**
-     * How far ahead of the playhead the transport's buffered fill is drawn.
-     * The real figure is mpv's demuxer cache, which is not observed yet; until
-     * it is, the bar shows a plausible lead rather than a permanently empty
-     * buffer, which would read as a stalled stream.
+     * How far ahead of the playhead the scene harness draws the transport's
+     * buffered fill. The real screen reads the engine's demuxer cache instead;
+     * this exists so the harness, which has no engine, still shows the fill.
      */
     const val BufferedLeadFraction = 0.09f
 

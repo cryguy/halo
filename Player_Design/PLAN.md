@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1, 2.2 and 2.3 complete.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.4 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -267,7 +267,7 @@ presenter/controller tests.
   `demux-channel-count`, `demux-samplerate`. `PlayerTracksJson` gains the same fields with
   defaults (old Swift JSON keeps decoding — no Swift change). Unlocks: format badges
   (ASS/SRT/PGS/audio codec), PGS-conditional appearance behaviour, AUDIO/SUBTITLES chip values.
-- [ ] **2.4 Buffering readout** — observe `cache-buffering-state` + `paused-for-cache`; read
+- [x] **2.4 Buffering readout** — observe `cache-buffering-state` + `paused-for-cache`; read
   `cache-speed` + `demuxer-cache-duration` while buffering. New
   `PlayerEvent.BufferingChanged(active, percent, bytesPerSecond, cachedSeconds)`;
   presenter state; buffering overlay goes live. Also observe `demuxer-cache-time` for the

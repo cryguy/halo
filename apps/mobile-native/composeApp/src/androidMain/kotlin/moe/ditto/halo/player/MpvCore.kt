@@ -26,6 +26,9 @@ internal class MpvCore private constructor(
         fun onPosition(positionSeconds: Double)
         fun onPauseChanged(paused: Boolean)
         fun onTracks(tracks: PlayerTracks)
+        /** Null once the cache stops stalling playback. */
+        fun onBuffering(buffering: PlayerBuffering?)
+        fun onBufferedPosition(positionSeconds: Double)
         fun onEnded()
         fun onError(message: String)
     }
@@ -36,6 +39,14 @@ internal class MpvCore private constructor(
     // changes. The shell displays seconds, and flooding recompositions would
     // otherwise starve Compose's idle sync (and waste work).
     @Volatile private var lastPositionSecond = Long.MIN_VALUE
+    // Same reasoning for the cache's reach: the transport bar draws it as a
+    // fraction of a whole timeline, so sub-second updates buy nothing visible.
+    @Volatile private var lastBufferedSecond = Long.MIN_VALUE
+    // Whether the cache is currently stalling playback, and how full mpv
+    // considers it. Held because the two arrive as separate observations and
+    // the overlay needs both at once.
+    @Volatile private var pausedForCache = false
+    @Volatile private var cacheFillPercent: Int? = null
 
     private val eventObserver = object : MPVLib.EventObserver {
         override fun eventProperty(property: String) { /* NODE/none formats: ignored */ }
@@ -43,6 +54,10 @@ internal class MpvCore private constructor(
         override fun eventProperty(property: String, value: Long) {
             when (property) {
                 "track-list/count" -> emitTracks()
+                "cache-buffering-state" -> {
+                    cacheFillPercent = value.toInt()
+                    if (pausedForCache) emitBuffering()
+                }
             }
         }
 
@@ -55,6 +70,13 @@ internal class MpvCore private constructor(
                         listener?.onPosition(value)
                     }
                 }
+                "demuxer-cache-time" -> {
+                    val second = value.toLong()
+                    if (second != lastBufferedSecond) {
+                        lastBufferedSecond = second
+                        listener?.onBufferedPosition(value)
+                    }
+                }
             }
         }
 
@@ -62,6 +84,10 @@ internal class MpvCore private constructor(
             when (property) {
                 "pause" -> listener?.onPauseChanged(value)
                 "eof-reached" -> if (value) listener?.onEnded()
+                "paused-for-cache" -> {
+                    pausedForCache = value
+                    emitBuffering()
+                }
             }
         }
 
@@ -200,6 +226,33 @@ internal class MpvCore private constructor(
         emitTracks()
     }
 
+    /**
+     * Reports the stall, reading the rate and depth only while one is happening.
+     *
+     * `paused-for-cache` is the gate rather than `cache-buffering-state`,
+     * because the latter sits below 100 through perfectly healthy streaming and
+     * would flash the overlay over a picture that never stopped moving. The
+     * two figures are read here instead of observed: they only matter while the
+     * overlay is up, and mpv revises the fill percentage as it refills, so this
+     * runs again for each revision.
+     */
+    private fun emitBuffering() {
+        if (destroyed) return
+        if (!pausedForCache) {
+            listener?.onBuffering(null)
+            return
+        }
+        listener?.onBuffering(
+            PlayerBuffering(
+                percent = cacheFillPercent,
+                // mpv types cache-speed as int64; the JNI hands back an Int,
+                // which cannot hold a rate a phone will ever see anyway.
+                bytesPerSecond = mpv.getPropertyInt("cache-speed")?.toLong(),
+                cachedSeconds = mpv.getPropertyDouble("demuxer-cache-duration"),
+            ),
+        )
+    }
+
     private fun emitTracks() {
         if (destroyed) return
         val count = mpv.getPropertyInt("track-list/count") ?: return
@@ -270,6 +323,9 @@ internal class MpvCore private constructor(
             mpv.observeProperty("pause", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
             mpv.observeProperty("eof-reached", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
             mpv.observeProperty("track-list/count", MPVLib.MpvFormat.MPV_FORMAT_INT64)
+            mpv.observeProperty("paused-for-cache", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
+            mpv.observeProperty("cache-buffering-state", MPVLib.MpvFormat.MPV_FORMAT_INT64)
+            mpv.observeProperty("demuxer-cache-time", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)
             return core
         }
     }

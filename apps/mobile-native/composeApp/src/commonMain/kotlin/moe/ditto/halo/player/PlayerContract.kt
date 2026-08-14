@@ -25,11 +25,48 @@ data class PlayerTracks(
     val selectedSubtitleId: String? = null,
 )
 
+/**
+ * What the engine is doing while it refills its cache, reported only while
+ * playback is actually stalled on it.
+ *
+ * Every figure is separately optional because a host can know it is stalled
+ * without knowing how fast it is recovering, and a zero would say something
+ * different and wrong: "stalled, downloading nothing".
+ */
+data class PlayerBuffering(
+    /** How full the cache is against the engine's own refill goal, 0..100. */
+    val percent: Int? = null,
+    val bytesPerSecond: Long? = null,
+    /** Media the cache holds ahead of the playhead. */
+    val cachedSeconds: Double? = null,
+)
+
 sealed interface PlayerEvent {
     data class Ready(val durationSeconds: Double?) : PlayerEvent
     data class PositionChanged(val positionSeconds: Double) : PlayerEvent
     data class PauseChanged(val paused: Boolean) : PlayerEvent
     data class TracksChanged(val tracks: PlayerTracks) : PlayerEvent
+
+    /**
+     * The cache started or stopped stalling playback. The figures are only
+     * meaningful while [active]; when it clears they are absent rather than
+     * frozen at their last values, so nothing can display a stale rate.
+     */
+    data class BufferingChanged(
+        val active: Boolean,
+        val percent: Int? = null,
+        val bytesPerSecond: Long? = null,
+        val cachedSeconds: Double? = null,
+    ) : PlayerEvent
+
+    /**
+     * How far into the media the cache now reaches, in seconds from the start,
+     * which is what the transport bar draws its buffered fill from. Separate
+     * from [BufferingChanged] because it moves the whole time a stream plays,
+     * not only while it stalls.
+     */
+    data class BufferedPositionChanged(val positionSeconds: Double) : PlayerEvent
+
     data object NaturalEnd : PlayerEvent
     data class Error(val message: String) : PlayerEvent
     data object Teardown : PlayerEvent
