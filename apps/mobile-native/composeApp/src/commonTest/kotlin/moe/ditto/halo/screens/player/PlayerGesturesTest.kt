@@ -65,6 +65,39 @@ class PlayerGesturesTest {
     }
 
     @Test
+    fun aPinchDecidesOnceAndOnlyPastTheThreshold() {
+        val pinch = PinchCommit()
+
+        // Small movement is a hand settling on the screen, not a decision.
+        assertNull(pinch.advance(1.05f))
+        assertNull(pinch.advance(1.03f))
+        // 1.05 * 1.03 * 1.05 is past 1.12, so this is the one that decides.
+        assertEquals(true, pinch.advance(1.05f))
+        // And it decides once: a pinch that keeps going does not keep flipping.
+        assertNull(pinch.advance(2f))
+        assertNull(pinch.advance(0.2f))
+    }
+
+    @Test
+    fun pinchingInwardsFitsThePictureInsteadOfFillingTheScreen() {
+        val pinch = PinchCommit()
+
+        assertNull(pinch.advance(0.95f))
+        assertEquals(false, pinch.advance(0.9f))
+    }
+
+    @Test
+    fun aPinchThatReportsNothingUsableIsIgnored() {
+        val pinch = PinchCommit()
+
+        assertNull(pinch.advance(Float.NaN))
+        assertNull(pinch.advance(0f))
+        assertNull(pinch.advance(-1f))
+        // Still undecided, so a real pinch afterwards still works.
+        assertEquals(true, pinch.advance(1.2f))
+    }
+
+    @Test
     fun whichHalfTheGestureStartedOnDecidesWhatItChanges() {
         assertEquals(VerticalDragTarget.Brightness, verticalDragTarget(startX = 10f, widthPx = 1_000f))
         assertEquals(VerticalDragTarget.Brightness, verticalDragTarget(startX = 500f, widthPx = 1_000f))

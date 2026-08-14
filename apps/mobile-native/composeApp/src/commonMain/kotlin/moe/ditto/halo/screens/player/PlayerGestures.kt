@@ -1,9 +1,13 @@
 package moe.ditto.halo.screens.player
 
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.roundToInt
 
@@ -81,6 +85,7 @@ internal fun Modifier.playerGestures(
     onDragStart: (VerticalDragTarget, Float) -> Unit,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
+    onFillScreenChange: (Boolean) -> Unit,
 ): Modifier = this
     .pointerInput(Unit) {
         detectTapGestures(
@@ -105,6 +110,65 @@ internal fun Modifier.playerGestures(
             onDragCancel = onDragEnd,
         )
     }
+    .pointerInput(Unit) {
+        // Hand-rolled rather than `detectTransformGestures`, which never says
+        // where one gesture ends: the commit has to be per pinch, or the first
+        // one of a session would be the only one that could ever decide.
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            val pinch = PinchCommit()
+            var event: PointerEvent
+            do {
+                event = awaitPointerEvent()
+                if (event.changes.count { it.pressed } < 2) continue
+                pinch.advance(event.calculateZoom())?.let(onFillScreenChange)
+                if (pinch.hasCommitted) {
+                    // Consumed so the release of a committed pinch is not also
+                    // read as a tap that hides the chrome.
+                    event.changes.forEach { it.consume() }
+                }
+            } while (event.changes.any { it.pressed })
+        }
+    }
+
+/**
+ * How far a pinch has to travel before it means anything. Below this it is a
+ * two-finger tap or a hand settling on the screen, and switching the picture's
+ * shape on either would be an accident.
+ */
+private const val PinchThreshold = 0.12f
+
+/**
+ * Reads a pinch as a single decision rather than a continuous zoom.
+ *
+ * The picture has two shapes and nothing in between, so what matters is which
+ * direction the pinch went and whether it went far enough. Committing once per
+ * gesture is what stops a slow pinch from flipping the shape repeatedly as the
+ * fingers wander past the threshold.
+ */
+internal class PinchCommit {
+    private var zoom = 1f
+    private var committed = false
+
+    /** Returns true to fill the screen, false to fit inside it, null for neither yet. */
+    fun advance(gestureZoom: Float): Boolean? {
+        if (committed || !gestureZoom.isFinite() || gestureZoom <= 0f) return null
+        zoom *= gestureZoom
+        if (zoom >= 1f + PinchThreshold) {
+            committed = true
+            return true
+        }
+        if (zoom <= 1f - PinchThreshold) {
+            committed = true
+            return false
+        }
+        return null
+    }
+
+    /** True once this gesture has decided, so its release is not also a tap. */
+    val hasCommitted: Boolean get() = committed
+
+}
 
 /** The readout that belongs to each drag target. */
 internal fun VerticalDragTarget.hudKind(): GestureHudKind = when (this) {

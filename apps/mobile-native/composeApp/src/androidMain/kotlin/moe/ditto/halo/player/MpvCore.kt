@@ -184,6 +184,15 @@ internal class MpvCore private constructor(
         mpv.setPropertyDouble("speed", rate)
     }
 
+    /**
+     * `panscan` is a 0..1 blend between fitting the picture and cropping it to
+     * the screen, and the two ends are the only settings the design offers.
+     */
+    fun setVideoFillsScreen(fills: Boolean) {
+        if (destroyed) return
+        mpv.setPropertyDouble("panscan", if (fills) 1.0 else 0.0)
+    }
+
     fun setAudioDelay(seconds: Double) {
         if (destroyed) return
         mpv.setPropertyDouble("audio-delay", seconds)

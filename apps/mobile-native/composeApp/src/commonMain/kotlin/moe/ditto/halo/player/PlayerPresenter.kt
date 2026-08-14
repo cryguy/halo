@@ -26,6 +26,8 @@ data class PlayerState(
     // of truth; these exist so the shell can display what it asked for without
     // waiting for a property observation that some platform hosts cannot emit.
     val playbackRate: Double = 1.0,
+    /** True when the picture is cropped to fill the screen rather than fitted inside it. */
+    val videoFillsScreen: Boolean = false,
     val audioDelaySeconds: Double = 0.0,
     val subtitleDelaySeconds: Double = 0.0,
     val subtitleScale: Double = 1.0,
@@ -75,6 +77,12 @@ class PlayerPresenter(
         if (state.status == PlaybackStatus.Released || !rate.isFinite() || rate <= 0.0) return
         player.setPlaybackRate(rate)
         state = state.copy(playbackRate = rate)
+    }
+
+    suspend fun setVideoFillsScreen(fills: Boolean) {
+        if (state.status == PlaybackStatus.Released) return
+        player.setVideoFillsScreen(fills)
+        state = state.copy(videoFillsScreen = fills)
     }
 
     suspend fun setAudioDelay(seconds: Double) {

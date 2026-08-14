@@ -102,6 +102,13 @@ interface PlayerPort {
     /** Shifts the sound against the picture. Positive plays the sound later. */
     suspend fun setAudioDelay(seconds: Double)
 
+    /**
+     * Whether the picture fills the screen and loses its edges, or fits inside
+     * it and leaves bars. Everything between the two is a compromise nobody
+     * asked for, which is why this is a choice of two rather than a zoom.
+     */
+    suspend fun setVideoFillsScreen(fills: Boolean)
+
     // Live subtitle controls: these must apply to the running core without
     // recreating it — the exact capability libVLC lacked on mobile.
     suspend fun setSubtitleDelay(seconds: Double)

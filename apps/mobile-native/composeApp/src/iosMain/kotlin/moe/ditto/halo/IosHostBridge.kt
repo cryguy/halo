@@ -324,6 +324,7 @@ internal class IosPlayerHostAdapter(
     /** Android-only for now; the Mac follow-up adds the Swift host capability. */
     override suspend fun setPlaybackRate(rate: Double) = Unit
     override suspend fun setAudioDelay(seconds: Double) = Unit
+    override suspend fun setVideoFillsScreen(fills: Boolean) = Unit
 
     override suspend fun setSubtitleDelay(seconds: Double) {
         host.setSubtitleDelay(seconds)

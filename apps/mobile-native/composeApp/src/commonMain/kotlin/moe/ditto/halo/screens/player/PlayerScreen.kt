@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
 import moe.ditto.halo.SignedInGraph
+import moe.ditto.halo.api.VideoFitMode
 import moe.ditto.halo.cache.QueryState
 import moe.ditto.halo.player.MediaItem
 import moe.ditto.halo.player.PlaybackStatus
@@ -127,9 +128,12 @@ internal fun PlayerScreen(
     // The write-back is debounced because the size slider emits continuously
     // and every settings write is a whole-document PUT.
     LaunchedEffect(item) {
-        val stored = subtitleStyleOf(graph.settings.current())
+        val settings = graph.settings.current()
+        val stored = subtitleStyleOf(settings)
         playback.applySubtitleStyle(stored)
         playback.play(item)
+
+        playback.setVideoFillsScreen(settings.videoFitMode == VideoFitMode.Cover)
 
         val storedPreference = SubtitlePreference(stored.scale, stored.font)
         playback.state
@@ -139,6 +143,20 @@ internal fun PlayerScreen(
             .collect { preference ->
                 if (preference == storedPreference) return@collect
                 graph.settings.update { it.withSubtitlePreference(preference) }
+            }
+    }
+
+    // Fit mode is written back the moment it changes rather than debounced:
+    // unlike the size slider it is one decision per gesture, not a stream.
+    LaunchedEffect(item) {
+        val stored = graph.settings.current().videoFitMode
+        playback.state
+            .map { it.videoFillsScreen }
+            .distinctUntilChanged()
+            .collect { fills ->
+                val mode = if (fills) VideoFitMode.Cover else VideoFitMode.Contain
+                if (mode == stored) return@collect
+                graph.settings.update { it.withVideoFitMode(mode) }
             }
     }
 
@@ -297,6 +315,9 @@ internal fun PlayerScreen(
                         dragAdjustment = null
                         dragTarget = null
                     },
+                    onFillScreenChange = { fills ->
+                        scope.launch { playback.setVideoFillsScreen(fills) }
+                    },
                 ),
         )
 
@@ -325,7 +346,10 @@ internal fun PlayerScreen(
                 onPictureInPicture = controller::enterPictureInPicture,
                 // Fit mode is the one utility control still waiting on
                 // something that does not exist: an mpv panscan call.
-                onToggleFit = {},
+                onToggleFit = {
+                    controller.showChrome()
+                    scope.launch { playback.setVideoFillsScreen(!state.videoFillsScreen) }
+                },
                 onToggleLock = controller::lock,
             )
         }

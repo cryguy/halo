@@ -153,6 +153,7 @@ class PlaybackHostTest {
             playbackRates += rate
         }
         override suspend fun setAudioDelay(seconds: Double) = Unit
+        override suspend fun setVideoFillsScreen(fills: Boolean) = Unit
         override suspend fun setSubtitleDelay(seconds: Double) = Unit
 
         // Recorded as an ordered log rather than four lists: applying the

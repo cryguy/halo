@@ -106,6 +106,11 @@ internal class PlaybackHost(private val playerPort: PlayerPort) {
         publish()
     }
 
+    suspend fun setVideoFillsScreen(fills: Boolean) {
+        playerPresenter.setVideoFillsScreen(fills)
+        publish()
+    }
+
     suspend fun setAudioDelay(seconds: Double) {
         playerPresenter.setAudioDelay(seconds)
         publish()

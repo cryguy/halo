@@ -20,7 +20,7 @@ This file is the handoff checklist: pick up at the first unchecked box.
 ## Status
 
 **Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.8 complete.
+an Android emulator, not just compiled. Phase 2 is underway, with 2.1 through 2.9 complete.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -297,7 +297,7 @@ presenter/controller tests.
   left/right = brightness/volume (baseline at gesture start, 70 % height travel, one call per
   whole percent), pinch → fit mode at 12 % threshold, pinch-commit swallows single-touch.
   Landscape lock applies on player entry, restores on exit (both exit paths: back + error).
-- [ ] **2.9 Fit mode** — contain/cover via mpv `panscan` 0.0/1.0; persisted in `KeyValueStore`;
+- [x] **2.9 Fit mode** — contain/cover via mpv `panscan` 0.0/1.0; persisted in `KeyValueStore`;
   utility-pill button + pinch both drive it.
 - [ ] **2.10 Watch-state reporting + episode drawer data** — report position through
   `WatchStateRepository` (on pause, on exit, periodic ~30 s); drawer reads season episodes from

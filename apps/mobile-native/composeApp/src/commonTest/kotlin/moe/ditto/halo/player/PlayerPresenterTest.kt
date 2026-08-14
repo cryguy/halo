@@ -354,6 +354,7 @@ class PlayerPresenterTest {
         val loads = mutableListOf<MediaItem>()
         val playbackRates = mutableListOf<Double>()
         val audioDelays = mutableListOf<Double>()
+        val videoFills = mutableListOf<Boolean>()
         val subtitleDelays = mutableListOf<Double>()
         val subtitleScales = mutableListOf<Double>()
         val subtitleFonts = mutableListOf<String?>()
@@ -380,6 +381,10 @@ class PlayerPresenterTest {
 
         override suspend fun setAudioDelay(seconds: Double) {
             audioDelays += seconds
+        }
+
+        override suspend fun setVideoFillsScreen(fills: Boolean) {
+            videoFills += fills
         }
 
         override suspend fun setSubtitleDelay(seconds: Double) {
