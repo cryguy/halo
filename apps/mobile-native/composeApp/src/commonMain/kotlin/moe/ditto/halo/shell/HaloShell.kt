@@ -213,7 +213,12 @@ internal fun HaloShell(
                         onBack = { navController.popBackStack() },
                     )
                 }
-                composable<DownloadsRoute> { DownloadsScreen() }
+                composable<DownloadsRoute> {
+                    DownloadsScreen(
+                        downloads = graph.downloads,
+                        onOpenDetail = { navController.openDetail(it) },
+                    )
+                }
                 composable<SettingsRoute> {
                     SettingsScreen(
                         graph = graph,

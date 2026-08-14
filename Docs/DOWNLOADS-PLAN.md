@@ -154,11 +154,18 @@ debug APK all build. Notes worth carrying:
 
 ## Slice 2 — the Downloads tab
 
-- [ ] `Trash` and `Refresh` in `HaloIcons`, raw Material path data as the file's convention requires.
-- [ ] Real `DownloadsScreen`: sections per `itemId` with poster, name and summary; rows with episode
+- [x] `Trash` and `Refresh` in `HaloIcons`, raw Material path data as the file's convention requires.
+- [x] Real `DownloadsScreen`: sections per `itemId` with poster, name and summary; rows with episode
   label, status line and progress; pause, resume, retry, delete; delete behind a confirmation;
   empty state kept; unavailable state when the port has no directory.
-- [ ] Grouping, sorting, summary and status-label logic as pure functions, commonTest-covered.
+- [x] Grouping, sorting, summary and status-label logic as pure functions, commonTest-covered.
+
+**Done 2026-08-15.** 474 unit tests pass (10 new), iOS Kotlin and the debug APK build. Not yet
+seen on a device: with no way to start a download until slice 3, the screen has only its empty
+state to show, so the emulator run belongs with that slice.
+
+Row actions are pause, resume, retry and delete. A finished row has no play affordance yet, which
+is slice 4's work: offering one now would be a button that does nothing.
 
 ## Slice 3 — starting a download
 
