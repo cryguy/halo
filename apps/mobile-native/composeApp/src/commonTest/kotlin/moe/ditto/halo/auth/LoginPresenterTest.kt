@@ -66,7 +66,7 @@ class LoginPresenterTest {
                 password = "fixture-pass",
             ),
         )
-        presenter.editServerUrl("https://halo.mags.fyi")
+        presenter.editServerUrl("https://second.local")
 
         presenter.continueFromServer()
 
