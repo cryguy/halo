@@ -42,6 +42,7 @@ import moe.ditto.halo.sync.WatchStateRepository
 internal class SignedInGraph(
     serverUrl: String,
     tokens: TokenProvider,
+    onUnauthorized: suspend () -> Unit,
     keyValueStore: KeyValueStore,
     subtitleCacheDirectory: String,
     clock: EpochClock = SystemEpochClock,
@@ -60,7 +61,7 @@ internal class SignedInGraph(
      */
     private val httpClient = HttpClient()
 
-    val client = HaloClient(serverUrl, tokens, httpClient)
+    val client = HaloClient(serverUrl, tokens, httpClient, onUnauthorized)
     val cache = QueryCache(scope, clock)
 
     val addons = AddonsRepository(client, cache)

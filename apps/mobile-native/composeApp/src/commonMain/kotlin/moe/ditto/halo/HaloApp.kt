@@ -169,6 +169,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
         val playerState by playback.state.collectAsState()
 
         val sessionState by sessionController.state.collectAsState()
+        val loginNotice by sessionController.loginNotice.collectAsState()
 
         // One graph per session. Keyed on the generation as well as the server
         // because session state alone cannot distinguish two users on one
@@ -181,6 +182,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                 SignedInGraph(
                     serverUrl = it,
                     tokens = sessionController.tokenProvider,
+                    onUnauthorized = { sessionController.rejectSession(sessionGeneration) },
                     keyValueStore = dependencies.keyValueStore,
                     subtitleCacheDirectory = dependencies.subtitleCacheDirectory,
                 )
@@ -226,6 +228,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                             ?: sessionController.storedServerUrl()
                             ?: PlatformDependencies.DefaultServerUrl
                     },
+                    notice = loginNotice,
                     onOpenGate = {
                         refreshHostSnapshot()
                         screen = ShellScreen.Gate
@@ -275,6 +278,7 @@ private fun LoginScreen(
     localAuthenticator: LocalAuthenticator,
     authEvents: Flow<AuthEvent>,
     initialServerUrl: String,
+    notice: String?,
     onOpenGate: () -> Unit,
 ) {
     val presenter = remember {
@@ -329,6 +333,9 @@ private fun LoginScreen(
                 },
                 style = HaloType.Body.copy(color = HaloColors.TextDim, textAlign = TextAlign.Center),
             )
+            notice?.let {
+                Text(text = it, color = HaloColors.Danger, style = HaloType.Body, textAlign = TextAlign.Center)
+            }
             HaloTextField(
                 value = state.serverUrl,
                 onValueChange = {

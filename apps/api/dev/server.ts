@@ -82,6 +82,18 @@ function main(): void {
     return `${origin()}${MEDIA_PATH}`
   }
   const subtitleUrl = (id: string): string => `${origin()}${SUBTITLE_PATH}/${id}.srt`
+  const addonFetch = fixtureAddonFetch(FIXTURE_ADDONS, mediaUrl, subtitleUrl)
+  const localFixtureFetch: typeof fetch = async (input, init) => {
+    const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    const url = new URL(href)
+    if (url.origin === origin() && url.pathname.startsWith(`${SUBTITLE_PATH}/`)) {
+      const id = url.pathname.slice(SUBTITLE_PATH.length + 1).replace(/\.srt$/, '')
+      return new Response(subtitleBody(id), {
+        headers: { 'content-type': 'application/x-subrip; charset=utf-8' },
+      })
+    }
+    return addonFetch(input, init)
+  }
   const app = createApp({
     db,
     auth: { mode: 'local', jwtSecret: JWT_SECRET },
@@ -89,7 +101,7 @@ function main(): void {
     // Passthrough reaches real addons over the network for manual work; the
     // guard is the real one either way, which is why a fixture addon cannot
     // simply be hosted on this machine.
-    safeFetch: options.passthrough ? safeFetch : fixtureAddonFetch(FIXTURE_ADDONS, mediaUrl, subtitleUrl),
+    safeFetch: options.passthrough ? safeFetch : localFixtureFetch,
   })
 
   ensureAdminUser(db, ADMIN_PASSWORD)

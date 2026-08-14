@@ -16,15 +16,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,7 +37,12 @@ import androidx.compose.ui.unit.sp
 import moe.ditto.halo.SignedInGraph
 import moe.ditto.halo.api.AddonSource
 import moe.ditto.halo.api.AddonStreams
+import moe.ditto.halo.api.AddonError
+import moe.ditto.halo.api.HaloApiException
+import moe.ditto.halo.api.MalformedResponseException
+import moe.ditto.halo.api.SessionRejectedException
 import moe.ditto.halo.api.Stream
+import moe.ditto.halo.api.StreamsResult
 import moe.ditto.halo.cache.QueryState
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloRadius
@@ -40,6 +50,7 @@ import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
 import moe.ditto.halo.ui.CenterMessage
 import moe.ditto.halo.ui.formatBytes
+import kotlinx.coroutines.launch
 
 /**
  * Where a title's playable sources are chosen, grouped by the addon that
@@ -70,6 +81,7 @@ internal fun StreamsScreen(
     val streams by remember(graph, type, videoId) {
         graph.browse.streams(type, videoId)
     }.collectAsState(QueryState())
+    val scope = rememberCoroutineScope()
 
     Column(modifier.fillMaxSize().background(HaloColors.Background)) {
         // The header outlives every state below it: a screen that swaps itself
@@ -80,43 +92,242 @@ internal fun StreamsScreen(
             onBack = onBack,
             modifier = Modifier.padding(horizontal = HaloSpacing.Md),
         )
+        StreamsContent(
+            query = streams,
+            onRetry = { scope.launch { graph.browse.retryStreams(type, videoId) } },
+            onPlay = onPlay,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
 
-        val groups = streams.value
-        when {
-            // A source list that could not be fetched is not an empty one, and
-            // telling someone to install an addon when the server is unreachable
-            // sends them to fix the wrong thing.
-            groups == null && streams.error != null -> CenterMessage("Could not reach your Halo server.")
-            groups == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = HaloColors.Accent)
-                    Text(
-                        text = "Asking your addons for sources…",
-                        style = HaloType.Caption,
-                        modifier = Modifier.padding(top = HaloSpacing.Md),
+/** Pure rendering states for the source request, independent of the app graph. */
+internal sealed interface StreamsContentState {
+    val isFetching: Boolean
+
+    data class Loading(override val isFetching: Boolean) : StreamsContentState
+
+    data class RequestFailure(
+        val message: String,
+        override val isFetching: Boolean,
+    ) : StreamsContentState
+
+    data class AllAddonsFailed(
+        val failures: List<AddonError>,
+        override val isFetching: Boolean,
+    ) : StreamsContentState
+
+    data class NoSources(override val isFetching: Boolean) : StreamsContentState
+
+    data class Sources(
+        val groups: List<AddonStreams>,
+        val failures: List<AddonError>,
+        val refreshFailure: String?,
+        override val isFetching: Boolean,
+    ) : StreamsContentState
+}
+
+internal fun streamsContentState(query: QueryState<StreamsResult>): StreamsContentState {
+    val value = query.value
+    if (value == null) {
+        val error = query.error
+        return if (error == null) {
+            StreamsContentState.Loading(query.isFetching)
+        } else {
+            StreamsContentState.RequestFailure(safeStreamsRequestMessage(error), query.isFetching)
+        }
+    }
+    if (value.results.isEmpty() && value.errors.isNotEmpty()) {
+        return StreamsContentState.AllAddonsFailed(value.errors, query.isFetching)
+    }
+    if (value.results.isEmpty()) return StreamsContentState.NoSources(query.isFetching)
+    return StreamsContentState.Sources(
+        groups = value.results,
+        failures = value.errors,
+        refreshFailure = query.error?.let(::safeStreamsRequestMessage),
+        isFetching = query.isFetching,
+    )
+}
+
+internal fun safeStreamsRequestMessage(error: Throwable): String = when (error) {
+    is SessionRejectedException -> "Your session is no longer valid. Sign in again."
+    is MalformedResponseException -> "Halo returned an invalid source response."
+    is HaloApiException -> when {
+        error.status == 401 -> "Your session is no longer valid. Sign in again."
+        error.status >= 500 -> "Halo could not load sources right now."
+        else -> "Halo rejected the source request."
+    }
+    else -> "Could not reach your Halo server."
+}
+
+@Composable
+internal fun StreamsContent(
+    query: QueryState<StreamsResult>,
+    onRetry: () -> Unit,
+    onPlay: (AddonSource, Stream) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (val state = streamsContentState(query)) {
+        is StreamsContentState.Loading -> Box(modifier, contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = HaloColors.Accent)
+                Text(
+                    text = "Asking your addons for sources…",
+                    style = HaloType.Caption,
+                    modifier = Modifier.padding(top = HaloSpacing.Md),
+                )
+            }
+        }
+        is StreamsContentState.RequestFailure -> FailurePanel(
+            title = state.message,
+            failures = emptyList(),
+            busy = state.isFetching,
+            onRetry = onRetry,
+            modifier = modifier,
+        )
+        is StreamsContentState.AllAddonsFailed -> FailurePanel(
+            title = "No addons could load sources.",
+            failures = state.failures,
+            busy = state.isFetching,
+            onRetry = onRetry,
+            modifier = modifier,
+        )
+        is StreamsContentState.NoSources -> CenterMessage(
+            "No playable sources. Install a stream addon (e.g. a debrid-backed one) in Settings.",
+            modifier,
+        )
+        is StreamsContentState.Sources -> LazyColumn(
+            modifier = modifier,
+            // No tab-bar allowance: this screen covers the bar.
+            contentPadding = PaddingValues(
+                start = HaloSpacing.Md,
+                end = HaloSpacing.Md,
+                bottom = HaloSpacing.Xl,
+            ),
+        ) {
+            if (state.failures.isNotEmpty() || state.refreshFailure != null) {
+                item(key = "source-failures") {
+                    FailureNotice(
+                        failures = state.failures,
+                        refreshFailure = state.refreshFailure,
+                        busy = state.isFetching,
+                        onRetry = onRetry,
                     )
                 }
             }
-            groups.isEmpty() ->
-                CenterMessage("No playable sources. Install a stream addon (e.g. a debrid-backed one) in Settings.")
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                // No tab-bar allowance: this screen covers the bar.
-                contentPadding = PaddingValues(
-                    start = HaloSpacing.Md,
-                    end = HaloSpacing.Md,
-                    bottom = HaloSpacing.Xl,
-                ),
-            ) {
-                // Keyed by addon, so a slow one arriving late does not renumber
-                // the groups already on screen.
-                items(items = groups, key = { it.addon.id }) { group ->
-                    AddonGroup(group = group, onPlay = onPlay)
-                }
+            // Keyed by addon, so a slow one arriving late does not renumber
+            // the groups already on screen.
+            items(items = state.groups, key = { it.addon.id }) { group ->
+                AddonGroup(group = group, onPlay = onPlay)
             }
         }
     }
 }
+
+@Composable
+private fun FailurePanel(
+    title: String,
+    failures: List<AddonError>,
+    busy: Boolean,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.padding(HaloSpacing.Lg), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(HaloSpacing.Sm),
+        ) {
+            Text(text = title, style = HaloType.Body, color = HaloColors.TextDim)
+            failures.forEach { failure ->
+                Text(text = safeAddonFailure(failure), style = HaloType.Caption)
+            }
+            RetryButton(busy = busy, onClick = onRetry)
+        }
+    }
+}
+
+@Composable
+private fun FailureNotice(
+    failures: List<AddonError>,
+    refreshFailure: String?,
+    busy: Boolean,
+    onRetry: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = HaloSpacing.Md)
+            .clip(RoundedCornerShape(HaloRadius.Md))
+            .background(HaloColors.SurfaceHigh)
+            .border(1.dp, HaloColors.Border, RoundedCornerShape(HaloRadius.Md))
+            .padding(HaloSpacing.Md),
+        verticalArrangement = Arrangement.spacedBy(HaloSpacing.Xs),
+    ) {
+        Text(
+            text = refreshFailure ?: "Some addons could not load sources.",
+            style = HaloType.Callout,
+            color = HaloColors.Text,
+        )
+        failures.forEach { failure ->
+            Text(text = safeAddonFailure(failure), style = HaloType.Caption)
+        }
+        RetryButton(busy = busy, onClick = onRetry)
+    }
+}
+
+@Composable
+private fun RetryButton(busy: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        enabled = !busy,
+        modifier = Modifier.semantics {
+            contentDescription = if (busy) "Retrying sources" else "Retry sources"
+        },
+        colors = ButtonDefaults.buttonColors(
+            containerColor = HaloColors.Accent,
+            contentColor = HaloColors.OnAccent,
+            disabledContainerColor = HaloColors.Accent.copy(alpha = 0.6f),
+            disabledContentColor = HaloColors.OnAccent,
+        ),
+        shape = RoundedCornerShape(HaloRadius.Md),
+    ) {
+        if (busy) {
+            CircularProgressIndicator(
+                modifier = Modifier.height(18.dp),
+                color = HaloColors.OnAccent,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text("Retry", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** Uses only safe compatibility fields. Opaque ids and legacy messages never reach the screen. */
+internal fun safeAddonFailure(error: AddonError): String {
+    val candidate = error.name
+        ?.filter { it.code >= 32 && it.code != 127 }
+        ?.trim()
+        ?.take(80)
+        ?.takeIf { it.isNotEmpty() }
+    val name = candidate
+        ?.takeUnless {
+            "://" in it || '/' in it || '\\' in it || CredentialLikeNameSegment.containsMatchIn(it)
+        }
+        ?: "An addon"
+    return when (error.code) {
+        "timeout" -> "$name timed out."
+        "upstream_http" -> error.status
+            ?.takeIf { it in 100..599 }
+            ?.let { "$name returned HTTP $it." }
+            ?: "$name returned an HTTP error."
+        "blocked_target" -> "$name was blocked for safety."
+        "invalid_response" -> "$name returned invalid data."
+        else -> "$name is unavailable."
+    }
+}
+
+private val CredentialLikeNameSegment = Regex("[A-Za-z0-9_-]{32,}")
 
 @Composable
 private fun AddonGroup(group: AddonStreams, onPlay: (AddonSource, Stream) -> Unit, modifier: Modifier = Modifier) {

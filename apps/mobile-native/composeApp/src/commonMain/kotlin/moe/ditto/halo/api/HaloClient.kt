@@ -33,15 +33,21 @@ class HaloApiException(
     message: String,
 ) : Exception(message)
 
+/** A success response could not be decoded into the endpoint's public contract. */
+class MalformedResponseException : Exception("Halo returned an invalid response.")
+
+/** A request remained unauthorized after the one permitted refresh attempt. */
+class SessionRejectedException : Exception("Your session is no longer valid. Sign in again.")
+
 /**
  * Typed client for the Halo API.
  *
  * Holds no auth state: every request draws a bearer token from [TokenProvider],
- * and a 401 buys exactly one forced refresh and retry. When that refresh
- * returns null the auth layer has already cleared the session, so this class
- * only reports the failure — it never signs anyone out itself. Concurrent
- * requests hitting 401 together are safe because refreshing is single-flight
- * beneath the provider.
+ * and a 401 buys exactly one forced refresh and retry. A failed refresh or a
+ * retried 401 invokes [onUnauthorized], which is bound to the session
+ * generation that created this client. Concurrent requests are safe because
+ * refreshing is single-flight beneath the provider and the session authority
+ * serializes rejection callbacks.
  *
  * `GET /auth/config` is deliberately absent: it is public, is called before a
  * server is even chosen, and is already owned by the auth layer's config
@@ -51,6 +57,7 @@ class HaloClient(
     baseUrl: String,
     private val tokens: TokenProvider,
     private val httpClient: HttpClient,
+    private val onUnauthorized: suspend () -> Unit = {},
 ) {
     val baseUrl: String = baseUrl.trimEnd('/')
 
@@ -235,8 +242,13 @@ class HaloClient(
         val url = if (isOwnAddonProxyUrl(target)) target else proxyUrl(target)
         var response = executeUrl(HttpMethod.Get, url, token = tokens.accessToken())
         if (response.status == HttpStatusCode.Unauthorized) {
-            val refreshed = tokens.refreshAccessToken() ?: throw HaloApiException(401, Unauthorized)
+            response.bodyAsText()
+            val refreshed = tokens.refreshAccessToken() ?: rejectSession()
             response = executeUrl(HttpMethod.Get, url, token = refreshed)
+        }
+        if (response.status == HttpStatusCode.Unauthorized) {
+            response.bodyAsText()
+            rejectSession()
         }
         if (!response.status.isSuccess()) {
             val text = response.bodyAsText()
@@ -258,8 +270,10 @@ class HaloClient(
         val text = exchange(method, path, body, query)
         return try {
             HaloJson.decodeFromString(serializer, text)
-        } catch (error: SerializationException) {
-            throw IllegalStateException("Malformed response from $path", error)
+        } catch (_: SerializationException) {
+            throw MalformedResponseException()
+        } catch (_: IllegalArgumentException) {
+            throw MalformedResponseException()
         }
     }
 
@@ -276,8 +290,13 @@ class HaloClient(
     ): String {
         var response = execute(method, path, body, query, tokens.accessToken())
         if (response.status == HttpStatusCode.Unauthorized) {
-            val refreshed = tokens.refreshAccessToken() ?: throw HaloApiException(401, Unauthorized)
+            response.bodyAsText()
+            val refreshed = tokens.refreshAccessToken() ?: rejectSession()
             response = execute(method, path, body, query, refreshed)
+        }
+        if (response.status == HttpStatusCode.Unauthorized) {
+            response.bodyAsText()
+            rejectSession()
         }
         val text = response.bodyAsText()
         if (!response.status.isSuccess()) {
@@ -287,6 +306,12 @@ class HaloClient(
             )
         }
         return text
+    }
+
+    /** Exactly one callback for this request, and only for a definitive 401 outcome. */
+    private suspend fun rejectSession(): Nothing {
+        onUnauthorized()
+        throw SessionRejectedException()
     }
 
     private suspend fun execute(
@@ -325,9 +350,6 @@ class HaloClient(
         null
     }
 
-    private companion object {
-        const val Unauthorized = "Unauthorized"
-    }
 }
 
 private const val HexDigits = "0123456789ABCDEF"
