@@ -2,7 +2,7 @@
 
 ## Context
 
-`Player_Design/` holds an approved, high-fidelity design for the native player screen in
+`Docs/` holds an approved, high-fidelity design for the native player screen in
 `apps/mobile-native` (Compose Multiplatform over libmpv). Its `README.md` is the spec: one
 landscape screen with layered chrome (labelled state chips, one right-hand rail for
 audio/subtitles/speed, episode drawer, buffering/locked/up-next/PiP/error states). The current
@@ -71,8 +71,8 @@ Judgment calls made on the user's behalf (flag if wrong):
 
 | File | Why |
 | --- | --- |
-| `Player_Design/README.md` | The spec. Every value, colour, behaviour. Authoritative. |
-| `Player_Design/Halo Player - native.dc.html` | Working prototype (serve folder over HTTP to view). |
+| `Docs/README.md` | The spec. Every value, colour, behaviour. Authoritative. |
+| `Docs/Halo Player - native.dc.html` | Working prototype (serve folder over HTTP to view). |
 | `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/PlayerScreen.kt` | Current placeholder; the `leave` wind-down comment is load-bearing. |
 | `.../player/PlayerContract.kt`, `PlayerPresenter.kt` | The engine boundary + state. |
 | `.../PlaybackHost.kt` | App-wide single playback owner; `windDownForExit()` must stay on every exit path. |
@@ -111,8 +111,8 @@ video. Emulator reaches it at `http://10.0.2.2:18790`; a device uses the LAN IP.
 
 ## Phase 0 — Groundwork
 
-- [x] **0.1 Commit this plan into the repo** at `Player_Design/PLAN.md` (checklist lives with the
-  design bundle; keeps the doc available "anytime anywhere"). Also commit the `Player_Design/`
+- [x] **0.1 Commit this plan into the repo** at `Docs/PLAN.md` (checklist lives with the
+  design bundle; keeps the doc available "anytime anywhere"). Also commit the `Docs/`
   bundle itself if the user confirms it should be tracked. **Done:** whole bundle tracked.
 - [x] **0.2 Record the departure** from Direction A strict parity in
   `apps/mobile-native/design-demos/direction-approved.md` (the player is the one screen with no
