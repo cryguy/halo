@@ -6,6 +6,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     private let playerHost = MPVPlayerHost()
+    private let playerSystemHost = PlayerSystemHost()
     // Default is the hermetic fake; the OIDC test opts into the real host with a
     // launch env so it never touches the already-green ownership/playback suites.
     private let authHost: HaloIosAuthHost = {
@@ -30,15 +31,20 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // so it is env-only and blank otherwise.
         let mediaHttpBase = env["HALO_MEDIA_HTTP_BASE"] ?? "http://127.0.0.1:18787/media"
         let mediaLocalBase = env["HALO_MEDIA_LOCAL_BASE"] ?? ""
-        window.rootViewController = MainViewControllerKt.MainViewController(
+        let composeController = MainViewControllerKt.MainViewController(
             authHost: authHost,
             playerHost: playerHost,
+            playerSystemHost: playerSystemHost,
             initialServerUrl: initialServerUrl,
             mediaHttpBase: mediaHttpBase,
             mediaLocalBase: mediaLocalBase,
             // UI-test escape hatch: a Keychain session survives reinstall and
             // would strand suites that expect the login form.
             resetPersistedSession: env["HALO_RESET_SESSION"] == "1"
+        )
+        window.rootViewController = PlayerRootViewController(
+            contentController: composeController,
+            systemHost: playerSystemHost
         )
         window.makeKeyAndVisible()
         self.window = window

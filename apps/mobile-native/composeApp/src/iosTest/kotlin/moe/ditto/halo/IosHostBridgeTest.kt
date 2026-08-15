@@ -144,6 +144,41 @@ class IosHostBridgeTest {
     }
 
     @Test
+    fun playerSystemAdapterClampsValuesAndDelegatesBalancedClaims() {
+        val host = RecordingPlayerSystemHost()
+        val system = IosPlayerSystemPort(host)
+
+        assertEquals(0.65f, system.screenBrightness())
+        assertEquals(0.4f, system.volume())
+        assertEquals(16, system.volumeSteps())
+
+        system.setScreenBrightness(1.5f)
+        system.setVolume(-0.5f)
+        system.lockLandscape()
+        system.keepScreenOn()
+        system.hideSystemBars()
+        system.releaseSystemBars()
+        system.releaseScreenOn()
+        system.releaseLandscape()
+        system.clearScreenBrightnessOverride()
+
+        assertEquals(listOf(1.0), host.brightnessValues)
+        assertEquals(listOf(0.0), host.volumeValues)
+        assertEquals(
+            listOf(
+                "lockLandscape",
+                "keepScreenOn",
+                "hideSystemBars",
+                "releaseSystemBars",
+                "releaseScreenOn",
+                "releaseLandscape",
+                "clearBrightness",
+            ),
+            host.claimCalls,
+        )
+    }
+
+    @Test
     fun eventBridgeTranslatesNormalizedTrackJsonIntoTypedEvents() = runTest {
         val bridge = IosPlayerEventBridge()
 
@@ -389,6 +424,52 @@ class IosHostBridgeTest {
             coreDestructionCount += 1
             coreCreationCount += 1
             instanceId = "core-$coreCreationCount"
+        }
+    }
+
+    private class RecordingPlayerSystemHost : HaloIosPlayerSystemHost {
+        val brightnessValues = mutableListOf<Double>()
+        val volumeValues = mutableListOf<Double>()
+        val claimCalls = mutableListOf<String>()
+
+        override fun screenBrightness(): Double = 0.65
+        override fun volume(): Double = 0.4
+        override fun volumeSteps(): Int = 16
+
+        override fun setScreenBrightness(value: Double) {
+            brightnessValues += value
+        }
+
+        override fun clearScreenBrightnessOverride() {
+            claimCalls += "clearBrightness"
+        }
+
+        override fun setVolume(value: Double) {
+            volumeValues += value
+        }
+
+        override fun lockLandscape() {
+            claimCalls += "lockLandscape"
+        }
+
+        override fun releaseLandscape() {
+            claimCalls += "releaseLandscape"
+        }
+
+        override fun keepScreenOn() {
+            claimCalls += "keepScreenOn"
+        }
+
+        override fun releaseScreenOn() {
+            claimCalls += "releaseScreenOn"
+        }
+
+        override fun hideSystemBars() {
+            claimCalls += "hideSystemBars"
+        }
+
+        override fun releaseSystemBars() {
+            claimCalls += "releaseSystemBars"
         }
     }
 }

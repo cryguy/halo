@@ -32,6 +32,7 @@ private fun subtitleCacheDirectory(): String {
 fun MainViewController(
     authHost: HaloIosAuthHost,
     playerHost: HaloIosPlayerHost,
+    playerSystemHost: HaloIosPlayerSystemHost,
     initialServerUrl: String,
     mediaHttpBase: String,
     mediaLocalBase: String,
@@ -59,6 +60,7 @@ fun MainViewController(
         diagnosticsEnabled = Platform.isDebugBinary,
         oidcSessionPort = IosOidcSessionPort(authHost),
         playerPort = IosPlayerHostAdapter(playerHost),
+        playerSystemPort = IosPlayerSystemPort(playerSystemHost),
         playerEvents = playerEventBridge.events,
         authEvents = authEventBridge.events,
         nativePlayerSurface = IosNativePlayerSurface(playerHost),
