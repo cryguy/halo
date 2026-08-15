@@ -89,14 +89,15 @@ internal class AndroidPlayerSystemPort(private val activity: Activity) : PlayerS
     override fun volumeSteps(): Int = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
     /**
-     * PiP support is a device capability as well as a manifest declaration.
-     * A rejected transition is ordinary on devices without that capability,
-     * and lets common code retain the existing in-app fallback.
+     * PiP support is a device capability as well as a manifest declaration, and
+     * a device cannot grow one while the app runs, so this is read once. Where
+     * it is false the player offers no PiP control at all.
      */
+    override val supportsPictureInPicture: Boolean =
+        activity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
     override fun enterPictureInPicture(): Boolean {
-        if (!activity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-            return false
-        }
+        if (!supportsPictureInPicture) return false
         if (activity.isFinishing || activity.isDestroyed) return false
         if (activity.isInPictureInPictureMode) return true
 

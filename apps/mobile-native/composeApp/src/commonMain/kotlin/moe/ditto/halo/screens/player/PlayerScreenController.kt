@@ -99,10 +99,6 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
     var unlockPillVisible by mutableStateOf(false)
         private set
 
-    /** The in-app fallback shown only when the OS rejects a PiP handoff. */
-    var pictureInPicture by mutableStateOf(false)
-        private set
-
     /** What a brightness or volume drag is currently showing, if anything. */
     var hud by mutableStateOf<GestureHudValue?>(null)
         private set
@@ -298,22 +294,20 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
 
     // --- Picture in picture ----------------------------------------------
 
-    /** Clears full-screen controls before either native PiP or its fallback. */
+    /**
+     * Clears full-screen controls before the handoff, so the window the system
+     * lifts out holds the picture and nothing else. Panels and chrome would
+     * otherwise be scaled down into an unreadable thumbnail.
+     */
     fun prepareForPictureInPicture() {
-        pictureInPicture = false
         chromeVisible = false
         rail = null
         episodeDrawerOpen = false
         hideJob?.cancel()
     }
 
-    fun enterPictureInPicture() {
-        prepareForPictureInPicture()
-        pictureInPicture = true
-    }
-
+    /** Coming back from the system's window, where the player is full-screen again. */
     fun exitPictureInPicture() {
-        pictureInPicture = false
         showChrome()
     }
 

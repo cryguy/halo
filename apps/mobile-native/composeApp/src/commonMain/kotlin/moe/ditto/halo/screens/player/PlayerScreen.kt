@@ -530,10 +530,16 @@ internal fun PlayerScreen(
                 streamBadges = streamBadges,
                 locked = controller.locked,
                 onBack = leave,
-                onPictureInPicture = {
-                    controller.prepareForPictureInPicture()
-                    if (!system.enterPictureInPicture()) {
-                        controller.enterPictureInPicture()
+                // Absent where the platform has no native PiP window to hand
+                // the video to. A refusal from a platform that does have one is
+                // rare and recoverable: the chrome comes back and the viewer is
+                // left where they were.
+                onPictureInPicture = if (!system.supportsPictureInPicture) {
+                    null
+                } else {
+                    {
+                        controller.prepareForPictureInPicture()
+                        if (!system.enterPictureInPicture()) controller.showChrome()
                     }
                 },
                 // Fit mode is the one utility control still waiting on
@@ -776,14 +782,6 @@ internal fun PlayerScreen(
                 onCancel = controller::dismissUpNext,
                 onPlayNow = controller::advanceToNext,
                 modifier = Modifier.align(Alignment.BottomEnd),
-            )
-        }
-
-        if (controller.pictureInPicture) {
-            PictureInPictureOverlay(
-                metrics = metrics,
-                positionFraction = progressFraction(state.positionSeconds, state.durationSeconds),
-                onReturn = controller::exitPictureInPicture,
             )
         }
 

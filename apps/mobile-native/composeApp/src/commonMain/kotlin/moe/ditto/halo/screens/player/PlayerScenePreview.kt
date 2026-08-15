@@ -53,7 +53,6 @@ internal enum class PlayerScene(val label: String) {
     Volume("Volume"),
     Locked("Locked"),
     UpNext("Up next"),
-    PictureInPicture("PiP"),
     Error("Error"),
 }
 
@@ -91,7 +90,6 @@ internal fun PlayerScenePreviewScreen(onBack: () -> Unit) {
             PlayerScene.Rail -> controller.openRail(RailTab.Subtitles)
             PlayerScene.Drawer -> controller.toggleEpisodeDrawer()
             PlayerScene.Locked -> controller.lock()
-            PlayerScene.PictureInPicture -> controller.enterPictureInPicture()
             // These arrive while the viewer is watching rather than operating
             // the player, so the design shows them over bare video. Buffering,
             // the gesture readout and the error card have no controller trigger
@@ -196,10 +194,9 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
         // during playback libmpv renders subtitles itself.
         Box(Modifier.fillMaxSize().placeholderStripes())
 
-        // No caption where the picture itself is not the subject: handing off to
-        // picture-in-picture and failing to play both replace the video rather
-        // than sit over it.
-        if (scene != PlayerScene.PictureInPicture && scene != PlayerScene.Error) {
+        // No caption where the picture itself is not the subject: failing to
+        // play replaces the video rather than sitting over it.
+        if (scene != PlayerScene.Error) {
             Text(
                 text = PlayerFixtures.CaptionSample,
                 color = Color.White,
@@ -226,7 +223,10 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
                 streamBadges = PlayerFixtures.StreamBadges,
                 locked = controller.locked,
                 onBack = {},
-                onPictureInPicture = controller::enterPictureInPicture,
+                // The gallery shows the pill as a device with native PiP draws
+                // it; the handoff itself is the system's, so there is nothing
+                // for the harness to stand in for.
+                onPictureInPicture = {},
                 onToggleFit = {},
                 onToggleLock = controller::lock,
                 modifier = Modifier.align(Alignment.TopCenter),
@@ -343,14 +343,6 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
                 onCancel = controller::dismissUpNext,
                 onPlayNow = controller::advanceToNext,
                 modifier = Modifier.align(Alignment.BottomEnd),
-            )
-        }
-
-        if (controller.pictureInPicture) {
-            PictureInPictureOverlay(
-                metrics = metrics,
-                positionFraction = progressFraction(state.positionSeconds, state.durationSeconds),
-                onReturn = controller::exitPictureInPicture,
             )
         }
 

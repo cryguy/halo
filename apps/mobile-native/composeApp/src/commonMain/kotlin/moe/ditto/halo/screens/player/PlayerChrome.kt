@@ -126,7 +126,8 @@ internal fun PlayerTopBar(
     streamBadges: List<String>,
     locked: Boolean,
     onBack: () -> Unit,
-    onPictureInPicture: () -> Unit,
+    /** Null on platforms with no native picture-in-picture; the button is then absent. */
+    onPictureInPicture: (() -> Unit)?,
     onToggleFit: () -> Unit,
     onToggleLock: () -> Unit,
     modifier: Modifier = Modifier,
@@ -222,11 +223,15 @@ private fun StreamBadge(text: String) {
  * Picture in picture, fit mode and lock, and nothing else. The old player's pill
  * held six controls; everything that left it is now a labelled chip on the
  * bottom bar, where its current value is readable without opening anything.
+ *
+ * The pill shrinks to two buttons where the platform has no native PiP, rather
+ * than showing a disabled one: a control that is never available on this device
+ * is not a state the viewer can do anything with.
  */
 @Composable
 private fun UtilityPill(
     locked: Boolean,
-    onPictureInPicture: () -> Unit,
+    onPictureInPicture: (() -> Unit)?,
     onToggleFit: () -> Unit,
     onToggleLock: () -> Unit,
 ) {
@@ -239,7 +244,9 @@ private fun UtilityPill(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PillButton(HaloIcons.PictureInPicture, "Picture in picture", onPictureInPicture)
+        if (onPictureInPicture != null) {
+            PillButton(HaloIcons.PictureInPicture, "Picture in picture", onPictureInPicture)
+        }
         PillButton(HaloIcons.FitScreen, "Fit mode", onToggleFit)
         PillButton(
             icon = if (locked) HaloIcons.Lock else HaloIcons.LockOpen,

@@ -62,8 +62,6 @@ private val MeterTrack = Color.White.copy(alpha = 0.22f)
 private val GlassFill = Color.White.copy(alpha = 0.07f)
 private val GlassBorder = Color.White.copy(alpha = 0.11f)
 private val LockedScrim = Color(red = 4f / 255f, green = 5f / 255f, blue = 8f / 255f, alpha = 0.28f)
-private val PipDim = Color(red = 4f / 255f, green = 5f / 255f, blue = 8f / 255f, alpha = 0.82f)
-private val PipWindowBorder = Color.White.copy(alpha = 0.16f)
 private val ErrorBackground = Color(0xFF05070C)
 private val ErrorCardFill = Color(red = 20f / 255f, green = 22f / 255f, blue = 30f / 255f, alpha = 0.92f)
     .compositeOver(ErrorBackground)
@@ -422,91 +420,6 @@ internal fun UpNextCard(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                 )
-            }
-        }
-    }
-}
-
-/**
- * The in-app representation of a picture-in-picture handoff. The real window is
- * drawn by the operating system; this is what the app itself shows while that is
- * happening, so the screen does not simply look like it has stopped.
- */
-@Composable
-internal fun PictureInPictureOverlay(
-    metrics: PlayerMetrics,
-    positionFraction: Float,
-    onReturn: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier.fillMaxSize().background(PipDim)) {
-        Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = "Playing in Picture in Picture",
-                color = HaloColors.TextDim,
-                fontSize = 13.5.sp,
-            )
-            Text(
-                text = "Return to Halo",
-                color = HaloColors.Text,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(HaloRadius.Md))
-                    .background(GlassFill)
-                    .border(1.dp, GlassBorder, RoundedCornerShape(HaloRadius.Md))
-                    .clickable(role = Role.Button, onClick = onReturn)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = metrics.hPad, bottom = metrics.chromeBottomPadding)
-                .size(width = metrics.pipWindowWidth, height = metrics.pipWindowHeight)
-                .clip(RoundedCornerShape(14.dp))
-                .placeholderStripes()
-                .border(1.dp, PipWindowBorder, RoundedCornerShape(14.dp)),
-        ) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f)),
-                        ),
-                    )
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(
-                    imageVector = HaloIcons.Pause,
-                    contentDescription = null,
-                    tint = HaloColors.Text,
-                    modifier = Modifier.size(16.dp),
-                )
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(HaloRadius.Pill))
-                        .background(CountdownTrack),
-                ) {
-                    if (positionFraction > 0f) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(positionFraction.coerceIn(0f, 1f))
-                                .fillMaxHeight()
-                                .background(Color.White),
-                        )
-                    }
-                }
             }
         }
     }

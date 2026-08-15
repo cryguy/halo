@@ -50,16 +50,33 @@ interface PlayerSystemPort {
     fun volumeSteps(): Int
 
     /**
+     * Whether this platform can hand the video to a real operating-system
+     * picture-in-picture window.
+     *
+     * The player hides its PiP control when this is false rather than offering
+     * a button that draws something PiP-shaped inside the app. An in-app
+     * imitation is not the feature: it cannot survive leaving Halo, which is
+     * the entire point of asking for PiP.
+     */
+    val supportsPictureInPicture: Boolean
+        get() = false
+
+    /**
      * Asks the operating system to move this Activity or view into its native
      * picture-in-picture presentation. True means the handoff was accepted;
-     * false means the caller must keep the existing in-app presentation.
+     * false means it was refused and the player stays as it is.
+     *
+     * Only called when [supportsPictureInPicture] is true, and even then a
+     * refusal is ordinary: the window may be finishing, or the system may
+     * decline for reasons the app cannot see.
      */
     fun enterPictureInPicture(): Boolean = false
 
     /**
      * Native picture-in-picture state and its later changes. True is the
      * completed handoff; false is the full app, when normal player chrome must
-     * be restored. Platforms without native PiP report false once.
+     * be restored. Platforms without native PiP report false once and never
+     * change, since nothing can put them into PiP in the first place.
      */
     val pictureInPictureChanges: Flow<Boolean>
         get() = NoPictureInPictureChanges

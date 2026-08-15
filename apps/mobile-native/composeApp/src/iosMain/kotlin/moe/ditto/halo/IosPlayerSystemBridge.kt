@@ -30,6 +30,20 @@ interface HaloIosPlayerSystemHost {
 internal class IosPlayerSystemPort(
     private val host: HaloIosPlayerSystemHost,
 ) : PlayerSystemPort {
+    /**
+     * iOS has picture-in-picture, but not for this player. `AVPictureInPicture-
+     * Controller` drives an `AVPlayerLayer` or an `AVSampleBufferDisplayLayer`,
+     * and libmpv renders into a Metal layer that is neither: there is no layer
+     * for UIKit to lift out of the app. Supporting it would mean pulling
+     * decoded frames back out of mpv and feeding a sample-buffer layer
+     * alongside the renderer, which is a second video path, not a flag.
+     *
+     * So the control is not offered here. The alternative -- a PiP button that
+     * draws a small video-shaped box inside Halo -- promises the one thing it
+     * cannot do, which is keep playing once the viewer leaves.
+     */
+    override val supportsPictureInPicture: Boolean = false
+
     override fun screenBrightness(): Float? = host.screenBrightness()
         .takeIf { it.isFinite() && it >= 0.0 }
         ?.coerceIn(0.0, 1.0)

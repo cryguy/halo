@@ -294,33 +294,16 @@ class PlayerScreenControllerTest {
     }
 
     @Test
-    fun enteringPictureInPictureClearsTheChromeAndPanels() = runTest {
-        val controller = PlayerScreenController(backgroundScope)
-        controller.toggleEpisodeDrawer()
-
-        controller.enterPictureInPicture()
-        assertTrue(controller.pictureInPicture)
-        assertFalse(controller.chromeVisible)
-        assertFalse(controller.episodeDrawerOpen)
-
-        controller.exitPictureInPicture()
-        assertFalse(controller.pictureInPicture)
-        assertTrue(controller.chromeVisible)
-    }
-
-    @Test
-    fun nativePictureInPictureHandoffHidesChromeWithoutDrawingTheFallback() = runTest {
+    fun pictureInPictureHandoffClearsThePanelsAndReturningRestoresTheChrome() = runTest {
         val controller = PlayerScreenController(backgroundScope)
         controller.toggleEpisodeDrawer()
 
         controller.prepareForPictureInPicture()
 
-        assertFalse(controller.pictureInPicture)
         assertFalse(controller.chromeVisible)
         assertFalse(controller.episodeDrawerOpen)
 
         controller.exitPictureInPicture()
-        assertFalse(controller.pictureInPicture)
         assertTrue(controller.chromeVisible)
     }
 
