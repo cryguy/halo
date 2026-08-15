@@ -24,7 +24,6 @@ import moe.ditto.halo.api.AddonsResponse
 import moe.ditto.halo.api.Me
 import moe.ditto.halo.api.UserSettings
 import moe.ditto.halo.ui.HaloColors
-import moe.ditto.halo.ui.HaloDimensions
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
 import moe.ditto.halo.ui.languageLabel
@@ -77,6 +76,10 @@ internal fun SettingsContent(
     LazyColumn(
         modifier = modifier
             .fillMaxHeight()
+            // Inside the content area rather than the window: the navigation
+            // rail moves the optical centre, and a form centred on the window
+            // reads as pushed to one side.
+            .padding(start = responsive.contentInsetStart)
             .then(
                 responsive.contentMaxWidth?.let { Modifier.widthIn(max = it).fillMaxWidth() }
                     ?: Modifier.fillMaxWidth(),
@@ -84,7 +87,7 @@ internal fun SettingsContent(
         contentPadding = PaddingValues(
             start = HaloSpacing.Md,
             end = HaloSpacing.Md,
-            bottom = HaloDimensions.TabBarSpace,
+            bottom = responsive.bottomContentPadding,
         ),
     ) {
         item(key = "header") { ScreenHeader(title = "Settings") }

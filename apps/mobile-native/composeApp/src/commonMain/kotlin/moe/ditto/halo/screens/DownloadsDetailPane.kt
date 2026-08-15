@@ -35,12 +35,12 @@ import moe.ditto.halo.downloads.DownloadEntry
 import moe.ditto.halo.ui.CenterMessage
 import moe.ditto.halo.ui.HaloAsyncImage
 import moe.ditto.halo.ui.HaloColors
-import moe.ditto.halo.ui.HaloDimensions
 import moe.ditto.halo.ui.HaloIcons
 import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
 import moe.ditto.halo.ui.monoStyle
+import moe.ditto.halo.ui.rememberResponsive
 
 /**
  * The right-hand pane on a landscape tablet: everything about the row the list
@@ -84,9 +84,9 @@ internal fun DownloadDetailPane(
                 end = HaloSpacing.Lg,
                 // The pane owns its own insets: it is a sibling of the list
                 // rather than inside it, so nothing else is holding the status
-                // bar off its artwork or the floating tab bar off its buttons.
+                // bar off its artwork or the floating chrome off its buttons.
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + HaloSpacing.Lg,
-                bottom = HaloDimensions.TabBarSpace,
+                bottom = rememberResponsive().bottomContentPadding,
             ),
         verticalArrangement = Arrangement.spacedBy(HaloSpacing.Md),
     ) {

@@ -46,7 +46,6 @@ import moe.ditto.halo.downloads.StorageSpace
 import moe.ditto.halo.ui.CenterMessage
 import moe.ditto.halo.ui.ConfirmSheet
 import moe.ditto.halo.ui.HaloColors
-import moe.ditto.halo.ui.HaloDimensions
 import moe.ditto.halo.ui.HaloIcons
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
@@ -119,11 +118,15 @@ internal fun DownloadsScreen(
 
                     // Landscape on a tablet is the one shape with width to spare for a
                     // second pane; portrait is the phone layout at tablet spacing.
-                    responsive.isTablet && responsive.isLandscape -> Row(Modifier.fillMaxSize()) {
+                    responsive.isTablet && responsive.isLandscape -> Row(
+                        // The navigation rail floats over the leading edge, so
+                        // the list starts beside it rather than under it.
+                        Modifier.fillMaxSize().padding(start = responsive.contentInsetStart),
+                    ) {
                         DownloadsList(
                             modifier = Modifier.weight(1f),
                             responsive = responsive,
-                            listWidth = responsive.width - detailPaneWidth(responsive),
+                            listWidth = responsive.contentWidth - detailPaneWidth(responsive),
                             entries = entries,
                             sections = sections,
                             progress = progress,
@@ -148,6 +151,7 @@ internal fun DownloadsScreen(
 
                     else -> DownloadsList(
                         modifier = Modifier
+                            .padding(start = responsive.contentInsetStart)
                             .then(
                                 responsive.contentMaxWidth?.let { Modifier.widthIn(max = it).fillMaxWidth() }
                                     ?: Modifier.fillMaxWidth(),
@@ -180,8 +184,9 @@ internal fun DownloadsScreen(
                     "Nothing on the server changes, so it can be downloaded again.",
                 confirmLabel = "Delete from device",
                 icon = HaloIcons.Trash,
-                // This tab keeps the tab bar, which draws over the sheet.
-                bottomClearance = HaloDimensions.TabBarSpace,
+                // This tab keeps its chrome, and where that chrome is the tab
+                // bar it draws over the sheet. The rail does not.
+                bottomClearance = responsive.floatingBarClearance,
                 onConfirm = {
                     removal?.let { entry -> scope.launch { downloads.remove(entry.videoId) } }
                     pendingRemoval = null
@@ -249,9 +254,9 @@ private fun DownloadsList(
         // header's scrim has to reach both edges, and a content inset would
         // leave a sliver of scrolling list showing beside it.
         contentPadding = PaddingValues(
-            // The tab bar floats over this screen, so the last row has to stop
-            // short of it or it sits behind the glass.
-            bottom = HaloDimensions.TabBarSpace,
+            // Chrome that floats over this screen has to be cleared or the last
+            // row sits behind the glass.
+            bottom = responsive.bottomContentPadding,
         ),
     ) {
         stickyHeader(key = "header") {
@@ -433,7 +438,7 @@ private val HeaderFade = HaloSpacing.Md
 @Composable
 private fun DownloadsPlaceholder(responsive: ResponsiveInfo, body: @Composable () -> Unit) {
     val gutter = responsive.pick(phone = HaloSpacing.Md, tablet = HaloSpacing.Lg, large = HaloSpacing.Xl)
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().padding(start = responsive.contentInsetStart)) {
         DownloadsHeader(gutter = gutter)
         Box(Modifier.weight(1f)) { body() }
     }
