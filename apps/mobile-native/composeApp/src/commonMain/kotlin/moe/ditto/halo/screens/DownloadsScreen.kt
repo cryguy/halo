@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.ditto.halo.SignedInGraph
@@ -43,13 +45,15 @@ import moe.ditto.halo.downloads.DownloadStatus
 import moe.ditto.halo.downloads.DownloadsCoordinator
 import moe.ditto.halo.downloads.StorageSpace
 import moe.ditto.halo.ui.CenterMessage
+import moe.ditto.halo.ui.ConfirmSheet
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloDimensions
+import moe.ditto.halo.ui.HaloIcons
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
+import moe.ditto.halo.ui.LocalHazeState
 import moe.ditto.halo.ui.ResponsiveInfo
-import moe.ditto.halo.ui.SelectOption
-import moe.ditto.halo.ui.SelectSheet
+import moe.ditto.halo.ui.glassSource
 import moe.ditto.halo.ui.rememberResponsive
 
 /**
@@ -92,95 +96,104 @@ internal fun DownloadsScreen(
     // entry the list no longer has.
     val selected = sections.ready.firstOrNull { it.videoId == selectedVideoId } ?: sections.ready.firstOrNull()
 
-    Box(modifier.fillMaxSize().background(HaloColors.Background)) {
-        when {
-            !downloads.isAvailable -> DownloadsPlaceholder(responsive) {
-                CenterMessage("This device has nowhere to keep downloads.")
-            }
+    // The removal sheet frosts this screen, so the blur source has to be the
+    // screen's own body: a frosted surface cannot sample a source it is part of,
+    // and sampling the shell's whole-navigation-host source (which contains this
+    // sheet) leaves the card drawing nothing at all. See `LocalHazeState`.
+    val bodyHaze = rememberHazeState()
 
-            entries.isEmpty() -> DownloadsPlaceholder(responsive) {
-                CenterMessage(
-                    "Downloads live here. Pick a source on any title and tap the download icon, " +
-                        "then it plays with no network at all.",
-                )
-            }
+    CompositionLocalProvider(LocalHazeState provides bodyHaze) {
+        Box(modifier.fillMaxSize().background(HaloColors.Background)) {
+            // The sheet blurs this, and only this.
+            Box(Modifier.fillMaxSize().glassSource(bodyHaze)) {
+                when {
+                    !downloads.isAvailable -> DownloadsPlaceholder(responsive) {
+                        CenterMessage("This device has nowhere to keep downloads.")
+                    }
 
-            // Landscape on a tablet is the one shape with width to spare for a
-            // second pane; portrait is the phone layout at tablet spacing.
-            responsive.isTablet && responsive.isLandscape -> Row(Modifier.fillMaxSize()) {
-                DownloadsList(
-                    modifier = Modifier.weight(1f),
-                    responsive = responsive,
-                    listWidth = responsive.width - detailPaneWidth(responsive),
-                    entries = entries,
-                    sections = sections,
-                    progress = progress,
-                    history = history,
-                    space = space,
-                    selectedVideoId = selected?.videoId,
-                    downloads = downloads,
-                    onSelect = { selectedVideoId = it.videoId },
-                    onPlay = onPlay,
-                    onRemove = { pendingRemoval = it },
-                )
-                Box(Modifier.fillMaxHeight().width(1.dp).background(HaloColors.Hairline))
-                DownloadDetailPane(
-                    entry = selected,
-                    poster = selected?.let { downloadPoster(it, sections) },
-                    watched = selected?.let { watchedFraction(progress[it.videoId]) },
-                    onPlay = { selected?.let(onPlay) },
-                    onRemove = { pendingRemoval = selected },
-                    modifier = Modifier.width(detailPaneWidth(responsive)),
-                )
-            }
+                    entries.isEmpty() -> DownloadsPlaceholder(responsive) {
+                        CenterMessage(
+                            "Downloads live here. Pick a source on any title and tap the download icon, " +
+                                "then it plays with no network at all.",
+                        )
+                    }
 
-            else -> DownloadsList(
-                modifier = Modifier
-                    .then(
-                        responsive.contentMaxWidth?.let { Modifier.widthIn(max = it).fillMaxWidth() }
-                            ?: Modifier.fillMaxWidth(),
+                    // Landscape on a tablet is the one shape with width to spare for a
+                    // second pane; portrait is the phone layout at tablet spacing.
+                    responsive.isTablet && responsive.isLandscape -> Row(Modifier.fillMaxSize()) {
+                        DownloadsList(
+                            modifier = Modifier.weight(1f),
+                            responsive = responsive,
+                            listWidth = responsive.width - detailPaneWidth(responsive),
+                            entries = entries,
+                            sections = sections,
+                            progress = progress,
+                            history = history,
+                            space = space,
+                            selectedVideoId = selected?.videoId,
+                            downloads = downloads,
+                            onSelect = { selectedVideoId = it.videoId },
+                            onPlay = onPlay,
+                            onRemove = { pendingRemoval = it },
+                        )
+                        Box(Modifier.fillMaxHeight().width(1.dp).background(HaloColors.Hairline))
+                        DownloadDetailPane(
+                            entry = selected,
+                            poster = selected?.let { downloadPoster(it, sections) },
+                            watched = selected?.let { watchedFraction(progress[it.videoId]) },
+                            onPlay = { selected?.let(onPlay) },
+                            onRemove = { pendingRemoval = selected },
+                            modifier = Modifier.width(detailPaneWidth(responsive)),
+                        )
+                    }
+
+                    else -> DownloadsList(
+                        modifier = Modifier
+                            .then(
+                                responsive.contentMaxWidth?.let { Modifier.widthIn(max = it).fillMaxWidth() }
+                                    ?: Modifier.fillMaxWidth(),
+                            )
+                            .align(Alignment.TopCenter),
+                        responsive = responsive,
+                        listWidth = responsive.contentMaxWidth?.coerceAtMost(responsive.width) ?: responsive.width,
+                        entries = entries,
+                        sections = sections,
+                        progress = progress,
+                        history = history,
+                        space = space,
+                        selectedVideoId = null,
+                        downloads = downloads,
+                        onSelect = {},
+                        onPlay = onPlay,
+                        onRemove = { pendingRemoval = it },
                     )
-                    .align(Alignment.TopCenter),
-                responsive = responsive,
-                listWidth = responsive.contentMaxWidth?.coerceAtMost(responsive.width) ?: responsive.width,
-                entries = entries,
-                sections = sections,
-                progress = progress,
-                history = history,
-                space = space,
-                selectedVideoId = null,
-                downloads = downloads,
-                onSelect = {},
-                onPlay = onPlay,
-                onRemove = { pendingRemoval = it },
+                }
+            }
+
+            // Last child of the root, per the sheet contract, and a sibling of the
+            // source above rather than a child of it.
+            val removal = pendingRemoval
+            ConfirmSheet(
+                visible = removal != null,
+                title = "Delete this download?",
+                subject = removal?.let(::downloadRowTitle),
+                body = "The video and its subtitle are removed from this device. " +
+                    "Nothing on the server changes, so it can be downloaded again.",
+                confirmLabel = "Delete from device",
+                icon = HaloIcons.Trash,
+                // This tab keeps the tab bar, which draws over the sheet.
+                bottomClearance = HaloDimensions.TabBarSpace,
+                onConfirm = {
+                    removal?.let { entry -> scope.launch { downloads.remove(entry.videoId) } }
+                    pendingRemoval = null
+                },
+                onDismiss = { pendingRemoval = null },
             )
         }
-
-        // Last child of the root, per SelectSheet's own contract.
-        val removal = pendingRemoval
-        SelectSheet(
-            visible = removal != null,
-            title = "Delete this download?",
-            description = removal?.let(::downloadRowTitle),
-            options = listOf(
-                SelectOption(
-                    key = DeleteKey,
-                    label = "Delete from device",
-                    detail = "The video and its subtitle are removed. Nothing on the server changes.",
-                    destructive = true,
-                ),
-            ),
-            onSelect = {
-                removal?.let { entry -> scope.launch { downloads.remove(entry.videoId) } }
-                pendingRemoval = null
-            },
-            onClose = { pendingRemoval = null },
-        )
     }
 }
 
 private const val DownloadsTitle = "Downloads"
-private const val DeleteKey = "delete"
 
 /** How often the volume is re-measured. Slow, because free space is a slow figure. */
 private const val StorageRefreshMs = 5_000L
