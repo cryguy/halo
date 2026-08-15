@@ -161,10 +161,28 @@ internal fun PlayerScreen(
             frameWidthPx = with(density) { ScrubPreviewWidth.roundToPx() },
             frameHeightPx = with(density) { ScrubPreviewHeight.roundToPx() },
             scope = scope,
+            local = context.isDownload,
         )
     }
     DisposableEffect(scrubFrames) {
         onDispose { scrubFrames.close() }
+    }
+
+    // The reader is warmed when the transport appears and let go when it
+    // leaves, because its first frame costs about a second and every frame
+    // after it about a tenth of that. Warmed on the first scrub instead, that
+    // second lands inside the gesture it was meant to serve.
+    //
+    // Not before the engine has the file open: the warm-up decode reads the
+    // same source playback is starting on, and racing it there would trade a
+    // smooth first scrub for a stuttering first second.
+    val playbackOpen = state.status == PlaybackStatus.Playing || state.status == PlaybackStatus.Paused
+    LaunchedEffect(scrubFrames, controller.chromeVisible, playbackOpen) {
+        if (controller.chromeVisible && playbackOpen) {
+            scrubFrames.warm(state.positionSeconds)
+        } else {
+            scrubFrames.idle()
+        }
     }
 
     // Stored appearance first, then the source: applying it afterwards would

@@ -153,6 +153,116 @@ class ScrubPreviewFramesTest {
     }
 
     @Test
+    fun warmsALocalReaderBeforeAnythingIsRequested() = runTest {
+        val source = FakeFrameSource()
+        val frames = scrubFrames(source, local = true)
+
+        frames.warm(45.0)
+        runCurrent()
+
+        // Open and decoded already: the second the first frame costs has been
+        // spent before the finger arrives.
+        assertEquals(1, source.opens)
+        assertEquals(listOf(40.0), source.readers.single().requested)
+        assertNotNull(frames.frameFor(45.0))
+        frames.close()
+    }
+
+    @Test
+    fun doesNotWarmARemoteReader() = runTest {
+        val source = FakeFrameSource()
+        val frames = scrubFrames(source, local = false)
+
+        frames.warm(45.0)
+        runCurrent()
+
+        // A connection some host may be counting, opened for a scrub that may
+        // never happen.
+        assertEquals(0, source.opens)
+        frames.close()
+    }
+
+    @Test
+    fun keepsALocalReaderUntilTheScrubberLeavesTheScreen() = runTest {
+        val source = FakeFrameSource()
+        val frames = scrubFrames(source, local = true)
+
+        frames.request(10.0)
+        runCurrent()
+        val reader = source.readers.single()
+
+        // Long past the idle window, with the transport still up: the reader
+        // stays, and with it the decoder that makes the next frame cheap.
+        advanceTimeBy(ReaderIdleAllowanceMillis)
+        runCurrent()
+        assertEquals(0, reader.closeCount)
+
+        frames.idle()
+        advanceTimeBy(ReaderIdleAllowanceMillis)
+        runCurrent()
+        assertEquals(1, reader.closeCount)
+        frames.close()
+    }
+
+    @Test
+    fun decodesOnWarmingEvenWhenTheSlotIsAlreadyCached() = runTest {
+        val source = FakeFrameSource()
+        val frames = scrubFrames(source, local = true)
+
+        frames.request(10.0)
+        runCurrent()
+        frames.idle()
+        advanceTimeBy(ReaderIdleAllowanceMillis)
+        runCurrent()
+
+        // The picture for this slot survived the release; the decoder did not.
+        // Warming has to decode anyway, or it hands the next scrub a reader
+        // that is open and still cold.
+        frames.warm(10.0)
+        runCurrent()
+
+        assertEquals(2, source.opens)
+        assertEquals(listOf(10.0), source.readers.last().requested)
+        frames.close()
+    }
+
+    @Test
+    fun givesUpOnASourceWhoseFramesNeverDecode() = runTest {
+        val source = FakeFrameSource(configure = { it.decodesNull = true })
+        val frames = scrubFrames(source)
+
+        repeat(MaxDecodeFailureAllowance + 1) { index ->
+            frames.request(index * 10.0)
+            runCurrent()
+        }
+
+        // Three failures in a row is a device with no decoder for this video,
+        // not a bad position, so nothing is asked of it again.
+        assertEquals(MaxDecodeFailureAllowance, source.readers.single().requested.size)
+        frames.close()
+    }
+
+    @Test
+    fun keepsAskingAfterAFailureThatIsFollowedByAFrame() = runTest {
+        val source = FakeFrameSource(configure = { it.nullPositions = setOf(0.0) })
+        val frames = scrubFrames(source)
+
+        frames.request(5.0)
+        runCurrent()
+        frames.request(15.0)
+        runCurrent()
+        frames.request(25.0)
+        runCurrent()
+        frames.request(35.0)
+        runCurrent()
+
+        // One unreadable position says nothing about the rest of the file.
+        assertEquals(listOf(0.0, 10.0, 20.0, 30.0), source.readers.single().requested)
+        assertNotNull(frames.frameFor(15.0))
+        frames.close()
+    }
+
+    @Test
     fun closingReleasesTheReaderAndStopsDecoding() = runTest {
         val source = FakeFrameSource()
         val frames = scrubFrames(source)
@@ -174,15 +284,22 @@ class ScrubPreviewFramesTest {
 /** Comfortably past the coordinator's own idle window. */
 private const val ReaderIdleAllowanceMillis = 30_000L
 
+/** Mirrors the coordinator's own consecutive-failure allowance. */
+private const val MaxDecodeFailureAllowance = 3
+
 private const val FixtureUrl = "https://fixture.test/episode.mkv"
 
-private fun kotlinx.coroutines.test.TestScope.scrubFrames(source: FakeFrameSource) =
+private fun kotlinx.coroutines.test.TestScope.scrubFrames(
+    source: FakeFrameSource,
+    local: Boolean = false,
+) =
     ScrubPreviewFrames(
         source = source,
         url = FixtureUrl,
         frameWidthPx = 176,
         frameHeightPx = 99,
         scope = backgroundScope,
+        local = local,
     )
 
 private class FakeFrameSource(
@@ -212,12 +329,19 @@ private class FakeFrameReader : VideoFrameReader {
     /** Holds the first decode open, so a drag can overtake it. */
     var gate: CompletableDeferred<Unit>? = null
 
+    /** A device with no decoder for this video: every position comes back empty. */
+    var decodesNull = false
+
+    /** Positions that are unreadable in a file that is otherwise fine. */
+    var nullPositions: Set<Double> = emptySet()
+
     override suspend fun frameAt(positionSeconds: Double, widthPx: Int, heightPx: Int): ImageBitmap? {
         requested += positionSeconds
         gate?.let {
             gate = null
             it.await()
         }
+        if (decodesNull || positionSeconds in nullPositions) return null
         return FakeImageBitmap(widthPx, heightPx)
     }
 

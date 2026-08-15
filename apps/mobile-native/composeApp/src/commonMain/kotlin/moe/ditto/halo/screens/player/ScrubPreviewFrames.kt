@@ -34,12 +34,12 @@ private const val FrameStepSeconds = 10.0
 private const val MaxCachedFrames = 12
 
 /**
- * How long the reader outlives the last scrub before it is released.
+ * How long the reader outlives the last thing that needed it.
  *
  * It holds a second connection to the source for as long as it is open, and
- * some hosts count those against the one that is playing. Long enough that
- * consecutive scrubs reuse it rather than paying to reopen; short enough that
- * watching an episode does not hold it for an hour.
+ * some hosts count those. Long enough that consecutive scrubs reuse it rather
+ * than paying to reopen; short enough that watching an episode does not hold it
+ * for an hour.
  */
 private const val ReaderIdleMillis = 20_000L
 
@@ -54,14 +54,33 @@ private const val ReaderIdleMillis = 20_000L
 private const val MaxOpenFailures = 2
 
 /**
+ * How many decodes may fail in a row before this source is given up on.
+ *
+ * One failure says nothing: a single position can be unreadable in a file
+ * whose every other position is fine, which is why a success resets the count.
+ * A run of them says the device has no decoder for this video at all — the
+ * ordinary outcome for a codec the platform's frame extractor does not cover
+ * even though the playback engine does. Counting consecutive failures tells
+ * those apart without asking the platform a capability question that an open
+ * reader cannot answer.
+ */
+private const val MaxDecodeFailures = 3
+
+/**
  * The frames behind the scrub preview card.
  *
  * All of the awkwardness here comes from one fact: a frame is expensive and a
  * finger is fast. So requests are quantised to [FrameStepSeconds], only the
  * newest is honoured (the channel is conflated, so a drag that crosses twenty
  * slots decodes the one it stopped on rather than all twenty), decoded frames
- * are cached, and the reader is opened on the first scrub rather than at
- * playback and released once scrubbing stops.
+ * are cached, and the reader is opened and released around the scrubbing
+ * rather than held for the whole of playback.
+ *
+ * The expense is lopsided, which is what [warm] is for: the first frame out of
+ * a freshly opened reader costs around a second on a 4K source and every frame
+ * after it around a tenth of that, because the platform builds a decoder on the
+ * first decode and then keeps it inside the reader. Whoever pays that second
+ * should not be a finger already on the bar.
  *
  * [frameFor] answers only for the slot asked about. It never substitutes a
  * neighbouring frame: the card puts the target timecode on the picture, and a
@@ -78,6 +97,17 @@ internal class ScrubPreviewFrames(
     private val frameWidthPx: Int,
     private val frameHeightPx: Int,
     private val scope: CoroutineScope,
+    /**
+     * True when [url] is a file on this device.
+     *
+     * It decides when the reader is allowed to exist. A local reader costs a
+     * file handle and a decoder, so it is opened before the first scrub asks
+     * for anything ([warm]) and kept for as long as the scrubber is on screen.
+     * A remote one also holds a connection to a host that may be counting
+     * them, so it stays lazy: opened by the first request, dropped a while
+     * after the last.
+     */
+    private val local: Boolean = false,
 ) {
     private val frames = mutableStateMapOf<Long, ImageBitmap>()
 
@@ -91,10 +121,24 @@ internal class ScrubPreviewFrames(
     private var idleRelease: Job? = null
     private var lastRequestedSlot: Long? = null
     private var openFailures = 0
+    private var decodeFailures = 0
+
+    /**
+     * Whether anything has been decoded through the reader that is open now.
+     *
+     * The platform builds its decoder on the first decode and keeps it for the
+     * life of the reader, so this is the difference between the next frame
+     * costing a second and costing a tenth of one. Reopening puts it back.
+     */
+    private var decodedSinceOpen = false
     private var closed = false
 
     private val enabled: Boolean
-        get() = !closed && frameWidthPx > 0 && frameHeightPx > 0 && openFailures < MaxOpenFailures
+        get() = !closed &&
+            frameWidthPx > 0 &&
+            frameHeightPx > 0 &&
+            openFailures < MaxOpenFailures &&
+            decodeFailures < MaxDecodeFailures
 
     /** The frame for [positionSeconds]'s own slot, or null if it is not decoded. */
     fun frameFor(positionSeconds: Double): ImageBitmap? = frames[slotOf(positionSeconds)]
@@ -112,10 +156,41 @@ internal class ScrubPreviewFrames(
         // idle timer and the channel from churning through a drag.
         if (slot == lastRequestedSlot) return
         lastRequestedSlot = slot
-        armIdleRelease()
+        onActivity()
         if (frames.containsKey(slot)) return
         startWorker()
         requests.trySend(slot)
+    }
+
+    /**
+     * Opens the reader and decodes one frame at [positionSeconds] before
+     * anything has asked to see a picture.
+     *
+     * Called when the transport appears, so that the second the first decode
+     * costs is spent while the viewer is looking at the bar rather than while
+     * they are dragging along it. Local sources only: on a remote one the same
+     * eagerness would open a connection for a scrub that may never happen.
+     */
+    fun warm(positionSeconds: Double) {
+        if (!local || !enabled) return
+        cancelIdleRelease()
+        val slot = slotOf(positionSeconds)
+        lastRequestedSlot = slot
+        startWorker()
+        // Sent even when this slot is already cached. The cache holds pictures,
+        // not the decoder that made them, and the decoder is the point here.
+        requests.trySend(slot)
+    }
+
+    /**
+     * The scrubber has left the screen, so nothing can ask for a frame until it
+     * comes back. Starts the reader's release; [request] and [warm] call it off
+     * again. Safe to call repeatedly: a release already pending is left to run
+     * rather than pushed further out.
+     */
+    fun idle() {
+        if (idleRelease?.isActive == true) return
+        armIdleRelease()
     }
 
     /** Releases the reader and forgets the frames. Safe to call twice. */
@@ -124,8 +199,7 @@ internal class ScrubPreviewFrames(
         closed = true
         worker?.cancel()
         worker = null
-        idleRelease?.cancel()
-        idleRelease = null
+        cancelIdleRelease()
         releaseReader()
         frames.clear()
         cached.clear()
@@ -136,11 +210,16 @@ internal class ScrubPreviewFrames(
         worker = scope.launch {
             for (slot in requests) {
                 if (!enabled) break
-                if (frames.containsKey(slot)) continue
                 val open = reader ?: openReader() ?: continue
-                // A decode failure at one position says nothing about the next
-                // one, so it is dropped rather than counted: only a source that
-                // will not open at all is given up on.
+                // The cache is consulted after the reader is open, and a slot
+                // already held is still decoded while nothing has been decoded
+                // through this reader: that first decode is the one that builds
+                // the platform's decoder, and skipping it would leave warm()
+                // having opened a reader that is still cold.
+                if (decodedSinceOpen && frames.containsKey(slot)) {
+                    onActivity()
+                    continue
+                }
                 val frame = try {
                     open.frameAt(slot.toDouble(), frameWidthPx, frameHeightPx)
                 } catch (cancellation: CancellationException) {
@@ -148,8 +227,14 @@ internal class ScrubPreviewFrames(
                 } catch (failure: Exception) {
                     null
                 }
-                if (frame != null) cache(slot, frame)
-                armIdleRelease()
+                if (frame == null) {
+                    decodeFailures += 1
+                } else {
+                    decodeFailures = 0
+                    decodedSinceOpen = true
+                    cache(slot, frame)
+                }
+                onActivity()
             }
         }
     }
@@ -186,12 +271,23 @@ internal class ScrubPreviewFrames(
     }
 
     /**
+     * A remote reader is dropped a while after the last thing that needed it,
+     * because it is holding a connection someone may be counting. A local one
+     * only has to outlive the scrubber's time on screen, and outliving it is
+     * exactly what keeps its decoder warm, so activity calls a pending release
+     * off rather than pushing it further out.
+     */
+    private fun onActivity() {
+        if (local) cancelIdleRelease() else armIdleRelease()
+    }
+
+    /**
      * Frames already decoded survive the release. They cost nothing to keep and
      * a viewer who comes back to the scrubber is usually coming back to the
      * same part of the timeline.
      */
     private fun armIdleRelease() {
-        idleRelease?.cancel()
+        cancelIdleRelease()
         if (closed) return
         idleRelease = scope.launch {
             delay(ReaderIdleMillis)
@@ -199,9 +295,15 @@ internal class ScrubPreviewFrames(
         }
     }
 
+    private fun cancelIdleRelease() {
+        idleRelease?.cancel()
+        idleRelease = null
+    }
+
     private fun releaseReader() {
         reader?.close()
         reader = null
+        decodedSinceOpen = false
     }
 
     private fun slotOf(positionSeconds: Double): Long {
