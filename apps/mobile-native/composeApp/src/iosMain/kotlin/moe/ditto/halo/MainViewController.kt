@@ -5,6 +5,7 @@ import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.Platform
 import moe.ditto.halo.auth.IosKeychainStorage
 import moe.ditto.halo.downloads.IosDownloadStorage
+import moe.ditto.halo.player.IosVideoFrameSource
 import moe.ditto.halo.storage.IosUserDefaultsStore
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
@@ -61,6 +62,7 @@ fun MainViewController(
         oidcSessionPort = IosOidcSessionPort(authHost),
         playerPort = IosPlayerHostAdapter(playerHost),
         playerSystemPort = IosPlayerSystemPort(playerSystemHost),
+        videoFrameSource = IosVideoFrameSource,
         playerEvents = playerEventBridge.events,
         authEvents = authEventBridge.events,
         nativePlayerSurface = IosNativePlayerSurface(playerHost),
