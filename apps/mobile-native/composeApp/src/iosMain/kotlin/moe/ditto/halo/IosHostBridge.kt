@@ -109,6 +109,21 @@ interface HaloIosPlayerEventSink {
     fun onPosition(positionSeconds: Double)
     fun onPauseChanged(paused: Boolean)
     fun onTracks(tracksJson: String)
+
+    /**
+     * Negative figures mean the engine did not report that metric. Sentinels
+     * keep the Swift-exported protocol on primitive numbers instead of boxed
+     * nullable Kotlin values, whose Objective-C bridge is easy to misuse.
+     */
+    fun onBufferingChanged(
+        active: Boolean,
+        percent: Int,
+        bytesPerSecond: Long,
+        cachedSeconds: Double,
+    )
+
+    /** [positionSeconds] < 0 means the cache reach is currently unknown. */
+    fun onBufferedPositionChanged(positionSeconds: Double)
     fun onEnded()
     fun onError(message: String)
 }
@@ -138,9 +153,16 @@ interface HaloIosPlayerHost {
     fun seekTo(positionSeconds: Double)
     fun selectAudioTrack(id: String?)
     fun selectSubtitleTrack(id: String?)
+    fun setPlaybackRate(rate: Double)
+    fun setAudioDelay(seconds: Double)
+    fun setVideoFillsScreen(fills: Boolean)
     fun setSubtitleDelay(seconds: Double)
     fun setSubtitleScale(scale: Double)
     fun setSubtitleFont(font: String?)
+    fun setSubtitleTrackStyling(keepScript: Boolean)
+    fun setSubtitleOutline(widthPixels: Double)
+    fun setSubtitleShadow(offsetPixels: Double)
+    fun setSubtitleLift(percent: Int)
     fun addSubtitle(url: String)
     fun teardown()
     fun destroyAndRecreateCore()
@@ -204,6 +226,28 @@ internal class IosPlayerEventBridge : HaloIosPlayerEventSink {
                 ),
             ),
         )
+    }
+
+    override fun onBufferingChanged(
+        active: Boolean,
+        percent: Int,
+        bytesPerSecond: Long,
+        cachedSeconds: Double,
+    ) {
+        channel.trySend(
+            PlayerEvent.BufferingChanged(
+                active = active,
+                percent = percent.takeIf { it >= 0 },
+                bytesPerSecond = bytesPerSecond.takeIf { it >= 0L },
+                cachedSeconds = cachedSeconds.takeIf { it.isFinite() && it >= 0.0 },
+            ),
+        )
+    }
+
+    override fun onBufferedPositionChanged(positionSeconds: Double) {
+        if (positionSeconds.isFinite() && positionSeconds >= 0.0) {
+            channel.trySend(PlayerEvent.BufferedPositionChanged(positionSeconds))
+        }
     }
 
     override fun onEnded() {
@@ -321,10 +365,17 @@ internal class IosPlayerHostAdapter(
         host.selectSubtitleTrack(id)
     }
 
-    /** Android-only for now; the Mac follow-up adds the Swift host capability. */
-    override suspend fun setPlaybackRate(rate: Double) = Unit
-    override suspend fun setAudioDelay(seconds: Double) = Unit
-    override suspend fun setVideoFillsScreen(fills: Boolean) = Unit
+    override suspend fun setPlaybackRate(rate: Double) {
+        host.setPlaybackRate(rate)
+    }
+
+    override suspend fun setAudioDelay(seconds: Double) {
+        host.setAudioDelay(seconds)
+    }
+
+    override suspend fun setVideoFillsScreen(fills: Boolean) {
+        host.setVideoFillsScreen(fills)
+    }
 
     override suspend fun setSubtitleDelay(seconds: Double) {
         host.setSubtitleDelay(seconds)
@@ -338,13 +389,21 @@ internal class IosPlayerHostAdapter(
         host.setSubtitleFont(font)
     }
 
-    // Android-only for now; the Mac follow-up adds each of these to the Swift
-    // host. Silence is the right no-op: a caption that keeps its script's own
-    // styling is what the renderer already does.
-    override suspend fun setSubtitleTrackStyling(keepScript: Boolean) = Unit
-    override suspend fun setSubtitleOutline(widthPixels: Double) = Unit
-    override suspend fun setSubtitleShadow(offsetPixels: Double) = Unit
-    override suspend fun setSubtitleLift(percent: Int) = Unit
+    override suspend fun setSubtitleTrackStyling(keepScript: Boolean) {
+        host.setSubtitleTrackStyling(keepScript)
+    }
+
+    override suspend fun setSubtitleOutline(widthPixels: Double) {
+        host.setSubtitleOutline(widthPixels)
+    }
+
+    override suspend fun setSubtitleShadow(offsetPixels: Double) {
+        host.setSubtitleShadow(offsetPixels)
+    }
+
+    override suspend fun setSubtitleLift(percent: Int) {
+        host.setSubtitleLift(percent)
+    }
 
     override suspend fun addSubtitle(url: String) {
         host.addSubtitle(url)
