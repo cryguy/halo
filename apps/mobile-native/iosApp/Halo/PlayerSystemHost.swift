@@ -19,6 +19,14 @@ final class PlayerSystemHost: NSObject, HaloIosPlayerSystemHost {
     var landscapeLocked: Bool { landscapeHolders > 0 }
     var systemBarsHidden: Bool { systemBarHolders > 0 }
 
+    var diagnosticSummary: String {
+        let landscape = landscapeLocked ? "locked" : "released"
+        let screen = screenOnHolders > 0 ? "claimed" : "released"
+        let bars = systemBarsHidden ? "hidden" : "visible"
+        let idleTimer = UIApplication.shared.isIdleTimerDisabled ? "disabled" : "enabled"
+        return "System claims: landscape \(landscape) · screen \(screen) · bars \(bars) · idle \(idleTimer)"
+    }
+
     override init() {
         super.init()
         volumeView.showsRouteButton = false
@@ -86,6 +94,7 @@ final class PlayerSystemHost: NSObject, HaloIosPlayerSystemHost {
         guard screenOnHolders == 1 else { return }
         idleTimerBeforeClaim = UIApplication.shared.isIdleTimerDisabled
         UIApplication.shared.isIdleTimerDisabled = true
+        presentationController?.refreshSystemDiagnostics()
     }
 
     func releaseScreenOn() {
@@ -94,6 +103,7 @@ final class PlayerSystemHost: NSObject, HaloIosPlayerSystemHost {
         guard screenOnHolders == 0 else { return }
         UIApplication.shared.isIdleTimerDisabled = idleTimerBeforeClaim ?? false
         idleTimerBeforeClaim = nil
+        presentationController?.refreshSystemDiagnostics()
     }
 
     func hideSystemBars() {
@@ -116,6 +126,7 @@ final class PlayerSystemHost: NSObject, HaloIosPlayerSystemHost {
 final class PlayerRootViewController: UIViewController {
     private let contentController: UIViewController
     private let systemHost: PlayerSystemHost
+    private var systemDiagnosticsView: UIView?
 
     init(contentController: UIViewController, systemHost: PlayerSystemHost) {
         self.contentController = contentController
@@ -141,6 +152,16 @@ final class PlayerRootViewController: UIViewController {
             contentController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         contentController.didMove(toParent: self)
+
+        if ProcessInfo.processInfo.environment["HALO_UI_TEST_SYSTEM_DIAGNOSTICS"] == "1" {
+            let diagnostics = UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+            diagnostics.isAccessibilityElement = true
+            diagnostics.accessibilityIdentifier = "Player system diagnostics"
+            diagnostics.isUserInteractionEnabled = false
+            diagnostics.backgroundColor = .clear
+            view.addSubview(diagnostics)
+            systemDiagnosticsView = diagnostics
+        }
         systemHost.attach(to: self)
     }
 
@@ -163,6 +184,7 @@ final class PlayerRootViewController: UIViewController {
     }
 
     func presentationClaimsDidChange() {
+        refreshSystemDiagnostics()
         setNeedsStatusBarAppearanceUpdate()
         setNeedsUpdateOfHomeIndicatorAutoHidden()
         setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
@@ -184,6 +206,10 @@ final class PlayerRootViewController: UIViewController {
             UIDevice.current.setValue(UIDeviceOrientation.landscapeRight.rawValue, forKey: "orientation")
         }
         UIViewController.attemptRotationToDeviceOrientation()
+    }
+
+    func refreshSystemDiagnostics() {
+        systemDiagnosticsView?.accessibilityLabel = systemHost.diagnosticSummary
     }
 
     private var defaultInterfaceOrientations: UIInterfaceOrientationMask {
