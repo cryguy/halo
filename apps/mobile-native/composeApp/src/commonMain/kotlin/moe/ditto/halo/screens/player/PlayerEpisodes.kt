@@ -152,8 +152,8 @@ internal suspend fun resolveEpisodePlayback(
  * Records where the viewer has got to.
  *
  * The show's name rather than the episode's, because the continue-watching row
- * represents the show; the poster comes from the title's own metadata when it
- * has arrived, and is simply absent until then rather than worth waiting for.
+ * represents the show. The title poster travels with the playback route, while
+ * a loaded episode metadata record can provide a fresher copy.
  * The repository decides what is too short or too early to be worth recording,
  * so this does not second-guess it.
  */
@@ -170,7 +170,7 @@ internal suspend fun reportProgress(
         positionSec = state.positionSeconds,
         durationSec = duration,
         name = context.showTitle,
-        poster = meta?.poster,
+        poster = meta?.poster ?: context.poster,
     )
 }
 

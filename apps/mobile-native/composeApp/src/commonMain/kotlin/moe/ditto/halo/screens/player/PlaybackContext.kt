@@ -29,6 +29,8 @@ internal data class PlaybackContext(
     val episodeName: String? = null,
     /** The episode still used by the drawer and Up Next card. */
     val episodeThumbnail: String? = null,
+    /** The title poster, retained for watch-state rows when no metadata fetch is needed. */
+    val poster: String? = null,
     /** The addon that offered this source, for asking the same one what follows. */
     val addonId: String,
     val bingeGroup: String? = null,

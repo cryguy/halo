@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +46,7 @@ import kotlinx.coroutines.delay
 import moe.ditto.halo.SignedInGraph
 import moe.ditto.halo.api.MetaCard
 import moe.ditto.halo.browse.CatalogRowSpec
+import moe.ditto.halo.browse.ContinueEntry
 import moe.ditto.halo.browse.catalogRows
 import moe.ditto.halo.browse.homeShelves
 import moe.ditto.halo.cache.QueryState
@@ -57,6 +59,7 @@ import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HeroScrim
 import moe.ditto.halo.ui.MetaLine
+import moe.ditto.halo.ui.PosterItem
 import moe.ditto.halo.ui.rememberResponsive
 
 /**
@@ -109,9 +112,9 @@ internal fun HomeScreen(
             enabled = lead != null,
         )
     }.collectAsState(QueryState())
-    // One title on a phone; a rotating handful where the hero is big enough that
-    // a single fixed card wastes the space it occupies.
-    val featuredCount = if (responsive.isTablet) TabletFeaturedCount else 1
+    // Keep the featured carousel consistent across phone and tablet. A single
+    // fixed card wastes the hero space and hides the rest of the lead catalog.
+    val featuredCount = FeaturedCount
     val previews = remember(leadCatalog.value, featuredCount) {
         leadCatalog.value.orEmpty().take(featuredCount)
     }
@@ -211,9 +214,9 @@ internal fun HomeScreen(
 
         if (shelves.continueWatching.isNotEmpty()) {
             item(key = "shelf-continue") {
-                CatalogRow(
-                    title = "Continue Watching",
-                    items = shelves.continueWatching.map { it.meta.posterItem(progress = it.progress) },
+                ContinueWatchingRow(
+                    graph = graph,
+                    entries = shelves.continueWatching,
                     onItemClick = { onOpenDetail(it.metaRef()) },
                     posterWidth = responsive.shelfPosterWidth,
                     gutter = gutter,
@@ -266,10 +269,51 @@ internal fun HomeScreen(
     }
 }
 
+/**
+ * Continue Watching can contain rows written before a player had title art in
+ * its route. Resolve only those missing posters here, so old rows recover on
+ * Home without adding a metadata request for healthy entries.
+ */
+@Composable
+private fun ContinueWatchingRow(
+    graph: SignedInGraph,
+    entries: List<ContinueEntry>,
+    onItemClick: (PosterItem) -> Unit,
+    posterWidth: Dp,
+    gutter: Dp,
+    gap: Dp,
+    bottomPadding: Dp,
+) {
+    val items = buildList {
+        entries.forEach { entry ->
+            key(entry.itemId) {
+                val metaState by remember(graph, entry.meta.type, entry.meta.id, entry.meta.poster) {
+                    graph.browse.meta(
+                        type = entry.meta.type,
+                        metaId = entry.meta.id,
+                        enabled = entry.meta.poster == null,
+                    )
+                }.collectAsState(QueryState())
+                val poster = entry.meta.poster ?: metaState.value?.poster
+                add(entry.meta.copy(poster = poster).posterItem(progress = entry.progress))
+            }
+        }
+    }
+    CatalogRow(
+        title = "Continue Watching",
+        items = items,
+        onItemClick = onItemClick,
+        posterWidth = posterWidth,
+        gutter = gutter,
+        gap = gap,
+        bottomPadding = bottomPadding,
+    )
+}
+
 private const val MovieType = "movie"
 
-/** How many titles the tablet hero rotates through, and for how long each. */
-private const val TabletFeaturedCount = 5
+/** How many titles the hero rotates through, and for how long each. */
+private const val FeaturedCount = 5
 private const val FeaturedDwellMs = 5_000L
 
 /** The hero's own inset, which grows with it. */

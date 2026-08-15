@@ -111,6 +111,8 @@ data class PlayerRoute(
     val episodeTag: String? = null,
     val episodeName: String? = null,
     val episodeThumbnail: String? = null,
+    /** The title's own art, carried into watch-state reporting. */
+    val poster: String? = null,
     /** Which addon offered this source; the next episode is asked of the same one. */
     val addonId: String,
     val bingeGroup: String? = null,
@@ -160,6 +162,7 @@ internal fun PlayerRoute.playbackContext(): PlaybackContext = PlaybackContext(
     episodeTag = episodeTag,
     episodeName = episodeName,
     episodeThumbnail = episodeThumbnail,
+    poster = poster,
     addonId = addonId,
     bingeGroup = bingeGroup,
     filename = filename,
@@ -189,6 +192,7 @@ internal fun StreamsRoute.playerRoute(addon: AddonSource, stream: Stream, url: S
         episodeTag = episodeTag,
         episodeName = episodeName,
         episodeThumbnail = episodeThumbnail,
+        poster = poster,
         addonId = addon.id,
         bingeGroup = hints?.bingeGroup,
         filename = hints?.filename,
@@ -214,6 +218,7 @@ internal fun DownloadEntry.playerRoute(files: DownloadFiles): PlayerRoute = Play
     episodeTag = media.episodeTag,
     episodeName = media.episodeName,
     episodeThumbnail = media.episodeThumbnail,
+    poster = media.poster,
     addonId = media.addonId,
     bingeGroup = media.bingeGroup,
     filename = media.filename,
@@ -281,6 +286,7 @@ internal fun PlayerRoute.withContext(context: PlaybackContext): PlayerRoute = Pl
     episodeTag = context.episodeTag,
     episodeName = context.episodeName,
     episodeThumbnail = context.episodeThumbnail,
+    poster = context.poster,
     addonId = context.addonId,
     bingeGroup = context.bingeGroup,
     filename = context.filename,
@@ -299,6 +305,7 @@ internal fun PlayerRoute.episodeSources(choice: EpisodeChoice.NeedsSource): Stre
     episodeTag = choice.episodeTag,
     episodeName = choice.episodeName,
     episodeThumbnail = choice.episodeThumbnail,
+    poster = poster,
 )
 
 /** The source picker for the video this player route is already showing. */
@@ -310,4 +317,5 @@ internal fun PlayerRoute.sourcesRoute(): StreamsRoute = StreamsRoute(
     episodeTag = episodeTag,
     episodeName = episodeName,
     episodeThumbnail = episodeThumbnail,
+    poster = poster,
 )

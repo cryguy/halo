@@ -28,6 +28,7 @@ class PlayerRouteTest {
         episodeTag = "S01E01",
         episodeName = "Winter Is Coming",
         episodeThumbnail = "https://images.example/s01e01.jpg",
+        poster = "https://images.example/game-of-thrones.jpg",
     )
 
     private val addon = AddonSource(id = "addon-1", name = "Torrentio TB")
@@ -57,6 +58,7 @@ class PlayerRouteTest {
         assertEquals("S01E01", route.episodeTag)
         assertEquals("Winter Is Coming", route.episodeName)
         assertEquals("https://images.example/s01e01.jpg", route.episodeThumbnail)
+        assertEquals("https://images.example/game-of-thrones.jpg", route.poster)
         assertEquals("addon-1", route.addonId)
         assertEquals("torrentio|106e91b9", route.bingeGroup)
         assertEquals("Game of Thrones S01E01 1080p BluRay x265.mkv", route.filename)
@@ -72,6 +74,7 @@ class PlayerRouteTest {
 
         assertEquals("tt0944947:1:1", context.videoId)
         assertEquals("https://images.example/s01e01.jpg", context.episodeThumbnail)
+        assertEquals("https://images.example/game-of-thrones.jpg", context.poster)
         assertEquals(34_249_807_367, context.videoSize)
         assertTrue(context.isEpisode)
         assertEquals("Game of Thrones · S01E01", context.displayTitle)
@@ -110,6 +113,7 @@ class PlayerRouteTest {
             metaId = "tt0133093",
             videoId = "tt0133093",
             showTitle = "The Matrix",
+            poster = "https://images.example/matrix.jpg",
         )
         val context = film.playerRoute(addon, stream, stream.url!!).playbackContext()
 
@@ -117,6 +121,7 @@ class PlayerRouteTest {
         assertNull(context.episodeTag)
         assertNull(context.episodeName)
         assertEquals("The Matrix", context.displayTitle)
+        assertEquals("https://images.example/matrix.jpg", context.poster)
         assertEquals("The Matrix", film.displayTitle)
     }
 
