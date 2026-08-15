@@ -4,6 +4,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSystemFreeSize
+import platform.Foundation.NSFileSystemSize
 import platform.Foundation.NSNumber
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSURL
@@ -54,14 +55,24 @@ internal class IosDownloadStorage : DownloadStoragePort {
         return path
     }
 
-    override fun freeBytes(): Long? {
+    override fun freeBytes(): Long? = volumeAttribute(NSFileSystemFreeSize)
+
+    override fun totalBytes(): Long? = volumeAttribute(NSFileSystemSize)
+
+    /**
+     * Read from `Documents` rather than from the downloads directory inside it,
+     * which may not have been created yet; the volume is the same either way.
+     */
+    // Nullable because that is how the Foundation constants bridge, not because
+    // a caller may pass nothing.
+    private fun volumeAttribute(key: String?): Long? {
         val documents = NSSearchPathForDirectoriesInDomains(
             directory = NSDocumentDirectory,
             domainMask = NSUserDomainMask,
             expandTilde = true,
         ).firstOrNull() as? String ?: return null
         val attributes = NSFileManager.defaultManager.attributesOfFileSystemForPath(documents, null)
-        return (attributes?.get(NSFileSystemFreeSize) as? NSNumber)?.longLongValue
+        return (attributes?.get(key) as? NSNumber)?.longLongValue
     }
 
     private companion object {

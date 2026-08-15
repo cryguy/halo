@@ -40,6 +40,14 @@ internal sealed interface DownloadStartResult {
 internal data class DownloadFiles(val videoPath: String, val subtitlePath: String?)
 
 /**
+ * What the volume holding the downloads exists in, for the storage meter.
+ *
+ * Both figures or neither: a bar drawn from a known free figure over a guessed
+ * total says something the device never reported.
+ */
+internal data class StorageSpace(val freeBytes: Long, val totalBytes: Long)
+
+/**
  * The app's one downloads owner: the index, the queue, and the single transfer
  * that is allowed to run at a time.
  *
@@ -115,6 +123,23 @@ internal class DownloadsCoordinator(
             videoPath = (root / entry.fileName).toString(),
             subtitlePath = entry.subtitle?.let { (root / it.fileName).toString() },
         )
+    }
+
+    /**
+     * How much room this device has, or null when it cannot say.
+     *
+     * A passthrough rather than the screen holding the port itself: this object
+     * already owns the storage collaborator, and the question "how much room is
+     * there for downloads" is one about downloads. Both calls hit the
+     * filesystem, so read it on a cadence rather than per frame.
+     */
+    fun storageSpace(): StorageSpace? {
+        val free = storage.freeBytes()?.takeIf { it >= 0 } ?: return null
+        val total = storage.totalBytes()?.takeIf { it > 0 } ?: return null
+        // Free is clamped rather than trusted: the two figures are separate
+        // syscalls, and a bar with more free space than volume would draw past
+        // its own track.
+        return StorageSpace(freeBytes = free.coerceAtMost(total), totalBytes = total)
     }
 
     /**

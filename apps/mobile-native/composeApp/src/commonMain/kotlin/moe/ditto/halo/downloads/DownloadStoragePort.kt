@@ -34,10 +34,22 @@ interface DownloadStoragePort {
      * free space is unknown would be worse than attempting one that may fail.
      */
     fun freeBytes(): Long?
+
+    /**
+     * Total bytes on the volume holding [directory], or null when the platform
+     * cannot say.
+     *
+     * Only the storage meter reads this, and only alongside [freeBytes]: the two
+     * together are what place the downloads against everything else on the
+     * device. Nothing decides whether a download may start from it — that is
+     * [freeBytes]'s job alone, since a full volume is full whatever its size.
+     */
+    fun totalBytes(): Long?
 }
 
 /** For platforms with no implementation yet, and for tests. */
 object NoDownloadStorage : DownloadStoragePort {
     override fun directory(): String? = null
     override fun freeBytes(): Long? = null
+    override fun totalBytes(): Long? = null
 }

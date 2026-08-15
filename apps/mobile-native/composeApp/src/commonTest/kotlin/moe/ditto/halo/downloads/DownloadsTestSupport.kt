@@ -51,9 +51,11 @@ internal class FixedDownloadSubtitles(private val subtitle: DownloadSubtitle?) :
 internal class FakeDownloadStorage(
     private val path: String? = "/downloads",
     private val free: Long? = null,
+    private val total: Long? = null,
 ) : DownloadStoragePort {
     override fun directory(): String? = path
     override fun freeBytes(): Long? = free
+    override fun totalBytes(): Long? = total
 }
 
 /**

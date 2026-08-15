@@ -27,12 +27,16 @@ internal class AndroidDownloadStorage(context: Context) : DownloadStoragePort {
         return if (directory.mkdirs()) directory.path else null
     }
 
+    override fun freeBytes(): Long? = volume()?.availableBytes?.takeIf { it >= 0 }
+
+    override fun totalBytes(): Long? = volume()?.totalBytes?.takeIf { it > 0 }
+
     /**
      * Measured on `filesDir` rather than on the downloads directory, which may
      * not exist yet; they are the same volume either way.
      */
-    override fun freeBytes(): Long? = try {
-        StatFs(applicationContext.filesDir.path).availableBytes.takeIf { it >= 0 }
+    private fun volume(): StatFs? = try {
+        StatFs(applicationContext.filesDir.path)
     } catch (_: IllegalArgumentException) {
         null
     }
