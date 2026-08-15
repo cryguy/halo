@@ -50,6 +50,7 @@ import moe.ditto.halo.ui.HaloIcons
 import moe.ditto.halo.ui.HaloAsyncImage
 import moe.ditto.halo.ui.HaloPlayerColors
 import moe.ditto.halo.ui.HaloRadius
+import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.monoStyle
 
 private val OverlayPillFill = Color(red = 5f / 255f, green = 7f / 255f, blue = 12f / 255f, alpha = 0.82f)
@@ -68,6 +69,13 @@ private val ErrorCardFill = Color(red = 20f / 255f, green = 22f / 255f, blue = 3
     .compositeOver(ErrorBackground)
 private val ErrorCardBorder = Color.White.copy(alpha = 0.09f)
 private val ErrorRule = Color.White.copy(alpha = 0.07f)
+
+/**
+ * How wide the failure card is allowed to get. It holds four short lines and two
+ * buttons, so a landscape phone's full width would set the headline on one third
+ * of a line and stretch the primary action into a banner.
+ */
+private val ErrorCardMaxWidth = 392.dp
 private val UpNextCardFill = HaloPlayerColors.DrawerFill.compositeOver(HaloColors.Background)
 private val UpNextCardBorder = Color.White.copy(alpha = 0.12f)
 private val CountdownTrack = Color.White.copy(alpha = 0.14f)
@@ -520,13 +528,21 @@ internal fun PlaybackErrorCard(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.fillMaxSize().background(ErrorBackground),
+        modifier = modifier
+            .fillMaxSize()
+            .background(ErrorBackground)
+            // Keeps the card off the edges on a window narrower than the cap.
+            .padding(horizontal = HaloSpacing.Lg),
         contentAlignment = Alignment.Center,
     ) {
         Column(
+            // The cap has to come first. A width fraction fixes the incoming
+            // minimum as well as the maximum, and widthIn cannot shrink below a
+            // minimum it is handed — so capping after filling silently did
+            // nothing and the card ran to 70% of a landscape screen.
             modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .widthIn(max = 392.dp)
+                .widthIn(max = ErrorCardMaxWidth)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(HaloRadius.Lg))
                 .background(ErrorCardFill)
                 .border(1.dp, ErrorCardBorder, RoundedCornerShape(HaloRadius.Lg))
