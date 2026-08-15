@@ -7,13 +7,14 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     private let playerHost = MPVPlayerHost()
     private let playerSystemHost = PlayerSystemHost()
-    // Default is the hermetic fake; the OIDC test opts into the real host with a
-    // launch env so it never touches the already-green ownership/playback suites.
+    // A normal launch gets the real sign-in. Only the literal "fake" selects the
+    // hermetic host, so a typo or a missing launch env fails towards production
+    // auth rather than towards a build that can never sign in.
     private let authHost: HaloIosAuthHost = {
-        if ProcessInfo.processInfo.environment["HALO_AUTH_HOST"] == "oidc" {
-            return OidcAuthHost()
+        if ProcessInfo.processInfo.environment["HALO_AUTH_HOST"] == "fake" {
+            return FakeAuthHost()
         }
-        return FakeAuthHost()
+        return OidcAuthHost()
     }()
 
     func application(
