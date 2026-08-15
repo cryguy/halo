@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #07080b; }
+  a { color: #0a84ff; }
+  a:hover { color: #3ba0ff; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes railIn { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#07080b;color:#f4f6fb;font-family:Roboto,Arial,sans-serif;padding:40px 40px 80px;display:flex;flex-direction:column;align-items:center;gap:26px">
+
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="t-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="t-bookmark" viewBox="0 0 24 24"><path d="M6.5 3.8h11a1 1 0 0 1 1 1V20.5l-6.5-4-6.5 4V4.8a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="t-download" viewBox="0 0 24 24"><path d="M12 3.8v11M7.8 10.6 12 14.8l4.2-4.2M4.5 19.2h15"/></symbol>
+    <symbol id="t-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6"/></symbol>
+    <symbol id="t-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="t-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="t-chevron-left" viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="t-chevron-down" viewBox="0 0 24 24"><path d="M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="t-close" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="t-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="m8.4 12.2 2.5 2.5 4.7-4.9"/></symbol>
+    <symbol id="t-star" viewBox="0 0 24 24"><path d="m12 4.5 2.3 4.9 5.2.7-3.8 3.7.9 5.3-4.6-2.6-4.6 2.6.9-5.3L4.5 10l5.2-.7z" fill="currentColor" stroke="none"/></symbol>
+  </svg>
+
+  <header style="width:100%;max-width:1160px;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:12px;letter-spacing:1.7px;font-weight:700;color:#0a84ff">HALO NATIVE · TABLET</div>
+    <h1 style="margin:0;font-size:40px;line-height:1.04;letter-spacing:-1.5px;font-weight:800">The app at tablet width: one rail, wider gutters, denser art</h1>
+    <p style="margin:0;max-width:860px;font-size:15px;line-height:1.55;color:#8b93a5;text-wrap:pretty">Nothing new in the visual system — same colours, radii, type and components as <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#c7cdd9">HaloTheme.kt</span>. What changes is the frame: the floating bottom bar becomes a left rail in landscape, browse screens put the search field and filter beside the title instead of stacked under it, posters run seven across, the detail screen keeps its full-bleed hero and lays episodes out in a grid, and the sources picker arrives as a right rail over the title rather than as its own screen.</p>
+  </header>
+
+  <div style="width:100%;max-width:1160px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start">
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span style="font-size:10.5px;letter-spacing:1.1px;font-weight:700;color:#565e70">DEVICE</span>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{ devices }}" as="d" hint-placeholder-count="2">
+          <button type="button" onClick="{{ d.pick }}" style="{{ d.style }}">{{ d.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;flex:1;min-width:420px">
+      <span style="font-size:10.5px;letter-spacing:1.1px;font-weight:700;color:#565e70">SCREEN</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ screens }}" as="s" hint-placeholder-count="7">
+          <button type="button" onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:100%;overflow:auto"><div style="display:flex;min-width:max-content;justify-content:center">
+    <div style="{{ frameStyle }}">
+
+      <sc-if value="{{ isLandscape }}" hint-placeholder-val="{{ true }}">
+        <nav style="width:88px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;padding:18px 0 14px;background:rgba(15,17,23,.72);backdrop-filter:blur(24px);border-right:1px solid rgba(255,255,255,.11)">
+          <div style="width:34px;height:34px;border-radius:11px;background:#0a84ff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;margin-bottom:16px">H</div>
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+            <button type="button" onClick="{{ t.pick }}" style="{{ t.style }}">
+              <svg style="width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round"><use href="{{ t.icon }}"></use></svg>
+              <span style="font-size:10.5px;font-weight:600;letter-spacing:.1px">{{ t.label }}</span>
+            </button>
+          </sc-for>
+        </nav>
+      </sc-if>
+
+      <div style="flex:1;min-width:0;position:relative;display:flex;flex-direction:column;overflow:hidden">
+
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow:auto;padding:26px 0 var(--bottomPad)">
+            <div style="{{ browseHeaderStyle }}">
+              <div style="{{ filterTrackStyle }}">
+                <span style="padding:6px 18px;border-radius:7px;background:rgba(255,255,255,.16);font-size:13.5px;font-weight:600;color:#fff">All</span>
+                <span style="padding:6px 18px;border-radius:7px;font-size:13.5px;font-weight:600;color:#8b93a5">Movies</span>
+                <span style="padding:6px 18px;border-radius:7px;font-size:13.5px;font-weight:600;color:#8b93a5">Series</span>
+              </div>
+              <div style="{{ searchSlotStyle }}">
+                <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.09)">
+                  <svg style="width:17px;height:17px;flex:0 0 auto;fill:none;stroke:#8b93a5;stroke-width:1.8;stroke-linecap:round"><use href="#t-search"></use></svg>
+                  <span style="font-size:15px;color:#8b93a5">Search movies, series…</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin:0 var(--g) 24px;height:var(--hero);border-radius:20px;overflow:hidden;position:relative;background:#14161d">
+              <div style="{{ featuredArtStyle }}"></div>
+              <div style="position:absolute;left:16px;top:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.22)">featured backdrop — meta.background</div>
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,12,17,.25) 0%,rgba(10,12,17,0) 40%,rgba(10,12,17,.85) 82%,#0a0c11 100%)"></div>
+              <div style="position:absolute;right:26px;bottom:26px;display:flex;align-items:center;gap:8px">
+                <sc-for list="{{ featuredDots }}" as="d" hint-placeholder-count="5">
+                  <button type="button" onClick="{{ d.pick }}" style="{{ d.style }}"></button>
+                </sc-for>
+              </div>
+              <div style="position:absolute;left:26px;bottom:24px;display:flex;flex-direction:column;gap:8px;max-width:560px">
+                <span style="font-size:30px;font-weight:800;letter-spacing:.2px;color:#f4f6fb">{{ featured.name }}</span>
+                <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#8b93a5">
+                  <span>{{ featured.year }}</span><span>·</span><span>{{ featured.genre }}</span>
+                  <span style="display:flex;align-items:center;gap:4px;color:#ffd479;font-weight:700"><svg style="width:13px;height:13px;fill:currentColor;stroke:none"><use href="#t-star"></use></svg>{{ featured.rating }}</span>
+                </div>
+                <div style="margin-top:4px;display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:9px 20px;border-radius:999px;background:#fff;color:#000">
+                  <svg style="width:16px;height:16px;fill:currentColor;stroke:none"><use href="#t-play"></use></svg>
+                  <span style="font-size:14px;font-weight:700">Play</span>
+                </div>
+              </div>
+            </div>
+
+            <sc-for list="{{ shelves }}" as="row" hint-placeholder-count="3">
+              <div style="margin-bottom:26px">
+                <div style="padding:0 var(--g);margin-bottom:12px;font-size:18px;font-weight:700;letter-spacing:-.3px;color:#f4f6fb">{{ row.title }}</div>
+                <div style="display:flex;gap:14px;padding:0 var(--g);overflow:hidden">
+                  <sc-for list="{{ row.items }}" as="p" hint-placeholder-count="7">
+                    <div style="{{ p.cardStyle }}">
+                      <div style="width:100%;aspect-ratio:1 / 1.5;border-radius:12px;position:relative;overflow:hidden;background:repeating-linear-gradient(115deg,#171a22 0 10px,#12151c 10px 20px)">
+                        <span style="position:absolute;left:8px;right:8px;bottom:8px;font-family:'JetBrains Mono',monospace;font-size:9.5px;line-height:1.3;color:rgba(255,255,255,.34)">{{ p.title }}</span>
+                      </div>
+                      <sc-if value="{{ p.hasProgress }}" hint-placeholder-val="{{ true }}">
+                        <div style="margin-top:7px;height:3px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden">
+                          <div style="{{ p.barStyle }}"></div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isLibrary }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow:auto;padding:26px 0 var(--bottomPad)">
+            <div style="{{ libraryHeaderStyle }}">
+              <span style="font-size:30px;font-weight:800;letter-spacing:-.6px;color:#f4f6fb">Library</span>
+              <div style="{{ librarySlotStyle }}">
+                <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.09)">
+                  <svg style="width:17px;height:17px;flex:0 0 auto;fill:none;stroke:#8b93a5;stroke-width:1.8;stroke-linecap:round"><use href="#t-search"></use></svg>
+                  <span style="font-size:15px;color:#8b93a5">Search movies, series…</span>
+                </div>
+                <div style="{{ filterTrackStyle }}">
+                  <span style="padding:6px 18px;border-radius:7px;background:rgba(255,255,255,.16);font-size:13.5px;font-weight:600;color:#fff">All</span>
+                  <span style="padding:6px 18px;border-radius:7px;font-size:13.5px;font-weight:600;color:#8b93a5">Movies</span>
+                  <span style="padding:6px 18px;border-radius:7px;font-size:13.5px;font-weight:600;color:#8b93a5">Series</span>
+                </div>
+              </div>
+            </div>
+            <div style="padding:0 var(--g);display:grid;grid-template-columns:repeat(var(--cols),1fr);column-gap:14px;row-gap:20px">
+              <sc-for list="{{ libraryItems }}" as="p" hint-placeholder-count="21">
+                <div style="display:flex;flex-direction:column">
+                  <div style="width:100%;aspect-ratio:1 / 1.5;border-radius:12px;position:relative;overflow:hidden;background:repeating-linear-gradient(115deg,#171a22 0 10px,#12151c 10px 20px)">
+                    <span style="position:absolute;left:8px;right:8px;bottom:8px;font-family:'JetBrains Mono',monospace;font-size:9.5px;line-height:1.3;color:rgba(255,255,255,.34)">{{ p.title }}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow:auto;padding:26px 0 var(--bottomPad)">
+            <div style="display:flex;align-items:center;gap:16px;padding:0 var(--g);margin-bottom:24px">
+              <div style="flex:1;max-width:720px;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.09)">
+                <svg style="width:17px;height:17px;flex:0 0 auto;fill:none;stroke:#f4f6fb;stroke-width:1.8;stroke-linecap:round"><use href="#t-search"></use></svg>
+                <span style="font-size:15px;font-weight:500;color:#f4f6fb">northwind</span>
+                <svg style="width:15px;height:15px;margin-left:auto;fill:#8b93a5;stroke:none"><use href="#t-close"></use></svg>
+              </div>
+              <span style="font-size:15px;font-weight:600;color:#0a84ff">Cancel</span>
+            </div>
+            <div style="padding:0 var(--g);margin-bottom:22px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+              <span style="font-size:12px;font-weight:600;letter-spacing:.5px;color:#8b93a5">RECENT</span>
+              <sc-for list="{{ recentTerms }}" as="r" hint-placeholder-count="5">
+                <span style="padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);font-size:12.5px;color:#c7cdd9">{{ r.term }}</span>
+              </sc-for>
+            </div>
+            <sc-for list="{{ searchGroups }}" as="row" hint-placeholder-count="3">
+              <div style="margin-bottom:26px">
+                <div style="padding:0 var(--g);margin-bottom:12px;font-size:18px;font-weight:700;letter-spacing:-.3px;color:#f4f6fb">{{ row.title }}</div>
+                <div style="display:flex;gap:14px;padding:0 var(--g);overflow:hidden">
+                  <sc-for list="{{ row.items }}" as="p" hint-placeholder-count="7">
+                    <div style="{{ p.cardStyle }}">
+                      <div style="width:100%;aspect-ratio:1 / 1.5;border-radius:12px;position:relative;overflow:hidden;background:repeating-linear-gradient(115deg,#171a22 0 10px,#12151c 10px 20px)">
+                        <span style="position:absolute;left:8px;right:8px;bottom:8px;font-family:'JetBrains Mono',monospace;font-size:9.5px;line-height:1.3;color:rgba(255,255,255,.34)">poster</span>
+                      </div>
+                      <span style="margin-top:6px;font-size:11.5px;color:#8b93a5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.title }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDetailLike }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow:auto">
+            <div style="height:var(--detailHero);position:relative;background:#14161d">
+              <div style="position:absolute;inset:0;background:repeating-linear-gradient(115deg,#1b1f28 0 14px,#141821 14px 28px)"></div>
+              <div style="position:absolute;left:16px;top:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.22)">title backdrop — meta.background</div>
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,12,17,.25) 0%,rgba(10,12,17,0) 40%,rgba(10,12,17,.85) 82%,#0a0c11 100%)"></div>
+              <div style="position:absolute;left:var(--g);top:20px;width:34px;height:34px;border-radius:999px;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center">
+                <svg style="width:24px;height:24px;fill:#f4f6fb;stroke:none"><use href="#t-chevron-left"></use></svg>
+              </div>
+              <div style="position:absolute;left:var(--g);bottom:16px;display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:36px;font-weight:800;letter-spacing:.3px;color:#f4f6fb">Northwind</span>
+                <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#8b93a5">
+                  <span>2024</span><span>·</span><span>4 seasons</span>
+                  <span style="display:flex;align-items:center;gap:4px;color:#ffd479;font-weight:700"><svg style="width:13px;height:13px;fill:currentColor;stroke:none"><use href="#t-star"></use></svg>8.4</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="{{ detailInfoStyle }}">
+              <div style="flex:1 1 0;min-width:0;max-width:700px;display:flex;flex-direction:column">
+                <div style="display:flex;gap:10px">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 34px;border-radius:12px;background:#fff;color:#000">
+                    <svg style="width:19px;height:19px;fill:currentColor;stroke:none"><use href="#t-play"></use></svg>
+                    <span style="font-size:16px;font-weight:700">Sources</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);color:#0a84ff">
+                    <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round"><use href="#t-bookmark"></use></svg>
+                    <span style="font-size:15px;font-weight:600">My List</span>
+                  </div>
+                </div>
+                <p style="margin:16px 0 0;font-size:14px;line-height:21px;color:#c3c9d6;text-wrap:pretty">A ferry captain on a shrinking island keeps the last winter crossing running while the mainland decides the route is no longer worth funding. Four seasons, filmed in sequence on location.</p>
+              </div>
+              <div style="{{ factsCardStyle }}">
+                <sc-for list="{{ facts }}" as="f" hint-placeholder-count="4">
+                  <div style="display:flex;justify-content:space-between;gap:16px;font-size:12.5px">
+                    <span style="color:#8b93a5">{{ f.label }}</span>
+                    <span style="color:#f4f6fb;font-weight:600;text-align:right">{{ f.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:14px;padding:24px var(--g) 12px">
+              <div style="display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;background:#1c202a">
+                <span style="font-size:15px;font-weight:600;color:#f4f6fb">Season 2</span>
+                <svg style="width:16px;height:16px;fill:#f4f6fb;stroke:none"><use href="#t-chevron-down"></use></svg>
+              </div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#8b93a5">10 episodes · 3 watched</span>
+            </div>
+
+            <div style="padding:0 var(--g) var(--bottomPad);display:grid;grid-template-columns:repeat(var(--epCols),1fr);gap:12px">
+              <sc-for list="{{ episodes }}" as="e" hint-placeholder-count="6">
+                <div style="display:flex;gap:12px;padding:10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)">
+                  <div style="flex:0 0 148px;height:84px;border-radius:8px;position:relative;overflow:hidden;background:repeating-linear-gradient(115deg,#171a22 0 10px,#12151c 10px 20px)">
+                    <span style="position:absolute;left:7px;bottom:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:rgba(255,255,255,.36)">{{ e.tag }}</span>
+                  </div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding-top:2px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="flex:1;min-width:0;font-size:14px;font-weight:600;color:#f4f6fb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.title }}</span>
+                      <sc-if value="{{ e.watched }}" hint-placeholder-val="{{ true }}">
+                        <svg style="width:18px;height:18px;flex:0 0 auto;fill:none;stroke:#5dd39e;stroke-width:1.8;stroke-linecap:round"><use href="#t-check"></use></svg>
+                      </sc-if>
+                    </div>
+                    <span style="margin-top:4px;font-size:13px;line-height:18px;color:#8b93a5;overflow:hidden">{{ e.overview }}</span>
+                    <sc-if value="{{ e.hasProgress }}" hint-placeholder-val="{{ true }}">
+                      <div style="margin-top:6px;height:3px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden">
+                        <div style="{{ e.barStyle }}"></div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isSources }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;background:rgba(4,5,8,.5);animation:fadeIn .18s ease-out"></div>
+          <div style="{{ sourcesRailStyle }}">
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:18px 20px 12px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:19px;font-weight:700;letter-spacing:-.2px;color:#f4f6fb">Sources</span>
+                <span style="font-size:12.5px;color:#8b93a5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Northwind · S02E04</span>
+              </div>
+              <div style="width:34px;height:34px;flex:0 0 auto;border-radius:999px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center">
+                <svg style="width:18px;height:18px;fill:#f4f6fb;stroke:none"><use href="#t-close"></use></svg>
+              </div>
+            </div>
+            <div style="flex:1;overflow:auto;padding:0 20px 22px;display:flex;flex-direction:column;gap:18px">
+              <sc-for list="{{ sourceGroups }}" as="g" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <span style="font-size:12px;font-weight:600;letter-spacing:.5px;color:#0a84ff">{{ g.addon }}</span>
+                  <div style="border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);overflow:hidden">
+                    <sc-for list="{{ g.streams }}" as="s" hint-placeholder-count="3">
+                      <div style="{{ s.rowStyle }}">
+                        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                          <span style="font-size:14px;font-weight:600;color:#f4f6fb">{{ s.name }}</span>
+                          <span style="font-size:12px;color:#8b93a5">{{ s.detail }}</span>
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6f7789;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.filename }}</span>
+                        </div>
+                        <span style="flex:0 0 auto;font-size:12.5px;font-weight:600;color:#8b93a5">{{ s.size }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDownloads }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;display:flex;justify-content:center;padding:26px var(--g) var(--bottomPad)">
+            <div style="width:100%;max-width:700px;display:flex;flex-direction:column">
+              <span style="font-size:30px;font-weight:800;letter-spacing:-.6px;color:#f4f6fb">Downloads</span>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 40px">
+                <span style="font-size:14px;line-height:21px;color:#8b93a5;max-width:420px">Downloads will live here. The native offline transfer engine is not available yet.</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow:auto;display:flex;justify-content:center;padding:26px var(--g) var(--bottomPad)">
+            <div style="width:100%;max-width:700px;display:flex;flex-direction:column">
+              <span style="font-size:30px;font-weight:800;letter-spacing:-.6px;color:#f4f6fb;margin-bottom:6px">Settings</span>
+              <sc-for list="{{ settingsGroups }}" as="grp" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column">
+                  <span style="padding:16px 0 8px 4px;font-size:12px;font-weight:600;letter-spacing:.5px;color:#0a84ff">{{ grp.label }}</span>
+                  <div style="border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);overflow:hidden">
+                    <sc-for list="{{ grp.rows }}" as="r" hint-placeholder-count="3">
+                      <div style="{{ r.rowStyle }}">
+                        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                          <span style="font-size:14px;font-weight:600;color:#f4f6fb">{{ r.title }}</span>
+                          <span style="font-size:12.5px;color:#8b93a5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.detail }}</span>
+                        </div>
+                        <span style="flex:0 0 auto;font-size:13px;font-weight:600;color:#0a84ff">{{ r.action }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isPortrait }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:rgba(15,17,23,.72);backdrop-filter:blur(24px)">
+            <div style="height:1px;background:rgba(255,255,255,.11)"></div>
+            <div style="display:flex;height:56px">
+              <sc-for list="{{ barTabs }}" as="t" hint-placeholder-count="4">
+                <button type="button" onClick="{{ t.pick }}" style="{{ t.style }}">
+                  <svg style="width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round"><use href="{{ t.icon }}"></use></svg>
+                  <span style="font-size:10px;font-weight:600">{{ t.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div></div>
+
+  <div style="width:100%;max-width:1160px;display:flex;flex-wrap:wrap;gap:10px">
+    <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="6">
+      <div style="flex:1 1 200px;display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
+        <span style="font-size:9.5px;font-weight:800;letter-spacing:1px;color:#565e70">{{ m.label }}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#f4f6fb">{{ m.value }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { device: 'tablet', screen: 'home', featured: 0 };
+
+  featuredItems = [
+    { name: 'Northwind', year: '2024', genre: 'Drama', rating: '8.4', tint: '#1b1f28' },
+    { name: 'The Quiet Line', year: '2023', genre: 'Thriller', rating: '7.9', tint: '#1d1b26' },
+    { name: 'Harbour Lights', year: '2025', genre: 'Documentary', rating: '8.1', tint: '#181f26' },
+    { name: 'Cold Ground', year: '2022', genre: 'Crime', rating: '7.6', tint: '#211c1c' },
+    { name: 'Signal Hill', year: '2024', genre: 'Sci-fi', rating: '8.8', tint: '#171e24' },
+  ];
+
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      this.setState((s) => ({ featured: (s.featured + 1) % this.featuredItems.length }));
+    }, 5000);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.timer);
+  }
+
+  get spec() {
+    return {
+      tablet: { w: 1280, h: 800, g: 32, hero: 340, detailHero: 420, epCols: 2, cols: 7, rail: 440, shelf: 168, row: 156, portrait: false },
+      large: { w: 1366, h: 1024, g: 40, hero: 380, detailHero: 500, epCols: 3, cols: 7, rail: 480, shelf: 178, row: 164, portrait: false },
+      tabletP: { w: 800, h: 1280, g: 24, hero: 300, detailHero: 400, epCols: 1, cols: 5, rail: 400, shelf: 156, row: 144, portrait: true },
+      largeP: { w: 1024, h: 1366, g: 32, hero: 340, detailHero: 460, epCols: 2, cols: 6, rail: 440, shelf: 168, row: 156, portrait: true },
+    }[this.state.device];
+  }
+
+  pill(active) {
+    return 'padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;'
+      + (active
+        ? 'background:rgba(10,132,255,.16);border:1px solid rgba(10,132,255,.55);color:#f4f6fb;'
+        : 'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#8b93a5;');
+  }
+
+  posters(names, width, progress) {
+    return names.map((title, i) => ({
+      key: title + i,
+      title,
+      cardStyle: `flex:0 0 ${width}px;width:${width}px;display:flex;flex-direction:column`,
+      hasProgress: !!progress && i < 3,
+      barStyle: `height:100%;width:${[62, 24, 88][i % 3]}%;background:#0a84ff`,
+    }));
+  }
+
+  renderVals() {
+    const s = this.spec;
+    const screen = this.state.screen;
+    const set = (k, v) => () => this.setState({ [k]: v });
+
+    const devices = [
+      ['tablet', 'Tablet · landscape 1280×800'],
+      ['tabletP', 'Tablet · portrait 800×1280'],
+      ['large', 'Large · landscape 1366×1024'],
+      ['largeP', 'Large · portrait 1024×1366'],
+    ].map(([id, label]) => ({
+      key: id, label, pick: set('device', id), style: this.pill(this.state.device === id),
+    }));
+
+    const screenList = [
+      ['home', 'Home'], ['library', 'Library'], ['search', 'Search'], ['detail', 'Detail'],
+      ['sources', 'Sources rail'], ['downloads', 'Downloads'], ['settings', 'Settings'],
+    ].map(([id, label]) => ({ key: id, label, pick: set('screen', id), style: this.pill(screen === id) }));
+
+    const tabFor = (id) => (screen === 'library' ? 'library' : screen === 'downloads' ? 'downloads' : screen === 'settings' ? 'settings' : 'home') === id;
+    const tabs = [
+      ['home', 'Home', '#t-home'], ['library', 'Library', '#t-bookmark'],
+      ['downloads', 'Downloads', '#t-download'], ['settings', 'Settings', '#t-settings'],
+    ].map(([id, label, icon]) => {
+      const active = tabFor(id);
+      return {
+        key: id, label, icon, pick: set('screen', id),
+        style: 'width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0;border:0;border-radius:14px;cursor:pointer;font-family:inherit;'
+          + (active ? 'background:rgba(10,132,255,.14);color:#0a84ff;' : 'background:none;color:#f4f6fb;'),
+      };
+    });
+
+    const barTabs = tabs.map((t) => ({
+      ...t,
+      style: 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 0;border:0;background:none;cursor:pointer;font-family:inherit;'
+        + (tabFor(t.key) ? 'color:#0a84ff;' : 'color:#f4f6fb;'),
+    }));
+
+    const titles = ['Northwind', 'The Quiet Line', 'Harbour Lights', 'Cold Ground', 'Signal Hill', 'Fathom', 'Longwater',
+      'Sightline', 'Ninth Parallel', 'Winter Ferry', 'Tidewater', 'Grey Harbour', 'Low Season', 'Slack Water',
+      'Nightwatch', 'Ravensmoor', 'The Crossing', 'Saltmarsh', 'Foghorn', 'Ebb', 'Beacon'];
+
+    const shelves = [
+      { key: 'cw', title: 'Continue Watching', items: this.posters(titles.slice(0, 7), s.shelf, true) },
+      { key: 'rw', title: 'Recently Watched', items: this.posters(titles.slice(7, 14), s.shelf, false) },
+      { key: 'trending', title: 'Trending — Cinemeta', items: this.posters(titles.slice(3, 11), s.row, false) },
+    ];
+
+    const searchGroups = [
+      { key: 'g1', title: 'Cinemeta · Series', items: this.posters(titles.slice(0, 6), 150, false) },
+      { key: 'g2', title: 'Cinemeta · Movies', items: this.posters(titles.slice(6, 12), 150, false) },
+    ];
+
+    const episodes = [
+      ['S02E01', 'Slack Water', 'The ferry misses a crossing for the first time in nine years.', true, 0],
+      ['S02E02', 'Manifest', 'Ruth files a route report nobody upstream wants to read.', true, 0],
+      ['S02E03', 'Low Season', 'A charter offer arrives with conditions attached.', true, 0],
+      ['S02E04', 'Foghorn', 'Weather closes the strait and the schedule goes with it.', false, 46],
+      ['S02E05', 'Ebb', 'The council votes; the crew hears about it on the radio.', false, 0],
+      ['S02E06', 'Beacon', 'Two runs left, and one engine that will not hold.', false, 0],
+    ].map(([tag, title, overview, watched, pct]) => ({
+      key: tag, tag, title, overview, watched,
+      hasProgress: pct > 0,
+      barStyle: `height:100%;width:${pct}%;background:#0a84ff`,
+    }));
+
+    const streamRow = (last) => 'display:flex;gap:8px;padding:11px 16px;'
+      + (last ? '' : 'border-bottom:1px solid rgba(255,255,255,.11);');
+    const mkStreams = (rows) => rows.map((r, i) => ({
+      key: r[0] + i, name: r[0], detail: r[1], filename: r[2], size: r[3], rowStyle: streamRow(i === rows.length - 1),
+    }));
+    const sourceGroups = [
+      {
+        key: 'a', addon: 'TORRENTIO', streams: mkStreams([
+          ['1080p · HEVC 10-bit', 'Cached · 5.1 audio · English subs', 'Northwind.S02E04.1080p.WEB-DL.mkv', '3.4 GB'],
+          ['1080p · H.264', 'Cached · stereo', 'Northwind.S02E04.1080p.x264.mkv', '2.1 GB'],
+          ['720p · H.264', 'Cached · stereo', 'Northwind.S02E04.720p.mkv', '1.1 GB'],
+        ]),
+      },
+      {
+        key: 'b', addon: 'MEDIAFUSION', streams: mkStreams([
+          ['2160p · HDR10', 'Cached · Atmos', 'Northwind.S02E04.2160p.HDR.mkv', '8.7 GB'],
+          ['1080p · HEVC', 'Uncached · 5.1 audio', 'Northwind.S02E04.1080p.HEVC.mkv', '2.9 GB'],
+        ]),
+      },
+    ];
+
+    const settingsRow = (last) => 'display:flex;align-items:center;gap:12px;padding:14px 16px;'
+      + (last ? '' : 'border-bottom:1px solid rgba(255,255,255,.11);');
+    const mkRows = (rows) => rows.map((r, i) => ({
+      key: r[0] + i, title: r[0], detail: r[1], action: r[2], rowStyle: settingsRow(i === rows.length - 1),
+    }));
+    const settingsGroups = [
+      { key: 'addons', label: 'ADDONS', rows: mkRows([
+        ['Cinemeta', 'Catalogs on · metadata', 'Remove'],
+        ['Torrentio', 'Catalogs off · streams', 'Remove'],
+        ['OpenSubtitles v3', 'Subtitles', 'Remove'],
+      ]) },
+      { key: 'playback', label: 'PLAYBACK', rows: mkRows([
+        ['Audio language', 'English', 'Change'],
+        ['Subtitle language', 'English', 'Change'],
+        ['Autoplay next episode', 'On', ''],
+      ]) },
+      { key: 'account', label: 'ACCOUNT', rows: mkRows([
+        ['Server', 'halo.local', ''],
+        ['Signed in as', 'ruth@halo.local', 'Sign out'],
+      ]) },
+    ];
+
+    const featured = this.featuredItems[this.state.featured];
+    const featuredDots = this.featuredItems.map((item, i) => ({
+      key: item.name,
+      pick: () => { clearInterval(this.timer); this.setState({ featured: i }); },
+      style: 'height:4px;border:0;padding:0;border-radius:999px;cursor:pointer;transition:width .2s ease,background .2s ease;'
+        + (i === this.state.featured ? 'width:22px;background:#f4f6fb;' : 'width:8px;background:rgba(255,255,255,.32);'),
+    }));
+
+    return {
+      devices, screens: screenList, tabs, barTabs, featured, featuredDots,
+      isLandscape: !s.portrait,
+      isPortrait: s.portrait,
+      searchSlotStyle: 'display:flex;align-items:center;gap:14px;'
+        + (s.portrait ? 'flex:1 1 auto;min-width:0;' : 'flex:0 1 460px;'),
+      librarySlotStyle: 'display:flex;align-items:center;gap:14px;'
+        + (s.portrait ? 'flex:1 1 auto;min-width:0;' : 'flex:0 1 620px;'),
+      filterTrackStyle: 'display:flex;gap:8px;padding:3px;border-radius:9px;background:rgba(255,255,255,.06);flex:0 0 auto;',
+      detailInfoStyle: s.portrait
+        ? 'padding:20px var(--g) 0;display:flex;flex-direction:column;gap:16px;align-items:stretch'
+        : 'padding:20px var(--g) 0;display:flex;gap:32px;align-items:flex-start',
+      factsCardStyle: 'display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-radius:16px;'
+        + 'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);'
+        + (s.portrait ? 'align-self:stretch;max-width:700px;' : 'flex:0 0 300px;'),
+      browseHeaderStyle: 'display:flex;align-items:center;justify-content:space-between;gap:'
+        + (s.portrait ? '14px' : '24px') + ';padding:0 var(--g);margin-bottom:'
+        + (s.portrait ? '20px' : '22px'),
+      libraryHeaderStyle: s.portrait
+        ? 'display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:0 var(--g);margin-bottom:20px'
+        : 'display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:0 var(--g);margin-bottom:22px',
+      featuredArtStyle: `position:absolute;inset:0;background:repeating-linear-gradient(115deg,${featured.tint} 0 14px,#141821 14px 28px)`,
+      isHome: screen === 'home',
+      isLibrary: screen === 'library',
+      isSearch: screen === 'search',
+      isDetailLike: screen === 'detail' || screen === 'sources',
+      isSources: screen === 'sources',
+      isDownloads: screen === 'downloads',
+      isSettings: screen === 'settings',
+      frameStyle: `width:${s.w}px;height:${s.h}px;flex:0 0 auto;display:flex;overflow:hidden;border-radius:22px;`
+        + `background:#0a0c11;border:1px solid rgba(255,255,255,.09);box-shadow:0 30px 80px rgba(0,0,0,.55);`
+        + `--g:${s.g}px;--hero:${s.hero}px;--detailHero:${s.detailHero}px;--epCols:${s.epCols};`
+        + `--cols:${s.cols};--bottomPad:${s.portrait ? 96 : 32}px;`,
+      sourcesRailStyle: `position:absolute;top:0;right:0;bottom:0;width:${s.rail}px;display:flex;flex-direction:column;`
+        + `background:rgba(18,20,27,.94);backdrop-filter:blur(30px);border-left:1px solid rgba(255,255,255,.11);`
+        + `border-top-left-radius:22px;border-bottom-left-radius:22px;animation:railIn .22s cubic-bezier(.2,.8,.2,1)`,
+      shelves, searchGroups, episodes, sourceGroups, settingsGroups,
+      libraryItems: this.posters(titles, 0, false),
+      recentTerms: ['northwind', 'ferry', 'cold ground', 'signal hill'].map((term) => ({ key: term, term })),
+      facts: [
+        { key: 'f1', label: 'Seasons', value: '4' },
+        { key: 'f2', label: 'Runtime', value: '52 min' },
+        { key: 'f3', label: 'Genres', value: 'Drama · Mystery' },
+        { key: 'f4', label: 'In library', value: 'Yes' },
+      ],
+      metrics: [
+        { key: 'm1', label: 'FRAME', value: `${s.w} × ${s.h}` },
+        { key: 'm2', label: 'NAVIGATION', value: s.portrait ? 'bottom bar 56' : 'left rail 88' },
+        { key: 'm3', label: 'GUTTER', value: `${s.g} dp` },
+        { key: 'm4', label: 'POSTER GRID', value: `${s.cols} cols · 14 dp gap` },
+        { key: 'm5', label: 'HOME HERO', value: `${s.hero} dp` },
+        { key: 'm6', label: 'SOURCES RAIL', value: `${s.rail} dp` },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
