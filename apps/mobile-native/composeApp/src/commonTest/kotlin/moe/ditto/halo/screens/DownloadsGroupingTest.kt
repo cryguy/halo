@@ -105,14 +105,20 @@ class DownloadsGroupingTest {
     }
 
     @Test
-    fun summariesCountWhatIsActuallyOnTheDevice() {
+    fun aGroupCountsWhatIsActuallyOnTheDevice() {
         val entries = listOf(
-            movie("a", status = DownloadStatus.Done, total = 1_073_741_824, done = 1_073_741_824),
+            episode("s1e1", tag = "S01E01", status = DownloadStatus.Done, total = 1_073_741_824),
             // Half arrived: the summary is about space used, not space promised.
-            movie("b", status = DownloadStatus.Paused, total = 1_073_741_824, done = 536_870_912),
+            episode(
+                "s1e2",
+                tag = "S01E02",
+                status = DownloadStatus.Paused,
+                total = 1_073_741_824,
+                done = 536_870_912,
+            ),
         )
 
-        assertEquals("2 items · 1.5 GB on device", downloadsSummary(entries))
+        assertEquals("2 downloads · 1.5 GB", downloadGroupSummary(entries))
     }
 
     @Test
@@ -123,11 +129,6 @@ class DownloadsGroupingTest {
         )
 
         assertEquals("2 downloads · 1.0 GB · 1 in progress", downloadGroupSummary(entries))
-    }
-
-    @Test
-    fun anEmptyLibraryHasNothingToSummarise() {
-        assertEquals("", downloadsSummary(emptyList()))
     }
 
     @Test

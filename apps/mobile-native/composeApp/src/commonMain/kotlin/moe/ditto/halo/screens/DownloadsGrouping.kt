@@ -111,22 +111,12 @@ internal fun formatRemaining(seconds: Long): String {
 }
 
 /**
- * How much of the device this is using, under the screen's own title.
+ * What one title's downloads add up to, plus what they are still doing.
  *
  * Sizes count what is actually on the device rather than what a finished
  * library would weigh, so a paused download contributes the part of it that
  * has arrived.
  */
-internal fun downloadsSummary(entries: List<DownloadEntry>): String {
-    if (entries.isEmpty()) return ""
-    val bytes = entries.sumOf(::bytesOnDevice)
-    val count = entries.size
-    val size = formatBytes(bytes)
-    val items = "$count ${if (count == 1) "item" else "items"}"
-    return if (size.isEmpty()) items else "$items · $size on device"
-}
-
-/** The same for one title, plus what it is still doing. */
 internal fun downloadGroupSummary(entries: List<DownloadEntry>): String {
     val parts = mutableListOf("${entries.size} ${if (entries.size == 1) "download" else "downloads"}")
     formatBytes(entries.sumOf(::bytesOnDevice)).takeIf { it.isNotEmpty() }?.let(parts::add)

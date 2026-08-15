@@ -1,7 +1,6 @@
 package moe.ditto.halo.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -256,7 +255,7 @@ private fun DownloadsList(
         ),
     ) {
         stickyHeader(key = "header") {
-            DownloadsHeader(summary = downloadsSummary(entries), gutter = gutter)
+            DownloadsHeader(gutter = gutter)
         }
 
         item(key = "throughput") {
@@ -384,7 +383,11 @@ private suspend fun applyQueueControl(downloads: DownloadsCoordinator, active: L
 }
 
 /**
- * The screen's title and what it holds, over a scrim the list passes under.
+ * The screen's title, over a scrim the list passes under.
+ *
+ * Only the title: how many files there are and what they weigh is the storage
+ * meter's job a few rows down, where the same two figures are also placed
+ * against the room left on the volume.
  *
  * A gradient rather than a frosted surface: the shell offers the whole
  * navigation host as its blur source, and a surface cannot sample a backdrop it
@@ -392,10 +395,12 @@ private suspend fun applyQueueControl(downloads: DownloadsCoordinator, active: L
  * without a blur that would come out clear.
  */
 @Composable
-private fun DownloadsHeader(summary: String, gutter: Dp) {
+private fun DownloadsHeader(gutter: Dp) {
     Column(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier
+        Text(
+            text = DownloadsTitle,
+            style = HaloType.LargeTitle,
+            modifier = Modifier
                 .fillMaxWidth()
                 .background(HaloColors.Background)
                 .padding(
@@ -404,16 +409,10 @@ private fun DownloadsHeader(summary: String, gutter: Dp) {
                     end = gutter,
                     bottom = HaloSpacing.Sm + 6.dp,
                 ),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(text = DownloadsTitle, style = HaloType.LargeTitle)
-            if (summary.isNotEmpty()) {
-                Text(text = summary, style = HaloType.Caption, maxLines = 1)
-            }
-        }
+        )
         // A separate strip rather than a gradient behind the words: the fade has
-        // to end below the summary line, and a gradient measured as a fraction
-        // of the header would climb into it as the header grows.
+        // to end below the title, and a gradient measured as a fraction of the
+        // header would climb into it as the header grows.
         Box(
             Modifier
                 .fillMaxWidth()
@@ -435,7 +434,7 @@ private val HeaderFade = HaloSpacing.Md
 private fun DownloadsPlaceholder(responsive: ResponsiveInfo, body: @Composable () -> Unit) {
     val gutter = responsive.pick(phone = HaloSpacing.Md, tablet = HaloSpacing.Lg, large = HaloSpacing.Xl)
     Column(Modifier.fillMaxSize()) {
-        DownloadsHeader(summary = "", gutter = gutter)
+        DownloadsHeader(gutter = gutter)
         Box(Modifier.weight(1f)) { body() }
     }
 }
