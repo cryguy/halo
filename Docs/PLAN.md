@@ -6,7 +6,8 @@
 `apps/mobile-native` (Compose Multiplatform over libmpv). Its `README.md` is the spec: one
 landscape screen with layered chrome (labelled state chips, one right-hand rail for
 audio/subtitles/speed, episode drawer, buffering/locked/up-next/PiP/error states). The current
-`PlayerScreen.kt` is a placeholder (surface + spinner + back button).
+`PlayerScreen.kt` started as a placeholder (surface + spinner + back button). The finished
+screen now implements the design and the real player/data integrations described below.
 
 The work happens in two phases, per the user's direction:
 
@@ -19,8 +20,10 @@ This file is the handoff checklist: pick up at the first unchecked box.
 
 ## Status
 
-**Phases 0 and 1 are done.** The design is fully built in Compose over fixtures and verified on
-an Android emulator, not just compiled. Phase 2 is complete through 2.13.
+**Phases 0, 1, 2, D1, and D2 are code-complete.** The design and Android integrations were
+verified on an Android emulator, not just compiled. The iOS parity implementation is complete
+except for native iOS PiP, whose engine limitation is recorded below. iOS Kotlin main and test
+sources compile on Windows. Swift and XCUITest still require a Mac for build and runtime proof.
 
 Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/ditto/halo/screens/player/`
 (`PlayerScreen`, `PlayerScreenController`, `PlayerChrome`, `PlayerRail*`, `PlayerEpisodeDrawer`,
@@ -30,12 +33,13 @@ Where the code lives: `apps/mobile-native/composeApp/src/commonMain/kotlin/moe/d
 To see it: Settings → Debug gate → **Player design scenes** gives all eleven states on a tap,
 over a placeholder rather than the engine. Debug builds only.
 
-What is already driven by the engine: position, duration, play state, seeking, the audio and
-subtitle track lists, subtitle scale/delay/font, and the error card.
+What is driven by the engines: position, duration, play state, seeking, buffering, buffered
+position, playback speed, audio/subtitle tracks and delays, subtitle appearance, fit mode, and
+the error card.
 
-All required Phase 2 controls are now backed by the Android engine or real API data, and the
-scrub preview shows real frames on Android (D2). The remaining unchecked work is optional
-Android PiP (D1), plus the iOS follow-ups listed at the end of this plan.
+All required Phase 2 controls are backed by the Android and iOS engines or real API data.
+Scrub previews have platform readers on both Android and iOS. Android native PiP is implemented;
+unsupported Android devices retain the existing in-app fallback.
 
 Read the per-slice notes at the end of Phase 1 before starting: they record decisions that
 Phase 2 has to keep (no blur over video, opaque rail and drawer fills, where `requiredSize` is
@@ -43,14 +47,13 @@ needed, the up-next race guard, why the caption is harness-only).
 
 ## Decisions locked (user-confirmed 2026-08-13)
 
-- **Android-first wiring.** Common UI is shared; new `PlayerPort` capabilities get real
-  implementations in `MpvCore.kt`/`AndroidPlayerHost.kt`. The iOS Kotlin adapter
-  (`IosPlayerHostAdapter`) gets safe no-ops; **`HaloIosPlayerHost` (Kotlin-exported protocol) and
-  all Swift files stay untouched** so the Mac build never breaks. A "Mac session follow-ups" list
-  at the end tracks the iOS half.
-- **Real OS PiP and scrub-preview frame extraction are deferred** to optional end slices. The
-  in-app PiP presentation and the timecode-only scrub card ship in Phase 1 (the design doc itself
-  says to ship the card without frames).
+- **The original Android-first constraint was superseded on 2026-08-15.** The user approved
+  completing the iOS source without a Mac and explicitly accepted that Swift/XCUITest verification
+  would remain pending. `HaloIosPlayerHost`, the separate `HaloIosPlayerSystemHost`, and their
+  Swift implementations now carry the real iOS behavior.
+- **OS PiP and scrub-preview extraction were end slices.** Both are complete on Android and
+  scrub-preview extraction is complete on iOS. Native iOS PiP remains blocked by the libmpv
+  rendering contract described under Apple status and risks.
 - **Commit per slice** on `mags-native-rewrite`, conventional commits, never push.
 
 Judgment calls made on the user's behalf (flag if wrong):
@@ -77,7 +80,8 @@ Judgment calls made on the user's behalf (flag if wrong):
 | `.../player/PlayerContract.kt`, `PlayerPresenter.kt` | The engine boundary + state. |
 | `.../PlaybackHost.kt` | App-wide single playback owner; `windDownForExit()` must stay on every exit path. |
 | `.../androidMain/.../player/MpvCore.kt`, `AndroidPlayerHost.kt` | Android engine; where gaps close. |
-| `.../iosMain/.../IosHostBridge.kt` | iOS adapter — no-op additions only, never touch `HaloIosPlayerHost`. |
+| `.../iosMain/.../IosHostBridge.kt`, `IosPlayerSystemBridge.kt` | Live Kotlin bridges to the Swift media and system hosts. |
+| `apps/mobile-native/iosApp/Halo/MPVCore.swift`, `MPVPlayerHost.swift`, `PlayerSystemHost.swift` | iOS libmpv engine, persistent Metal surface, and UIKit/device services. |
 | `.../ui/HaloTheme.kt`, `HaloIcons.kt`, `HaloControls.kt` (`Segmented`), `HaloGlass.kt`, `Responsive.kt` | Tokens/components the design reuses. |
 | `.../shell/Routes.kt`, `HaloShell.kt` | `PlayerRoute` grows fields in slice 2.1. |
 | `apps/mobile/app/player.tsx`, `src/components/PlayerGestureLayer.tsx`, `src/subtitleMemory.ts` | Old Expo player = behaviour reference (gestures, memory rules, autoplay race guard). |
@@ -97,13 +101,14 @@ $env:JAVA_HOME = "$env:USERPROFILE\.gradle\jdks\eclipse_adoptium-17-amd64-window
 # in apps/mobile-native
 .\gradlew.bat :composeApp:compileCommonMainKotlinMetadata   # common compiles
 .\gradlew.bat :composeApp:compileKotlinIosSimulatorArm64    # iOS Kotlin still compiles (no Mac needed)
+.\gradlew.bat :composeApp:compileTestKotlinIosSimulatorArm64 # iOS Kotlin tests compile
 .\gradlew.bat :composeApp:testDebugUnitTest                 # commonTest suites
 .\gradlew.bat :composeApp:assembleDebug                     # APK
 # instrumented (device/emulator attached):
 .\gradlew.bat :composeApp:connectedDebugAndroidTest
 ```
 
-Manual playback verification: `pnpm --filter @halo/api dev:fixtures --media <file>` (repo root)
+Manual playback verification: `corepack pnpm --filter @halo/api dev:fixtures --media <file>` (repo root)
 serves the real API on `:18790` (`admin`/`fixture-pass`) with every stream pointing at a local
 video. Emulator reaches it at `http://10.0.2.2:18790`; a device uses the LAN IP.
 
@@ -228,8 +233,8 @@ Notes from 1.4 and 1.5:
 - The up-next race guard lives entirely in the controller: the countdown, `Play now` and `Cancel`
   all pass through one claim, so whichever happens first wins. Tested by tapping `Play now` on
   the final tick, which is the exact double-advance the old player had.
-- Lock and picture-in-picture are now wired from the utility pill; fit mode is the only control
-  there still waiting on a capability (2.9).
+- Lock and the Phase 1 in-app picture-in-picture presentation were wired from the utility pill.
+  Fit mode was the remaining capability at that point and was completed in 2.9.
 - The subtitle caption is drawn only by the scene harness. During real playback libmpv renders
   subtitles itself, so a Compose caption would be a second one.
 - The scene picker floats over the player rather than taking a row of its own. A row costs a
@@ -242,12 +247,12 @@ Notes from 1.4 and 1.5:
 - Verify each slice: compile + tests + APK on device; review states through the demo harness.
   Commit per slice (`feat(mobile-native): …`).
 
-## Phase 2 — Wire for real, one slice at a time (Android engine, common UI)
+## Phase 2: Wire for real, one slice at a time (multiplatform engines, common UI)
 
-Rule for every engine gap: extend `PlayerPort` (+ default no-op where sensible) → implement in
-`MpvCore`/`AndroidMpvPlayerHost`/`AndroidPlayerPort` → map in `IosPlayerHostAdapter` as a no-op
-(**do not touch `HaloIosPlayerHost`**) → echo state in `PlayerState`/`PlayerPresenter` → wire UI →
-presenter/controller tests.
+The original rule was to extend `PlayerPort`, implement Android first, keep a safe iOS no-op,
+echo state through `PlayerState`/`PlayerPresenter`, then wire and test the common UI. The approved
+2026-08-15 Apple pass replaced those iOS no-ops with real `HaloIosPlayerHost` capabilities and
+Swift implementations after tracing the same readers.
 
 - [x] **2.1 Playback context through the route** — grow `PlayerRoute` (`Routes.kt`) with
   `type`, `metaId`, `videoId`, `showTitle`, `episodeTag`/`episodeName` (nullable for films),
@@ -262,7 +267,7 @@ presenter/controller tests.
 - [x] **2.3 Track format metadata** — extend `PlayerTrack` with `codec`, `channels`,
   `sampleRateHz` (nullable). `MpvCore.emitTracks` reads `track-list/N/codec`,
   `demux-channel-count`, `demux-samplerate`. `PlayerTracksJson` gains the same fields with
-  defaults (old Swift JSON keeps decoding — no Swift change). Unlocks: format badges
+  defaults, and Swift now emits the same optional fields. Unlocks: format badges
   (ASS/SRT/PGS/audio codec), PGS-conditional appearance behaviour, AUDIO/SUBTITLES chip values.
 - [x] **2.4 Buffering readout** — observe `cache-buffering-state` + `paused-for-cache`; read
   `cache-speed` + `demuxer-cache-duration` while buffering. New
@@ -288,7 +293,8 @@ presenter/controller tests.
 - [x] **2.8 Gestures + system services** — new commonMain `PlayerSystemPort` (not `PlayerPort`:
   none of this is the media engine): window brightness get/set, system media volume get/set/steps,
   landscape lock/unlock, keep-screen-on. Android impl (Activity window attrs, `AudioManager`,
-  `requestedOrientation` SENSOR_LANDSCAPE, `FLAG_KEEP_SCREEN_ON`); iOS no-op for now; inject via
+  `requestedOrientation` SENSOR_LANDSCAPE, `FLAG_KEEP_SCREEN_ON`); iOS impl through the separate
+  Swift-owned `HaloIosPlayerSystemHost` (UIKit, `MPVolumeView`, and idle timer); inject via
   `PlatformDependencies`. Then the gesture layer per spec + old `PlayerGestureLayer.tsx` rules:
   single tap toggles chrome (280 ms double-tap window), double-tap seeks ∓10 s, vertical drag
   left/right = brightness/volume (baseline at gesture start, 70 % height travel, one call per
@@ -312,20 +318,25 @@ presenter/controller tests.
 - [x] **2.13 Instrumented tests** — `PlayerScreenInstrumentedTest` covers chrome auto-hide,
   a live subtitle-rail switch that keeps playback position, and back wind-down including
   orientation and keep-screen-on cleanup. The three tests passed against the real fixture API
-  and libmpv on `Pixel_10_Pro_XL` (Android 17) with `connectedDebugAndroidTest`. Mirror XCUITest
-  cases belong to the Mac list.
+  and libmpv on `Pixel_10_Pro_XL` (Android 17) with `connectedDebugAndroidTest`. Matching
+  `PlayerScreenUITests` source now covers the three iOS flows; it has not run without a Mac.
 
 ## Deferred (optional, end of plan)
 
-- [ ] **D1 Real Android PiP** — `PictureInPictureParams`, activity plumbing, the in-app
-  presentation switches to the OS handoff.
+- [x] **D1 Real Android PiP:** **done 2026-08-15.** `PlayerSystemPort` owns the optional native
+  handoff and its mode-change stream; `MainActivity` forwards Android's PiP callback so returning
+  restores normal player chrome. `PictureInPictureParams` uses a safe 16:9 window, the manifest
+  declares PiP support, and devices that reject or lack native PiP retain the in-app presentation.
+  A real `Activity` handoff passed on `Pixel_10_Pro_XL` (Android 17), one instrumented test with no
+  skip or failure.
 - [x] **D2 Scrub-preview frames** — **done 2026-08-15, not via mpv.** The Android JNI binding has
   no data-returning command (`command(String[])` returns nothing; there is no `mpv_command_ret`),
   so `screenshot-raw` cannot be read back, and the core that is playing must not be seeked to
   fetch a frame from elsewhere in the timeline — any mpv route therefore meant a second core
   writing a screenshot file per frame. Instead: new `VideoFrameSource`/`VideoFrameReader` port
   (`player/VideoFrameSource.kt`, sibling of `PlayerSystemPort`, not part of `PlayerPort`), Android
-  implementation over `MediaMetadataRetriever` on a confined thread, iOS left on the no-op default.
+  implementation over `MediaMetadataRetriever` on a confined thread, and iOS implementation over
+  `AVAssetImageGenerator` on a background dispatcher.
   `ScrubPreviewFrames` (commonTest-covered) quantises requests to 10 s slots, honours only the
   newest while one decode is in flight, caches twelve frames, opens on the first scrub and releases
   the reader 20 s after the last one — it holds a second connection to the source, which some hosts
@@ -335,21 +346,42 @@ presenter/controller tests.
   at target 6:55 showed the 6:50 keyframe, playback was undisturbed, and a target whose frame had
   not arrived showed the placeholder rather than a stale picture.
 
-## Mac session follow-ups (iOS half — tracked, not done here)
+  The iOS reader accepts HTTP(S), file URLs, and absolute download paths; checks for a video track
+  with the asynchronous iOS 15 AVFoundation API; leaves keyframe tolerances generous; caps output
+  to the preview card; and copies BGRA pixels directly into a Compose `ImageBitmap`. Cancellation
+  and close are idempotent, and retained Core Graphics images are released. Kotlin/Native main and
+  test sources compile for `iosSimulatorArm64` on Windows. Frame extraction itself is not runtime
+  verified without an iOS simulator or device.
 
-- Extend `HaloIosPlayerHost` + `MPVCore.swift`/`MPVPlayerHost.swift` for: speed, track codec
-  fields in the tracks JSON, buffering events, `sub-ass-override`/outline/shadow, audio delay,
-  fit mode, `PlayerSystemPort` (brightness/volume/orientation/idle-timer), then replace the
-  Kotlin no-ops in `IosHostBridge.kt`. Real iOS PiP (`AVPictureInPictureController`). Run the
-  ownership/playback XCUITest suites; add the three new player cases from 2.13.
-- `VideoFrameSource` for iOS (D2's other half): `AVAssetImageGenerator` with
-  `requestedTimeToleranceBefore/After` left generous so it returns keyframes,
-  `maximumSize` set to the card, injected from `MainViewController` in place of
-  `NoVideoFrameSource`. Pure Kotlin/Native + AVFoundation; no Swift file has to change.
+## Apple status and Mac verification
+
+- [x] Speed, audio delay, fit mode, buffering/cached-position events, track codec/channel/sample
+  metadata, and subtitle ASS override/outline/shadow are implemented through
+  `HaloIosPlayerHost`, `MPVCore.swift`, `MPVPlayerHost.swift`, and `IosHostBridge.kt`.
+- [x] Brightness, system volume, landscape claims, idle timer, and system bars are implemented
+  through the separate `HaloIosPlayerSystemHost` boundary. Claims are counted so overlapping
+  player screens cannot release each other's device state.
+- [x] iOS scrub-preview extraction is implemented and injected from `MainViewController`.
+- [x] XCUITest source mirrors the three Android player cases: chrome auto-hide, subtitle switching
+  without a position reset, and back-navigation cleanup of orientation and idle-timer claims.
+  The cleanup case uses a launch-only accessibility diagnostic; normal app launches do not expose it.
+- [ ] On a Mac, generate/open the Xcode project, build the Swift app, and run the existing ownership
+  and playback suites plus `PlayerScreenUITests`. These remain unverified, not assumed passing.
+- [x] **Native iOS PiP evaluated, not implemented:** `AVPictureInPictureController` cannot use
+  the current rendering path.
+  `MPVCore` gives libmpv a `CAMetalLayer` as `wid` and renders through gpu-next/MoltenVK. Apple's
+  normal media PiP paths require `AVPlayerLayer` or decoded frames supplied through
+  `AVSampleBufferDisplayLayer`; Halo exposes neither. Implementing it requires an engine-level
+  decoded-frame/display-layer path or a different playback backend. Do not use private APIs or
+  misuse the video-call PiP API as a cosmetic workaround.
 
 ## Risks / honest limits
 
 - **No blur over video** (compositing limit) — glass fills only; noted above.
+- **Native iOS PiP is engine-blocked.** The public Apple media PiP inputs do not accept Halo's
+  libmpv-owned `CAMetalLayer`; see Apple status above.
+- **Apple runtime verification is pending.** Windows proves Kotlin/Native compilation only. It
+  does not compile Swift or run XCUITest, the simulator, or a physical iOS device.
 - **`sub-fonts-dir`/custom fonts for libass on Android** may not work with the prebuilt AAR;
   verify early in 2.5, and if it fails, font chips stay but get an honest disabled state.
 - **`dev.jdtech.mpv` prebuilt is emulator-grade** per the module README; anything
