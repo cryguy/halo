@@ -36,6 +36,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -351,13 +352,18 @@ internal fun StaticSettingRow(label: String, value: String) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, color = HaloColors.Text, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        // The value fills its half and aligns to the far edge, so it lands on the
+        // same right margin as the status dot and the switches in the rows around
+        // it. Shrinking the slot to the text instead would strand it mid-row: a
+        // Row places weighted children in sequence and leaves the slack at the end.
         Text(
             value,
             color = HaloColors.TextDim,
             fontSize = 14.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = HaloSpacing.Md).weight(1f, fill = false),
+            textAlign = TextAlign.End,
+            modifier = Modifier.padding(start = HaloSpacing.Md).weight(1f),
         )
     }
 }
