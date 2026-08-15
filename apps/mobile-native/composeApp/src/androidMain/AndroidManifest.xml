@@ -5,7 +5,9 @@
 
     <application
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="Halo"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:hardwareAccelerated="true"

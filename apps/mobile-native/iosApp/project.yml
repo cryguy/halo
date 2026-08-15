@@ -42,6 +42,7 @@ targets:
           ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: Halo/Info.plist
         PRODUCT_NAME: Halo
     scheme:

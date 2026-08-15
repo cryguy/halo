@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -71,6 +73,8 @@ import moe.ditto.halo.screens.LibraryScreen
 import moe.ditto.halo.screens.MetaRef
 import moe.ditto.halo.player.PlayerSystemPort
 import moe.ditto.halo.player.VideoFrameSource
+import moe.ditto.halo.resources.Res
+import moe.ditto.halo.resources.halo_mark
 import moe.ditto.halo.screens.player.EpisodeChoice
 import moe.ditto.halo.screens.player.PlayerScreen
 import moe.ditto.halo.screens.SearchScreen
@@ -86,6 +90,7 @@ import moe.ditto.halo.ui.LocalHazeState
 import moe.ditto.halo.ui.glassSource
 import moe.ditto.halo.ui.glassSurface
 import moe.ditto.halo.ui.rememberResponsive
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * The signed-in shell: four tabs over one navigation graph, as a frosted bar
@@ -497,23 +502,15 @@ private val RailMarkGap = 24.dp
 private val RailMarkSize = 34.dp
 private val RailTabShape = RoundedCornerShape(14.dp)
 
-/** The accent tile the rail is headed by; the app has no other logo. */
+/** The canonical Halo mark used by the main app. */
 @Composable
 private fun AppMark() {
-    Box(
-        Modifier
-            .size(RailMarkSize)
-            .clip(RoundedCornerShape(HaloRadius.Md - 1.dp))
-            .background(HaloColors.Accent),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "H",
-            color = HaloColors.OnAccent,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.ExtraBold,
-        )
-    }
+    Image(
+        painter = painterResource(Res.drawable.halo_mark),
+        contentDescription = null,
+        modifier = Modifier.size(RailMarkSize),
+        contentScale = ContentScale.Fit,
+    )
 }
 
 /** Selected tabs are tinted rather than filled: the rail is translucent too. */
