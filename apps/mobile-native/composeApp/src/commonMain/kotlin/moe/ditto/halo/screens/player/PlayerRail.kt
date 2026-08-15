@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -147,7 +149,17 @@ internal fun PlayerRail(
                 )
                 // The panel is full-bleed but its contents are not: the fill
                 // runs to the edges while the header clears the status bar.
-                .windowInsetsPadding(WindowInsets.safeDrawing),
+                //
+                // Every side except the starting one, which this panel cannot
+                // touch: it is pinned to the end edge at a fixed width, so the
+                // landscape cutout inset — 51dp of it on a hole-punch phone —
+                // belongs to screen the rail never covers. windowInsetsPadding
+                // applies the window's insets wherever the element sits rather
+                // than only where it overlaps them, so taking that side pushed
+                // every control off centre inside the panel.
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.End + WindowInsetsSides.Vertical),
+                ),
         ) {
             RailHeader(onClose = onClose)
 
