@@ -85,7 +85,7 @@ class PlayerScreenInstrumentedTest {
         // change. It does not when tracks are re-read on count changes alone,
         // which turning subtitles off does not cause.
         rule.onNode(EmbeddedSubtitleRow).performScrollTo().performClick()
-        rule.waitUntil(5_000) { chipReads("eng · ASS") }
+        rule.waitUntil(5_000) { chipReads("eng", ".ASS") }
 
         // An open rail suppresses chrome auto-hide, so the dynamic elapsed
         // value remains observable while the real player applies the track.
@@ -239,8 +239,11 @@ class PlayerScreenInstrumentedTest {
      * The chip and the rail row both carry the word a track is named by, so
      * every matcher here pairs it with the label only one of them has.
      */
-    private fun chipReads(value: String) =
-        rule.onAllNodes(hasText("SUBTITLES") and hasText(value)).fetchSemanticsNodes().isNotEmpty()
+    private fun chipReads(value: String, badge: String? = null): Boolean {
+        val chip = hasText("SUBTITLES") and hasText(value)
+        val matcher = badge?.let { chip and hasText(it) } ?: chip
+        return rule.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
+    }
 
     private fun nodesWithText(text: String) =
         rule.onAllNodes(hasText(text)).fetchSemanticsNodes()

@@ -376,9 +376,11 @@ private fun PlayerSceneContent(scene: PlayerScene, controller: PlayerScreenContr
 private fun scenePreviewChips(controller: PlayerScreenController): List<PlayerChip> = listOf(
     PlayerChip(
         kicker = "SUBTITLES",
-        value = "English · ASS",
+        value = "very-long-subtitle-filename-that-must-not-grow-the-chip.srt",
+        badge = ".SRT",
         active = controller.rail == RailTab.Subtitles,
         onClick = { controller.openRail(RailTab.Subtitles) },
+        width = SubtitleChipWidth,
     ),
     PlayerChip(
         kicker = "AUDIO",

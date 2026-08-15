@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -373,8 +374,10 @@ private fun SeekButton(icon: ImageVector, contentDescription: String, onClick: (
 internal data class PlayerChip(
     val kicker: String,
     val value: String,
+    val badge: String? = null,
     val active: Boolean,
     val onClick: () -> Unit,
+    val width: Dp? = null,
 )
 
 @Composable
@@ -438,8 +441,9 @@ internal fun PlayerBottomBar(
 @Composable
 private fun StateChip(chip: PlayerChip, valueSize: TextUnit) {
     val shape = RoundedCornerShape(HaloRadius.Md)
+    val sizeModifier = chip.width?.let { Modifier.width(it) } ?: Modifier
     Column(
-        modifier = Modifier
+        modifier = sizeModifier
             .clip(shape)
             .background(if (chip.active) HaloPlayerColors.ChipActiveFill else HaloPlayerColors.ChipFill)
             .border(
@@ -451,19 +455,52 @@ private fun StateChip(chip: PlayerChip, valueSize: TextUnit) {
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            text = chip.kicker,
-            color = if (chip.active) HaloPlayerColors.ChipActiveLabel else HaloColors.TextDim,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 0.9.sp,
-            maxLines = 1,
-        )
+        ChipHeader(chip)
         Text(
             text = chip.value,
             color = HaloColors.Text,
             fontSize = valueSize,
             fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun ChipHeader(chip: PlayerChip) {
+    val color = if (chip.active) HaloPlayerColors.ChipActiveLabel else HaloColors.TextDim
+    val badge = chip.badge
+    if (badge == null) {
+        Text(
+            text = chip.kicker,
+            color = color,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.9.sp,
+            maxLines = 1,
+        )
+        return
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = chip.kicker,
+            color = color,
+            fontSize = 7.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.45.sp,
+            maxLines = 1,
+        )
+        Text(
+            text = badge,
+            color = color,
+            fontSize = 7.5.sp,
+            fontWeight = FontWeight.ExtraBold,
             maxLines = 1,
         )
     }
@@ -473,6 +510,7 @@ private val TransportTrackHeight = 6.dp
 private val TransportHitHeight = 34.dp
 private val ThumbSize = 14.dp
 private val ThumbScrubbingSize = 18.dp
+internal val SubtitleChipWidth = 92.dp
 
 // Not private: the frames behind the card are decoded at exactly this size, and
 // the screen that asks for them has to know it.

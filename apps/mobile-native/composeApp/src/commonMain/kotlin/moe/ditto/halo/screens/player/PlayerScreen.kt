@@ -811,8 +811,10 @@ private fun playerChips(
     PlayerChip(
         kicker = "SUBTITLES",
         value = subtitleChipValue(state.tracks),
+        badge = subtitleChipBadge(state.tracks),
         active = controller.rail == RailTab.Subtitles,
         onClick = { controller.openRail(RailTab.Subtitles) },
+        width = SubtitleChipWidth,
     ),
     PlayerChip(
         kicker = "AUDIO",
@@ -837,15 +839,17 @@ private fun playerChips(
 )
 
 /**
- * The design shows language and format together (`English · ASS`). Format needs
- * the track's codec, which the engine does not report yet, so the language
- * stands alone until it does.
+ * The value stays useful when a source exposes only a long filename. The format
+ * sits beside the heading so ellipsising that filename cannot hide it.
  */
 private fun subtitleChipValue(tracks: PlayerTracks): String {
     val selected = tracks.subtitles.firstOrNull { it.id == tracks.selectedSubtitleId } ?: return "Off"
-    return listOfNotNull(selected.language ?: selected.label, subtitleBadge(selected.codec))
-        .distinct()
-        .joinToString(" · ")
+    return selected.language ?: selected.label
+}
+
+private fun subtitleChipBadge(tracks: PlayerTracks): String? {
+    val selected = tracks.subtitles.firstOrNull { it.id == tracks.selectedSubtitleId } ?: return null
+    return subtitleBadge(selected.codec)?.let { ".$it" }
 }
 
 private fun audioChipValue(tracks: PlayerTracks): String {

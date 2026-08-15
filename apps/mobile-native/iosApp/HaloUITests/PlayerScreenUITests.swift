@@ -56,7 +56,8 @@ final class PlayerScreenUITests: XCTestCase {
 
         tapElement(containingAll: ["eng", "ASS"])
         tapElement(labeled: "Close playback options")
-        XCTAssertTrue(element(labeled: "eng · ASS").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(labeled: "eng").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(labeled: ".ASS").waitForExistence(timeout: 10))
 
         showChrome()
         tapElement(labeled: "SUBTITLES")
