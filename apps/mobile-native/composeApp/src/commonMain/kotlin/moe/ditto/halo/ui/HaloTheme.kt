@@ -17,9 +17,23 @@ object HaloColors {
     val Text = Color(0xFFF4F6FB)
     val TextDim = Color(0xFF8B93A5)
     val Accent = Color(0xFF0A84FF)
+
+    /**
+     * The light end of the accent. Only ever the far stop of a gradient that
+     * starts at [Accent] — a progress fill, a throughput bar — so that a moving
+     * figure reads as lit rather than flat. Never a text or icon colour.
+     */
+    val AccentLight = Color(0xFF4CC2FF)
     val Danger = Color(0xFFFF6B6B)
     val Success = Color(0xFF5DD39E)
     val Primary = Color.White
+
+    /**
+     * The bottom stop of a white button's fill. Paired with [Primary] it gives
+     * the button a lit top edge; a flat white one reads as a disabled surface at
+     * this size.
+     */
+    val PrimaryShade = Color(0xFFDDE2EC)
     val OnPrimary = Color.Black
     val OnAccent = Color.White
     val Glass = Color(red = 1f, green = 1f, blue = 1f, alpha = 0.07f)

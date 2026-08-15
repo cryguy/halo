@@ -1,26 +1,27 @@
 package moe.ditto.halo.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,126 +30,130 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import moe.ditto.halo.SignedInGraph
+import moe.ditto.halo.api.WatchState
+import moe.ditto.halo.cache.QueryState
 import moe.ditto.halo.downloads.DownloadEntry
 import moe.ditto.halo.downloads.DownloadStatus
 import moe.ditto.halo.downloads.DownloadsCoordinator
+import moe.ditto.halo.downloads.StorageSpace
 import moe.ditto.halo.ui.CenterMessage
-import moe.ditto.halo.ui.HaloAsyncImage
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloDimensions
-import moe.ditto.halo.ui.HaloIcons
-import moe.ditto.halo.ui.HaloRadius
 import moe.ditto.halo.ui.HaloSpacing
 import moe.ditto.halo.ui.HaloType
-import moe.ditto.halo.ui.monoStyle
+import moe.ditto.halo.ui.ResponsiveInfo
 import moe.ditto.halo.ui.SelectOption
 import moe.ditto.halo.ui.SelectSheet
 import moe.ditto.halo.ui.rememberResponsive
 
 /**
- * What is on the device, grouped by the title it belongs to.
+ * What is arriving, and what is already here.
  *
- * Downloads are device-local, so this screen never waits on the network and
- * never shows a loading state: the index is read from the store when the
- * session's graph is built, which is why an entry is on screen the moment the
- * tab is opened, offline included.
+ * The screen is built around two questions the old grouped list answered badly:
+ * how a transfer is going, and whether a file can be watched yet. So transfers
+ * come first, with a rate, a bar and the minute of history that says whether the
+ * link is steady; finished files follow as rows that play on a tap.
+ *
+ * Downloads are device-local, so this never waits on the network and never shows
+ * a loading state: the index is read from the store when the session's graph is
+ * built, which is why an entry is on screen the moment the tab is opened,
+ * offline included. Watch progress is the one exception, and it is decoration —
+ * the hairline across a poster is absent offline rather than the screen waiting
+ * for it.
  */
 @Composable
 internal fun DownloadsScreen(
-    downloads: DownloadsCoordinator,
-    onOpenDetail: (MetaRef) -> Unit,
-    /** Plays a finished download from the device. Nothing here touches the network. */
+    graph: SignedInGraph,
+    /** Plays a download from the device. Nothing here touches the network. */
     onPlay: (DownloadEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val downloads = graph.downloads
     val responsive = rememberResponsive()
     val entries by downloads.entries.collectAsState()
+    val watchStates by remember(graph) { graph.watchStates.observe() }.collectAsState(QueryState())
     val scope = rememberCoroutineScope()
+
+    val sections = remember(entries) { downloadSections(entries) }
+    val progress = remember(watchStates.value) { watchStates.value.orEmpty().associateBy { it.videoId } }
+    val history = rememberThroughputHistory { aggregateRate(entries) }
+    val space = rememberStorageSpace(downloads)
+
     var pendingRemoval by remember { mutableStateOf<DownloadEntry?>(null) }
-    val groups = remember(entries) { groupDownloads(entries) }
+    var selectedVideoId by remember { mutableStateOf<String?>(null) }
+    // The selection follows the list rather than being held against it: a
+    // removed or finished-and-replaced row must not leave the pane showing an
+    // entry the list no longer has.
+    val selected = sections.ready.firstOrNull { it.videoId == selectedVideoId } ?: sections.ready.firstOrNull()
 
     Box(modifier.fillMaxSize().background(HaloColors.Background)) {
-        val content = Modifier
-            .then(
-                responsive.contentMaxWidth?.let { Modifier.widthIn(max = it).fillMaxWidth() }
-                    ?: Modifier.fillMaxWidth(),
-            )
-            .align(Alignment.TopCenter)
-
         when {
-            !downloads.isAvailable -> DownloadsPlaceholder(content) {
+            !downloads.isAvailable -> DownloadsPlaceholder(responsive) {
                 CenterMessage("This device has nowhere to keep downloads.")
             }
 
-            entries.isEmpty() -> DownloadsPlaceholder(content) {
+            entries.isEmpty() -> DownloadsPlaceholder(responsive) {
                 CenterMessage(
                     "Downloads live here. Pick a source on any title and tap the download icon, " +
                         "then it plays with no network at all.",
                 )
             }
 
-            else -> LazyColumn(
-                modifier = content.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = HaloSpacing.Md,
-                    end = HaloSpacing.Md,
-                    // The tab bar floats over this screen, so the last row has
-                    // to stop short of it or it sits behind the glass.
-                    bottom = HaloDimensions.TabBarSpace,
-                ),
-            ) {
-                item(key = "header") {
-                    Column {
-                        ScreenHeader(title = DownloadsTitle)
-                        Text(
-                            text = downloadsSummary(entries),
-                            style = HaloType.Overline,
-                            modifier = Modifier.padding(bottom = HaloSpacing.Sm),
-                        )
-                    }
-                }
-                // One item per title rather than one per row: the group is a
-                // card, and a card cannot be assembled from separate items.
-                // Groups are a season at most, so nothing large is composed
-                // that is not on screen.
-                items(items = groups, key = { it.itemId }) { group ->
-                    Column(Modifier.padding(bottom = HaloSpacing.Md)) {
-                        GroupHeader(
-                            group = group,
-                            onClick = { onOpenDetail(MetaRef(group.type, group.metaId)) },
-                        )
-                        Column(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(HaloRadius.Lg))
-                                .background(HaloColors.Glass)
-                                .border(1.dp, HaloColors.GlassBorder, RoundedCornerShape(HaloRadius.Lg)),
-                        ) {
-                            group.entries.forEachIndexed { index, entry ->
-                                if (index > 0) {
-                                    Box(Modifier.fillMaxWidth().height(1.dp).background(HaloColors.Hairline))
-                                }
-                                DownloadRow(
-                                    entry = entry,
-                                    onPlay = { onPlay(entry) },
-                                    onPause = { scope.launch { downloads.pause(it) } },
-                                    onResume = { scope.launch { downloads.resume(it) } },
-                                    onRemove = { pendingRemoval = entry },
-                                )
-                            }
-                        }
-                    }
-                }
+            // Landscape on a tablet is the one shape with width to spare for a
+            // second pane; portrait is the phone layout at tablet spacing.
+            responsive.isTablet && responsive.isLandscape -> Row(Modifier.fillMaxSize()) {
+                DownloadsList(
+                    modifier = Modifier.weight(1f),
+                    responsive = responsive,
+                    listWidth = responsive.width - detailPaneWidth(responsive),
+                    entries = entries,
+                    sections = sections,
+                    progress = progress,
+                    history = history,
+                    space = space,
+                    selectedVideoId = selected?.videoId,
+                    downloads = downloads,
+                    onSelect = { selectedVideoId = it.videoId },
+                    onPlay = onPlay,
+                    onRemove = { pendingRemoval = it },
+                )
+                Box(Modifier.fillMaxHeight().width(1.dp).background(HaloColors.Hairline))
+                DownloadDetailPane(
+                    entry = selected,
+                    poster = selected?.let { downloadPoster(it, sections) },
+                    watched = selected?.let { watchedFraction(progress[it.videoId]) },
+                    onPlay = { selected?.let(onPlay) },
+                    onRemove = { pendingRemoval = selected },
+                    modifier = Modifier.width(detailPaneWidth(responsive)),
+                )
             }
+
+            else -> DownloadsList(
+                modifier = Modifier
+                    .then(
+                        responsive.contentMaxWidth?.let { Modifier.widthIn(max = it).fillMaxWidth() }
+                            ?: Modifier.fillMaxWidth(),
+                    )
+                    .align(Alignment.TopCenter),
+                responsive = responsive,
+                listWidth = responsive.contentMaxWidth?.coerceAtMost(responsive.width) ?: responsive.width,
+                entries = entries,
+                sections = sections,
+                progress = progress,
+                history = history,
+                space = space,
+                selectedVideoId = null,
+                downloads = downloads,
+                onSelect = {},
+                onPlay = onPlay,
+                onRemove = { pendingRemoval = it },
+            )
         }
 
         // Last child of the root, per SelectSheet's own contract.
@@ -177,191 +182,247 @@ internal fun DownloadsScreen(
 private const val DownloadsTitle = "Downloads"
 private const val DeleteKey = "delete"
 
-/** Header over whatever stands in for the list, carrying the list's own padding. */
-@Composable
-private fun DownloadsPlaceholder(modifier: Modifier, body: @Composable () -> Unit) {
-    Column(modifier.fillMaxSize().padding(horizontal = HaloSpacing.Md)) {
-        ScreenHeader(title = DownloadsTitle)
-        Box(Modifier.weight(1f)) { body() }
-    }
-}
+/** How often the volume is re-measured. Slow, because free space is a slow figure. */
+private const val StorageRefreshMs = 5_000L
 
+private val DetailPaneWidth = 360.dp
+private val DetailPaneWidthLarge = 400.dp
+private val WideDetailPaneFrom = 1_300.dp
+
+private fun detailPaneWidth(responsive: ResponsiveInfo): Dp =
+    if (responsive.width >= WideDetailPaneFrom) DetailPaneWidthLarge else DetailPaneWidth
+
+/**
+ * Room on the device, re-read on a timer rather than per frame: both halves of
+ * it are filesystem calls, and the answer moves at the speed of a download
+ * rather than of a recomposition.
+ */
 @Composable
-private fun GroupHeader(group: DownloadGroup, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(top = HaloSpacing.Md, bottom = HaloSpacing.Sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(HaloSpacing.Sm + 4.dp),
-    ) {
-        HaloAsyncImage(
-            url = group.poster,
-            contentDescription = null,
-            modifier = Modifier
-                .size(width = PosterWidth, height = PosterHeight)
-                .clip(RoundedCornerShape(HaloRadius.Sm))
-                .background(HaloColors.Surface),
-        )
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = group.name,
-                style = HaloType.Heading,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = downloadGroupSummary(group.entries),
-                style = HaloType.Caption,
-                modifier = Modifier.padding(top = 2.dp),
-            )
+private fun rememberStorageSpace(downloads: DownloadsCoordinator): StorageSpace? {
+    var space by remember(downloads) { mutableStateOf(downloads.storageSpace()) }
+    LaunchedEffect(downloads) {
+        while (true) {
+            delay(StorageRefreshMs)
+            space = downloads.storageSpace()
         }
     }
+    return space
 }
 
 @Composable
-private fun DownloadRow(
-    entry: DownloadEntry,
-    onPlay: () -> Unit,
-    onPause: (String) -> Unit,
-    onResume: (String) -> Unit,
-    onRemove: () -> Unit,
+private fun DownloadsList(
+    modifier: Modifier,
+    responsive: ResponsiveInfo,
+    /** What the list itself is laid out in, which on a tablet is not the window. */
+    listWidth: Dp,
+    entries: List<DownloadEntry>,
+    sections: DownloadSections,
+    progress: Map<String, WatchState>,
+    history: ThroughputHistory,
+    space: StorageSpace?,
+    selectedVideoId: String?,
+    downloads: DownloadsCoordinator,
+    onSelect: (DownloadEntry) -> Unit,
+    onPlay: (DownloadEntry) -> Unit,
+    onRemove: (DownloadEntry) -> Unit,
 ) {
-    val playable = entry.status == DownloadStatus.Done
-    Column(
-        Modifier
-            .fillMaxWidth()
-            // The whole row plays, not just the button: a finished download is
-            // a thing to watch, and the row is what a thumb lands on.
-            .then(if (playable) Modifier.clickable(role = Role.Button, onClick = onPlay) else Modifier),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = HaloSpacing.Md, vertical = HaloSpacing.Sm + 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(HaloSpacing.Sm),
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = downloadRowTitle(entry),
-                    color = HaloColors.Text,
-                    fontSize = 14.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = downloadStatusLabel(entry),
-                    style = HaloType.Caption,
-                    color = if (entry.status == DownloadStatus.Failed) HaloColors.Danger else HaloColors.TextDim,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                entry.subtitle?.lang?.let { lang ->
-                    Text(
-                        text = "Subtitle: $lang",
-                        style = HaloType.Caption,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
-                if (entry.status != DownloadStatus.Done) {
-                    ProgressTrack(entry)
-                }
+    val scope = rememberCoroutineScope()
+    val gutter = responsive.pick(phone = HaloSpacing.Md, tablet = HaloSpacing.Lg, large = HaloSpacing.Xl)
+    val transferPoster = responsive.pick(phone = TransferPosterWidth, tablet = TransferPosterWidthTablet)
+    val readyPoster = responsive.pick(phone = ReadyPosterWidth, tablet = ReadyPosterWidthTablet)
 
-            }
-            if (playable) {
-                RowAction(
-                    icon = HaloIcons.Play,
-                    description = "Play this download",
-                    onClick = onPlay,
-                )
-            }
-            when (entry.status) {
-                DownloadStatus.Downloading, DownloadStatus.Queued -> RowAction(
-                    icon = HaloIcons.Pause,
-                    description = "Pause download",
-                    onClick = { onPause(entry.videoId) },
-                )
-                DownloadStatus.Paused -> RowAction(
-                    icon = HaloIcons.Play,
-                    description = "Resume download",
-                    onClick = { onResume(entry.videoId) },
-                )
-                DownloadStatus.Failed -> RowAction(
-                    icon = HaloIcons.Refresh,
-                    description = "Retry download",
-                    tint = HaloColors.Danger,
-                    onClick = { onResume(entry.videoId) },
-                )
-                DownloadStatus.Done -> Unit
-            }
-            RowAction(
-                icon = HaloIcons.Trash,
-                description = "Delete download",
-                tint = HaloColors.TextDim,
-                onClick = onRemove,
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        // Horizontal padding belongs to the blocks rather than to the list: the
+        // header's scrim has to reach both edges, and a content inset would
+        // leave a sliver of scrolling list showing beside it.
+        contentPadding = PaddingValues(
+            // The tab bar floats over this screen, so the last row has to stop
+            // short of it or it sits behind the glass.
+            bottom = HaloDimensions.TabBarSpace,
+        ),
+    ) {
+        stickyHeader(key = "header") {
+            DownloadsHeader(summary = downloadsSummary(entries), gutter = gutter)
+        }
+
+        item(key = "throughput") {
+            ThroughputPanel(
+                bytesPerSecond = aggregateRate(entries),
+                queueLine = queueLine(sections.active),
+                control = queueControl(sections.active),
+                onControl = {
+                    scope.launch { applyQueueControl(downloads, sections.active) }
+                },
+                history = history,
+                availableWidth = listWidth,
+                modifier = Modifier.padding(horizontal = gutter, vertical = HaloSpacing.Sm),
             )
         }
+
+        // No meter at all when the platform cannot say how much room there is.
+        // A bar drawn over a guessed total would be a picture of nothing.
+        space?.let { measured ->
+            item(key = "storage") {
+                StorageMeterBlock(
+                    meter = storageMeter(measured, downloadedBytesOnDevice(entries)),
+                    modifier = Modifier.padding(horizontal = gutter, vertical = HaloSpacing.Sm + 2.dp),
+                )
+            }
+        }
+
+        if (sections.active.isNotEmpty()) {
+            item(key = "active-label") {
+                DownloadsSectionHeader(
+                    label = "IN PROGRESS",
+                    count = itemCountLabel(sections.active.size),
+                    modifier = Modifier.padding(
+                        start = gutter,
+                        end = gutter,
+                        top = HaloSpacing.Sm,
+                        bottom = HaloSpacing.Sm + 2.dp,
+                    ),
+                )
+            }
+            items(items = sections.active, key = { it.videoId }) { entry ->
+                DownloadTransferCard(
+                    entry = entry,
+                    poster = downloadPoster(entry, sections),
+                    posterWidth = transferPoster,
+                    onPause = { scope.launch { downloads.pause(entry.videoId) } },
+                    onResume = { scope.launch { downloads.resume(entry.videoId) } },
+                    onRemove = { onRemove(entry) },
+                    modifier = Modifier.padding(start = gutter, end = gutter, bottom = HaloSpacing.Sm + 2.dp),
+                )
+            }
+        }
+
+        if (sections.ready.isNotEmpty()) {
+            item(key = "ready-label") {
+                DownloadsSectionHeader(
+                    label = "ON THIS DEVICE",
+                    count = readyCountLabel(sections.ready),
+                    modifier = Modifier.padding(
+                        start = gutter,
+                        end = gutter,
+                        top = HaloSpacing.Md,
+                        bottom = HaloSpacing.Sm + 2.dp,
+                    ),
+                )
+            }
+            readyRows(
+                sections = sections,
+                progress = progress,
+                posterWidth = readyPoster,
+                gutter = gutter,
+                selectedVideoId = selectedVideoId,
+                onSelect = onSelect,
+                onPlay = onPlay,
+                onRemove = onRemove,
+            )
+        }
+    }
+}
+
+private fun LazyListScope.readyRows(
+    sections: DownloadSections,
+    progress: Map<String, WatchState>,
+    posterWidth: Dp,
+    gutter: Dp,
+    selectedVideoId: String?,
+    onSelect: (DownloadEntry) -> Unit,
+    onPlay: (DownloadEntry) -> Unit,
+    onRemove: (DownloadEntry) -> Unit,
+) {
+    items(items = sections.ready, key = { it.videoId }) { entry ->
+        DownloadReadyRow(
+            entry = entry,
+            poster = downloadPoster(entry, sections),
+            posterWidth = posterWidth,
+            watched = watchedFraction(progress[entry.videoId]),
+            selected = entry.videoId == selectedVideoId,
+            // On a phone nothing is selected, so the row's own tap plays it;
+            // on a tablet it selects, and the button beside it plays.
+            onClick = { if (selectedVideoId == null) onPlay(entry) else onSelect(entry) },
+            onPlay = { onPlay(entry) },
+            onRemove = { onRemove(entry) },
+            modifier = Modifier.padding(start = gutter, end = gutter, bottom = HaloSpacing.Sm),
+        )
     }
 }
 
 /**
- * The bar under an unfinished row. A transfer whose size the source never
- * declared has no fraction to draw, so the bar stays out rather than inventing
- * one; the byte count above it is still moving.
+ * Stops everything that is running, or starts everything that was stopped.
+ *
+ * Resume deliberately leaves failures alone: retrying one is a decision about a
+ * source that did not work, and belongs to the card's own control rather than to
+ * a button that means "carry on".
+ */
+private suspend fun applyQueueControl(downloads: DownloadsCoordinator, active: List<DownloadEntry>) {
+    when (queueControl(active)) {
+        QueueControl.PauseAll -> active.filter { it.status.isActive }
+            .forEach { downloads.pause(it.videoId) }
+
+        QueueControl.ResumeAll -> active.filter { it.status == DownloadStatus.Paused }
+            .forEach { downloads.resume(it.videoId) }
+
+        null -> Unit
+    }
+}
+
+/**
+ * The screen's title and what it holds, over a scrim the list passes under.
+ *
+ * A gradient rather than a frosted surface: the shell offers the whole
+ * navigation host as its blur source, and a surface cannot sample a backdrop it
+ * is part of — see `LocalHazeState`. The gradient gives the same legibility
+ * without a blur that would come out clear.
  */
 @Composable
-private fun ProgressTrack(entry: DownloadEntry) {
-    val fraction = entry.fraction ?: return
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = HaloSpacing.Sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(HaloSpacing.Sm),
-    ) {
+private fun DownloadsHeader(summary: String, gutter: Dp) {
+    Column(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(HaloColors.Background)
+                .padding(
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + HaloSpacing.Xs,
+                    start = gutter,
+                    end = gutter,
+                    bottom = HaloSpacing.Sm + 6.dp,
+                ),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(text = DownloadsTitle, style = HaloType.LargeTitle)
+            if (summary.isNotEmpty()) {
+                Text(text = summary, style = HaloType.Caption, maxLines = 1)
+            }
+        }
+        // A separate strip rather than a gradient behind the words: the fade has
+        // to end below the summary line, and a gradient measured as a fraction
+        // of the header would climb into it as the header grows.
         Box(
             Modifier
-                .weight(1f)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(Color.White.copy(alpha = 0.16f)),
-        ) {
-            Box(
-                Modifier
-                    .fillMaxWidth(fraction)
-                    .height(4.dp)
-                    .background(
-                        if (entry.status == DownloadStatus.Downloading) HaloColors.Accent else HaloColors.TextDim,
+                .fillMaxWidth()
+                .height(HeaderFade)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(HaloColors.Background, HaloColors.Background.copy(alpha = 0f)),
                     ),
-            )
-        }
-        // Tabular figures, so the number does not jitter sideways as it counts.
-        Text(
-            text = "${(fraction * 100).toInt()}%",
-            style = monoStyle(fontSize = 11.sp, color = HaloColors.TextDim),
+                ),
         )
     }
 }
 
-@Composable
-private fun RowAction(
-    icon: ImageVector,
-    description: String,
-    onClick: () -> Unit,
-    tint: Color = HaloColors.Accent,
-) {
-    Icon(
-        imageVector = icon,
-        contentDescription = description,
-        tint = tint,
-        modifier = Modifier
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(HaloSpacing.Xs)
-            .size(24.dp),
-    )
-}
+/** How far the header's cover trails off over the list passing under it. */
+private val HeaderFade = HaloSpacing.Md
 
-private val PosterWidth = 46.dp
-private val PosterHeight = 69.dp
+/** Header over whatever stands in for the list, carrying the list's own padding. */
+@Composable
+private fun DownloadsPlaceholder(responsive: ResponsiveInfo, body: @Composable () -> Unit) {
+    val gutter = responsive.pick(phone = HaloSpacing.Md, tablet = HaloSpacing.Lg, large = HaloSpacing.Xl)
+    Column(Modifier.fillMaxSize()) {
+        DownloadsHeader(summary = "", gutter = gutter)
+        Box(Modifier.weight(1f)) { body() }
+    }
+}

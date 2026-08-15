@@ -216,8 +216,7 @@ internal fun HaloShell(
                 }
                 composable<DownloadsRoute> {
                     DownloadsScreen(
-                        downloads = graph.downloads,
-                        onOpenDetail = { navController.openDetail(it) },
+                        graph = graph,
                         onPlay = { entry ->
                             // Stacked rather than replacing: leaving playback
                             // returns to the list it was started from, which is
