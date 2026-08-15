@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #07080b; }
+  a { color: #0a84ff; }
+  a:hover { color: #3ba0ff; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+  @keyframes breathe { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+  @keyframes popIn { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: scale(1); } }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+  *::-webkit-scrollbar { width: 0; height: 0; display: none; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#07080b;color:#f4f6fb;font-family:Roboto,Arial,sans-serif;padding:40px 40px 80px;display:flex;flex-direction:column;align-items:center;gap:26px">
+
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="d-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="d-bookmark" viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-3.6L6 20V5a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="d-download" viewBox="0 0 24 24"><path d="M12 4v10M8 10.5l4 4 4-4M5 19h14"/></symbol>
+    <symbol id="d-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.2M12 18.3v2.2M4.6 7.8l1.9 1.1M17.5 15.1l1.9 1.1M4.6 16.2l1.9-1.1M17.5 8.9l1.9-1.1"/></symbol>
+    <symbol id="d-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="d-pause" viewBox="0 0 24 24"><path d="M9.5 5v14M14.5 5v14"/></symbol>
+    <symbol id="d-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="d-check" viewBox="0 0 24 24"><path d="M4.8 12.4 9.5 17 19 7"/></symbol>
+    <symbol id="d-trash" viewBox="0 0 24 24"><path d="M4.5 6.8h15M9.7 6.8V5.6a1.4 1.4 0 0 1 1.4-1.4h1.8a1.4 1.4 0 0 1 1.4 1.4v1.2M6.6 6.8l.75 11.8a1.7 1.7 0 0 0 1.7 1.6h5.9a1.7 1.7 0 0 0 1.7-1.6l.75-11.8M10.4 10.6v6M13.6 10.6v6"/></symbol>
+    <symbol id="d-wifi" viewBox="0 0 24 24"><path d="M2.8 9.2a14 14 0 0 1 18.4 0M6.2 12.8a9 9 0 0 1 11.6 0M9.6 16.3a4.2 4.2 0 0 1 4.8 0"/><circle cx="12" cy="19.4" r=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="d-cell" viewBox="0 0 24 24"><path d="M4 19h2v-4H4zM9.5 19h2V11h-2zM15 19h2V7h-2zM20.5 19V4"/></symbol>
+    <symbol id="d-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="d-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3 2"/></symbol>
+    <symbol id="d-more" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="18.5" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="d-back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="d-offline" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M12 8.5v5M9.5 11.4 12 13.9l2.5-2.5"/></symbol>
+  </svg>
+
+  <header style="width:100%;max-width:1160px;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:12px;letter-spacing:1.7px;font-weight:700;color:#0a84ff">HALO NATIVE · DOWNLOADS</div>
+    <h1 style="margin:0;font-size:40px;line-height:1.04;letter-spacing:-1.5px;font-weight:800">Downloads that show their speed and play from where they sit</h1>
+    <p style="margin:0;max-width:840px;font-size:15px;line-height:1.55;color:#8b93a5;text-wrap:pretty">Same glassy-dark system as the player and tablet screens. Every transfer states throughput, bytes moved and time left instead of a bare percentage; every finished file carries its own play button, so nothing has to be found again in the library. Phone gets a single stacked column, tablet gets the same list with a detail pane on the right.</p>
+  </header>
+
+  <div style="width:100%;max-width:1160px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start">
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span style="font-size:10.5px;letter-spacing:1.1px;font-weight:700;color:#565e70">DEVICE</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ devices }}" as="d" hint-placeholder-count="4">
+          <button type="button" onClick="{{ d.pick }}" style="{{ d.style }}">{{ d.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;flex:1;min-width:420px">
+      <span style="font-size:10.5px;letter-spacing:1.1px;font-weight:700;color:#565e70">STATE — transfers run live</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ states }}" as="s" hint-placeholder-count="5">
+          <button type="button" onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:100%;overflow:auto"><div style="display:flex;min-width:max-content;justify-content:center">
+    <div style="{{ frameStyle }}">
+
+      <sc-if value="{{ isRail }}" hint-placeholder-val="{{ true }}">
+        <nav style="width:88px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;padding:18px 0 14px;background:rgba(15,17,23,.72);backdrop-filter:blur(24px);border-right:1px solid rgba(255,255,255,.11)">
+          <div style="width:34px;height:34px;border-radius:11px;background:#0a84ff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;margin-bottom:16px">H</div>
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+            <button type="button" style="{{ t.style }}">
+              <svg style="width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round"><use href="{{ t.icon }}"></use></svg>
+              <span style="font-size:10.5px;font-weight:600;letter-spacing:.1px">{{ t.label }}</span>
+            </button>
+          </sc-for>
+        </nav>
+      </sc-if>
+
+      <div style="flex:1;min-width:0;position:relative;display:flex;flex-direction:column;overflow:hidden">
+        <div style="flex:1;min-height:0;display:flex">
+
+          <div style="{{ listPaneStyle }}">
+
+            <div style="position:sticky;top:0;z-index:5;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;padding:2px var(--g) 14px;margin-bottom:14px;background:linear-gradient(180deg,rgba(10,12,17,.96) 55%,rgba(10,12,17,0));backdrop-filter:blur(14px)">
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <span style="{{ pageTitleStyle }}">Downloads</span>
+                <span style="font-size:12.5px;color:#8b93a5">{{ headerSummary }}</span>
+              </div>
+              <button type="button" style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#f4f6fb;font-size:12.5px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.12)">
+                <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#d-settings"></use></svg>
+                Manage
+              </button>
+            </div>
+
+            <div style="margin:0 var(--g) 18px;padding:16px 18px;border-radius:20px;background:linear-gradient(160deg,rgba(255,255,255,.085),rgba(255,255,255,.028));border:1px solid rgba(255,255,255,.09);box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 18px 40px -24px rgba(0,0,0,1);display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden">
+              <span style="position:absolute;top:-70px;right:-40px;width:220px;height:180px;border-radius:999px;background:radial-gradient(closest-side,rgba(10,132,255,.3),transparent);filter:blur(10px);pointer-events:none"></span>
+              <div style="{{ speedHeadStyle }}">
+                <div style="display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap">
+                  <span style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:24px;font-weight:700;letter-spacing:-.6px;background:linear-gradient(180deg,#ffffff,#a9b4c8);-webkit-background-clip:text;background-clip:text;color:transparent">{{ totalSpeed }}</span>
+                  <span style="font-size:12.5px;color:#8b93a5;white-space:nowrap">{{ queueLine }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto">
+                  <button type="button" onClick="{{ toggleAll }}" style="{{ pauseAllStyle }}">
+                    <svg style="width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round"><use href="{{ pauseAllIcon }}"></use></svg>
+                    {{ pauseAllLabel }}
+                  </button>
+                </div>
+              </div>
+              <div style="display:flex;align-items:flex-end;gap:3px;height:44px">
+                <sc-for list="{{ spark }}" as="b" hint-placeholder-count="28">
+                  <span style="{{ b.style }}"></span>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.06em;color:#565e70">
+                <span>THROUGHPUT · LAST 60s</span>
+                <span>{{ peakLine }}</span>
+              </div>
+            </div>
+
+            <div style="margin:0 var(--g) 22px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#8b93a5">
+                <span>{{ storageUsedLine }}</span>
+                <span>{{ storageFreeLine }}</span>
+              </div>
+              <div style="height:9px;border-radius:999px;background:rgba(255,255,255,.08);box-shadow:0 1px 2px rgba(0,0,0,.5) inset;overflow:hidden;display:flex">
+                <span style="{{ storageDownloadsStyle }}"></span>
+                <span style="{{ storageOtherStyle }}"></span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:#8b93a5">
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:3px;background:#0a84ff"></span>Downloads</span>
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:3px;background:rgba(255,255,255,.34)"></span>Other apps</span>
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:3px;background:rgba(255,255,255,.12)"></span>Free</span>
+              </div>
+            </div>
+
+            <sc-if value="{{ hasActive }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:0 var(--g);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11.5px;font-weight:800;letter-spacing:1.6px;color:#c7cdd9">IN PROGRESS</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;color:#565e70">{{ activeCount }}</span>
+              </div>
+              <div style="padding:0 var(--g);margin-bottom:26px;display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ active }}" as="a" hint-placeholder-count="3">
+                  <div style="{{ a.cardStyle }}">
+                    <div style="display:flex;gap:13px;align-items:stretch">
+                      <div style="{{ a.artStyle }}">
+                        <span style="position:absolute;left:6px;right:6px;bottom:6px;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:9px;line-height:1.25;color:rgba(255,255,255,.32)">poster</span>
+                      </div>
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px">
+                        <div style="display:flex;align-items:flex-start;gap:10px">
+                          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                            <span style="font-size:15px;font-weight:700;color:#f4f6fb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.title }}</span>
+                            <span style="font-size:12.5px;color:#8b93a5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.sub }}</span>
+                          </div>
+                          <div style="display:flex;gap:4px;flex:0 0 auto">
+                            <button type="button" onClick="{{ a.toggle }}" style="width:36px;height:36px;border-radius:999px;border:1px solid rgba(255,255,255,.13);background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.05));box-shadow:0 1px 0 rgba(255,255,255,.1) inset;color:#f4f6fb;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .18s ease" style-hover="background:rgba(255,255,255,.2)">
+                              <svg style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round"><use href="{{ a.toggleIcon }}"></use></svg>
+                            </button>
+                            <button type="button" style="width:36px;height:36px;border-radius:999px;border:1px solid rgba(255,69,58,.38);background:linear-gradient(180deg,rgba(255,69,58,.2),rgba(255,69,58,.08));box-shadow:0 1px 0 rgba(255,255,255,.08) inset;color:#ff6259;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s ease" style-hover="background:rgba(255,69,58,.22);border-color:rgba(255,69,58,.6)">
+                              <svg style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><use href="#d-trash"></use></svg>
+                            </button>
+                          </div>
+                        </div>
+                        <div style="position:relative;height:6px;border-radius:999px;background:rgba(255,255,255,.09);box-shadow:0 1px 2px rgba(0,0,0,.5) inset;overflow:hidden">
+                          <span style="{{ a.barStyle }}"></span>
+                          <sc-if value="{{ a.live }}" hint-placeholder-val="{{ true }}">
+                            <span style="position:absolute;inset:0;overflow:hidden;border-radius:999px;pointer-events:none">
+                              <span style="position:absolute;top:0;bottom:0;width:34%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:shimmer 2.4s linear infinite"></span>
+                            </span>
+                          </sc-if>
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11.5px;color:#8b93a5">
+                          <span style="{{ a.speedStyle }}"><span style="{{ a.dotStyle }}"></span>{{ a.speed }}</span>
+                          <span>{{ a.bytes }}</span>
+                          <span>{{ a.eta }}</span>
+                          <span style="color:#565e70">{{ a.quality }}</span>
+                        </div>
+                        <sc-if value="{{ a.playable }}" hint-placeholder-val="{{ false }}">
+                          <button type="button" onClick="{{ a.play }}" style="align-self:flex-start;display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:10px;border:1px solid rgba(10,132,255,.55);background:linear-gradient(180deg,rgba(10,132,255,.3),rgba(10,132,255,.13));box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 8px 20px -12px rgba(10,132,255,.9);color:#f4f6fb;font-size:12.5px;font-weight:700;cursor:pointer;transition:background .18s ease" style-hover="background:rgba(10,132,255,.26)">
+                            <svg style="width:15px;height:15px;fill:currentColor;stroke:none"><use href="#d-play"></use></svg>
+                            Play now — {{ a.playableHint }}
+                          </button>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <div style="padding:0 var(--g);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:11.5px;font-weight:800;letter-spacing:1.6px;color:#c7cdd9">ON THIS DEVICE</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;color:#565e70">{{ readyCount }}</span>
+            </div>
+            <div style="padding:0 var(--g);display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ ready }}" as="r" hint-placeholder-count="5">
+                <div style="{{ r.rowStyle }}" onClick="{{ r.select }}">
+                  <div style="{{ r.artStyle }}">
+                    <span style="position:absolute;left:6px;right:6px;bottom:6px;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:9px;line-height:1.25;color:rgba(255,255,255,.32)">poster</span>
+                    <sc-if value="{{ r.partial }}" hint-placeholder-val="{{ false }}">
+                      <span style="position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.18)"><span style="{{ r.watchedStyle }}"></span></span>
+                    </sc-if>
+                  </div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px">
+                    <span style="font-size:15px;font-weight:700;color:#f4f6fb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.title }}</span>
+                    <span style="font-size:12.5px;color:#8b93a5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.sub }}</span>
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;color:#565e70">
+                      <span>{{ r.meta }}</span>
+                      <span style="{{ r.expiryStyle }}">{{ r.expiry }}</span>
+                    </div>
+                  </div>
+                  <div style="{{ r.actionsStyle }}">
+                    <button type="button" onClick="{{ r.play }}" style="{{ r.playStyle }}">
+                      <svg style="width:16px;height:16px;flex:0 0 auto;fill:currentColor;stroke:none"><use href="#d-play"></use></svg>
+                      Play
+                    </button>
+                    <button type="button" style="width:36px;height:36px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#8b93a5;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:rgba(255,255,255,.13)">
+                      <svg style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#d-more"></use></svg>
+                    </button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+          </div>
+
+          <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+            <aside style="{{ detailPaneStyle }}">
+              <div style="width:100%;aspect-ratio:16 / 9;border-radius:18px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.07) inset,0 20px 44px -22px rgba(0,0,0,1);background:repeating-linear-gradient(115deg,#171a22 0 12px,#12151c 12px 24px)">
+                <span style="position:absolute;left:12px;top:12px;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.06em;color:rgba(255,255,255,.3)">still — local file thumbnail</span>
+                <button type="button" onClick="{{ playSelected }}" style="position:absolute;inset:0;border:0;background:rgba(6,8,12,.24);display:flex;align-items:center;justify-content:center;cursor:pointer">
+                  <span style="width:62px;height:62px;border-radius:999px;background:rgba(255,255,255,.94);color:#000;display:flex;align-items:center;justify-content:center">
+                    <svg style="width:28px;height:28px;fill:currentColor;stroke:none"><use href="#d-play"></use></svg>
+                  </span>
+                </button>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <span style="font-size:22px;font-weight:800;letter-spacing:-.4px;color:#f4f6fb">{{ selected.title }}</span>
+                <span style="font-size:13px;color:#8b93a5">{{ selected.sub }}</span>
+              </div>
+              <button type="button" onClick="{{ playSelected }}" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:13px;border:0;background:linear-gradient(180deg,#fff,#dde2ec);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 10px 24px -12px rgba(0,0,0,.9);color:#000;font-size:15px;font-weight:700;cursor:pointer;transition:box-shadow .18s ease" style-hover="background:#e6e9f0">
+                <svg style="width:18px;height:18px;fill:currentColor;stroke:none"><use href="#d-play"></use></svg>
+                {{ selected.playLabel }}
+              </button>
+              <div style="display:flex;flex-direction:column;border-radius:18px;background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.028));border:1px solid rgba(255,255,255,.09);box-shadow:0 1px 0 rgba(255,255,255,.07) inset;overflow:hidden">
+                <sc-for list="{{ selected.facts }}" as="f" hint-placeholder-count="5">
+                  <div style="{{ f.rowStyle }}">
+                    <span style="font-size:13px;color:#8b93a5">{{ f.label }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:600;color:#f4f6fb;text-align:right">{{ f.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button type="button" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:11px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);color:#f4f6fb;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.13)">
+                  <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#d-clock"></use></svg>
+                  Renew licence
+                </button>
+                <button type="button" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:11px;border:1px solid rgba(255,69,58,.4);background:rgba(255,69,58,.12);color:#ff8078;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,69,58,.2)">
+                  <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#d-trash"></use></svg>
+                  Delete
+                </button>
+              </div>
+            </aside>
+          </sc-if>
+
+        </div>
+
+        <sc-if value="{{ isBar }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:0 0 auto;display:flex;flex-direction:column;background:rgba(15,17,23,.82);backdrop-filter:blur(24px)">
+            <div style="height:1px;background:rgba(255,255,255,.11)"></div>
+            <div style="display:flex;height:58px">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+                <button type="button" style="{{ t.barStyle }}">
+                  <svg style="width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round"><use href="{{ t.icon }}"></use></svg>
+                  <span style="font-size:10px;font-weight:600">{{ t.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;z-index:40;background:#0b0d12;display:flex;flex-direction:column;animation:fadeIn .18s ease-out">
+            <div style="position:absolute;inset:0;background:repeating-linear-gradient(115deg,#12151c 0 12px,#0d1015 12px 24px)"></div>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.26)">local file — libmpv surface</div>
+            <div style="position:absolute;top:0;left:0;right:0;height:120px;background:linear-gradient(180deg,rgba(4,5,8,.75),rgba(4,5,8,0))"></div>
+            <div style="position:absolute;bottom:0;left:0;right:0;height:150px;background:linear-gradient(180deg,rgba(4,5,8,0),rgba(4,5,8,.85))"></div>
+            <div style="position:absolute;top:16px;left:16px;right:16px;display:flex;align-items:center;gap:12px">
+              <button type="button" onClick="{{ stopPlaying }}" style="width:38px;height:38px;flex:0 0 auto;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(9,11,16,.55);color:#f4f6fb;display:flex;align-items:center;justify-content:center;cursor:pointer">
+                <svg style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round"><use href="#d-back"></use></svg>
+              </button>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:15px;font-weight:700;color:#f4f6fb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ playingTitle }}</span>
+                <span style="font-size:12px;color:#8b93a5">{{ playingSub }}</span>
+              </div>
+              <span style="display:flex;align-items:center;gap:6px;flex:0 0 auto;padding:6px 10px;border-radius:8px;background:rgba(10,132,255,.16);border:1px solid rgba(10,132,255,.45);font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:10.5px;letter-spacing:.05em;color:#9fd0ff">
+                <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><use href="#d-offline"></use></svg>
+                OFFLINE · NO NETWORK USED
+              </span>
+            </div>
+            <div style="position:absolute;left:16px;right:16px;bottom:20px;display:flex;flex-direction:column;gap:10px">
+              <div style="height:4px;border-radius:999px;background:rgba(255,255,255,.2);overflow:hidden">
+                <span style="display:block;height:100%;width:34%;background:#0a84ff"></span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;color:#c7cdd9">
+                <span>16:41</span>
+                <span>{{ playingRemaining }}</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div></div>
+
+  <div style="width:100%;max-width:1160px;display:flex;flex-wrap:wrap;gap:10px">
+    <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="5">
+      <div style="flex:1 1 200px;display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
+        <span style="font-size:9.5px;font-weight:800;letter-spacing:1px;color:#565e70">{{ m.label }}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:13px;font-weight:700;color:#f4f6fb">{{ m.value }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = {
+    device: 'phone',
+    scenario: 'running',
+    paused: {},
+    allPaused: false,
+    selected: 0,
+    playing: null,
+    tick: 0,
+    progress: [0.34, 0.72, 0.08],
+    speeds: [18.6, 9.4, 0],
+    history: Array.from({ length: 28 }, (_, i) => 12 + 8 * Math.sin(i / 2.4) + (i % 3) * 2),
+  };
+
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      this.setState((s) => {
+        const running = s.scenario === 'running' && !s.allPaused;
+        const progress = s.progress.map((p, i) => {
+          if (!running || s.paused[i] || s.scenario === 'cellular') return p;
+          const step = [0.011, 0.006, 0.004][i];
+          return Math.min(0.985, p + step);
+        });
+        const speeds = s.speeds.map((v, i) => {
+          if (!running || s.paused[i] || s.scenario === 'cellular') return 0;
+          const base = [18.6, 9.4, 4.2][i];
+          return Math.max(0.4, base + Math.sin((s.tick + i * 3) / 1.7) * base * 0.28);
+        });
+        const total = speeds.reduce((a, b) => a + b, 0);
+        return {
+          tick: s.tick + 1,
+          progress,
+          speeds,
+          history: s.history.slice(1).concat(total),
+        };
+      });
+    }, 900);
+  }
+
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  get spec() {
+    return {
+      phone: { w: 390, h: 844, g: 18, wide: false, bar: true, rail: false, title: 28 },
+      phoneL: { w: 430, h: 932, g: 20, wide: false, bar: true, rail: false, title: 30 },
+      tabletP: { w: 800, h: 1280, g: 28, wide: false, bar: true, rail: false, title: 32 },
+      tablet: { w: 1280, h: 800, g: 32, wide: true, bar: false, rail: true, title: 32 },
+      large: { w: 1366, h: 1024, g: 36, wide: true, bar: false, rail: true, title: 34 },
+    }[this.state.device];
+  }
+
+  pill(active) {
+    return 'padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;'
+      + (active
+        ? 'background:rgba(10,132,255,.16);border:1px solid rgba(10,132,255,.55);color:#f4f6fb;'
+        : 'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#8b93a5;');
+  }
+
+  fmt(n) { return (n < 10 ? n.toFixed(1) : n.toFixed(1)) + ' MB/s'; }
+
+  items = [
+    { title: 'Northwind', sub: 'S2 · E4 — The Long Wire', size: 3.4, quality: '1080p · HEVC' },
+    { title: 'The Quiet Line', sub: 'Feature · 2023', size: 6.1, quality: '2160p · HDR' },
+    { title: 'Harbour Lights', sub: 'S1 · E1 — Landfall', size: 2.2, quality: '1080p · H.264' },
+  ];
+
+  readyItems = [
+    { title: 'Signal Hill', sub: 'S1 · E7 — Dead Air', meta: '1080p · 1.9 GB', expiry: 'expires in 21 days', watched: 0.62, dur: '48 min' },
+    { title: 'Cold Ground', sub: 'Feature · 2022', meta: '1080p · 3.8 GB', expiry: 'expires in 4 days', warn: true, watched: 0, dur: '1 h 54 min' },
+    { title: 'Northwind', sub: 'S2 · E3 — Saltmarsh', meta: '2160p · 5.2 GB', expiry: 'expires in 30 days', watched: 0.18, dur: '52 min' },
+    { title: 'Harbour Lights', sub: 'Documentary · 2025', meta: '1080p · 2.6 GB', expiry: 'expires in 12 days', watched: 1, dur: '1 h 21 min' },
+    { title: 'The Quiet Line', sub: 'S1 · E2 — Interference', meta: '720p · 0.9 GB', expiry: 'licence renewed', watched: 0, dur: '44 min' },
+  ];
+
+  renderVals() {
+    const s = this.spec;
+    const st = this.state;
+    const set = (k, v) => () => this.setState({ [k]: v });
+    const scenario = st.scenario;
+    const stalled = scenario === 'cellular';
+    const done = scenario === 'done';
+
+    const devices = [
+      ['phone', 'Phone 390×844'],
+      ['phoneL', 'Phone large 430×932'],
+      ['tabletP', 'Tablet portrait 800×1280'],
+      ['tablet', 'Tablet landscape 1280×800'],
+      ['large', 'Large 1366×1024'],
+    ].map(([id, label]) => ({ key: id, label, pick: set('device', id), style: this.pill(st.device === id) }));
+
+    const states = [
+      ['running', 'Transfers running'],
+      ['cellular', 'Waiting for Wi-Fi'],
+      ['done', 'Nothing downloading'],
+    ].map(([id, label]) => ({
+      key: id, label, style: this.pill(scenario === id),
+      pick: () => this.setState({ scenario: id, playing: null, allPaused: false }),
+    }));
+
+    const tabs = [
+      ['Home', '#d-home', false], ['Library', '#d-bookmark', false],
+      ['Downloads', '#d-download', true], ['Settings', '#d-settings', false],
+    ].map(([label, icon, active]) => ({
+      key: label, label, icon,
+      style: 'width:72px;padding:9px 0;border:0;background:none;cursor:pointer;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:5px;'
+        + (active
+          ? 'color:#0a84ff;background:linear-gradient(180deg,rgba(10,132,255,.22),rgba(10,132,255,.07));box-shadow:0 1px 0 rgba(255,255,255,.1) inset,0 10px 24px -14px rgba(10,132,255,.9);'
+          : 'color:#8b93a5;'),
+      barStyle: 'flex:1;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:color .18s ease;'
+        + (active ? 'color:#0a84ff;text-shadow:0 0 18px rgba(10,132,255,.55);' : 'color:#8b93a5;'),
+    }));
+
+    const active = done ? [] : this.items.map((it, i) => {
+      const p = st.progress[i];
+      const paused = st.paused[i] || st.allPaused;
+      const speed = paused || stalled ? 0 : st.speeds[i];
+      const remaining = it.size * (1 - p);
+      const etaS = speed > 0.2 ? Math.round((remaining * 1024) / speed) : null;
+      const eta = stalled ? 'waiting for Wi-Fi' : paused ? 'paused' : etaS === null ? '—' : etaS > 90 ? Math.round(etaS / 60) + ' min left' : etaS + 's left';
+      return {
+        key: it.title + i,
+        title: it.title,
+        sub: it.sub,
+        quality: it.quality,
+        speed: stalled ? '0.0 MB/s' : paused ? 'paused' : this.fmt(speed),
+        speedStyle: 'font-weight:700;display:flex;align-items:center;gap:6px;' + (stalled || paused ? 'color:#8b93a5;' : 'color:#4cd964;text-shadow:0 0 14px rgba(76,217,100,.35);'),
+        dotStyle: 'width:6px;height:6px;border-radius:999px;background:currentColor;'
+          + (stalled || paused ? 'opacity:.4;' : 'box-shadow:0 0 8px currentColor;animation:breathe 1.8s ease-in-out infinite;'),
+        bytes: (it.size * p).toFixed(2) + ' / ' + it.size.toFixed(1) + ' GB',
+        eta,
+        toggle: () => this.setState((prev) => ({ paused: { ...prev.paused, [i]: !prev.paused[i] } })),
+        toggleIcon: paused || stalled ? '#d-play' : '#d-pause',
+        cardStyle: 'padding:13px 14px;border-radius:18px;background:linear-gradient(155deg,rgba(255,255,255,.075),rgba(255,255,255,.032));border:1px solid '
+          + (stalled ? 'rgba(255,159,10,.32)' : 'rgba(255,255,255,.085)')
+          + ';box-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 10px 26px -14px rgba(0,0,0,.9);animation:riseIn .28s ease-out',
+        artStyle: 'flex:0 0 ' + (s.wide ? '118px' : '104px') + ';width:' + (s.wide ? '118px' : '104px') + ';align-self:stretch;min-height:78px;border-radius:12px;position:relative;overflow:hidden;background:repeating-linear-gradient(115deg,#171a22 0 10px,#12151c 10px 20px);box-shadow:0 0 0 1px rgba(255,255,255,.07) inset,0 8px 20px -10px rgba(0,0,0,.9)',
+        barStyle: 'display:block;height:100%;border-radius:999px;transition:width .6s cubic-bezier(.4,0,.2,1);width:' + (p * 100).toFixed(1) + '%;'
+          + (stalled ? 'background:linear-gradient(90deg,#c47700,#ff9f0a);'
+            : paused ? 'background:rgba(255,255,255,.45);'
+            : 'background:linear-gradient(90deg,#0a84ff,#4cc2ff);box-shadow:0 0 12px rgba(10,132,255,.5);'),
+        live: !paused && !stalled,
+        playable: p > 0.25 && !stalled,
+        playableHint: Math.round(p * 100) + '% buffered',
+        play: () => this.setState({ playing: { title: it.title, sub: it.sub + ' · playing the downloaded part', remaining: '-32:10' } }),
+      };
+    });
+
+    const ready = this.readyItems.map((r, i) => ({
+      key: r.title + i,
+      title: r.title,
+      sub: r.sub,
+      meta: r.meta,
+      expiry: r.expiry,
+      expiryStyle: r.warn ? 'color:#ff9f0a' : 'color:#565e70',
+      partial: r.watched > 0 && r.watched < 1,
+      watchedStyle: 'display:block;height:100%;width:' + Math.round(r.watched * 100) + '%;background:#0a84ff',
+      select: () => this.setState({ selected: i }),
+      actionsStyle: s.wide
+        ? 'display:flex;align-items:center;gap:8px;flex:0 0 auto'
+        : 'display:flex;align-items:center;gap:6px;flex:0 0 auto',
+      playStyle: 'display:flex;align-items:center;gap:7px;border-radius:11px;border:0;background:linear-gradient(180deg,#fff,#dfe4ee);color:#000;font-weight:700;cursor:pointer;white-space:nowrap;'
+        + 'box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 6px 16px -8px rgba(0,0,0,.8);transition:transform .12s ease,box-shadow .18s ease;'
+        + (s.wide ? 'padding:10px 16px;font-size:13.5px;' : 'padding:9px 13px;font-size:13px;'),
+      play: () => this.setState({ playing: { title: r.title, sub: r.sub + ' · ' + r.meta, remaining: '-' + r.dur } }),
+      rowStyle: 'display:flex;align-items:stretch;gap:13px;padding:11px 13px;border-radius:18px;cursor:pointer;transition:background .18s ease,border-color .18s ease;border:1px solid '
+        + (s.wide && st.selected === i
+          ? 'rgba(10,132,255,.5);background:linear-gradient(155deg,rgba(10,132,255,.18),rgba(10,132,255,.07));box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 10px 26px -16px rgba(0,0,0,.9);'
+          : 'rgba(255,255,255,.075);background:linear-gradient(155deg,rgba(255,255,255,.06),rgba(255,255,255,.025));box-shadow:0 1px 0 rgba(255,255,255,.06) inset;'),
+      artStyle: 'align-self:stretch;border-radius:9px;position:relative;overflow:hidden;background:repeating-linear-gradient(115deg,#171a22 0 10px,#12151c 10px 20px);'
+        + 'box-shadow:0 0 0 1px rgba(255,255,255,.07) inset,0 6px 16px -10px rgba(0,0,0,.9);border-radius:11px;'
+        + (s.wide ? 'flex:0 0 62px;width:62px;min-height:84px;' : 'flex:0 0 52px;width:52px;min-height:69px;'),
+    }));
+
+    const sel = this.readyItems[st.selected] || this.readyItems[0];
+    const factRow = (label, value, last) => ({
+      key: label, label, value,
+      rowStyle: 'display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;'
+        + (last ? '' : 'border-bottom:1px solid rgba(255,255,255,.08);'),
+    });
+
+    const totalSpeed = st.speeds.reduce((a, b) => a + b, 0);
+    const shown = done || stalled || st.allPaused ? 0 : totalSpeed;
+    const peak = Math.max(...st.history, 1);
+    const activeLeft = active.filter((a) => !a.done).length;
+
+    return {
+      devices, states, tabs, active, ready,
+      isWide: s.wide, isRail: s.rail, isBar: s.bar,
+      speedHeadStyle: s.w >= 700
+        ? 'display:flex;align-items:center;justify-content:space-between;gap:12px'
+        : 'display:flex;flex-direction:column;align-items:flex-start;gap:10px',
+      hasActive: active.length > 0,
+      activeCount: active.length + (active.length === 1 ? ' item' : ' items'),
+      readyCount: this.readyItems.length + ' items · 14.4 GB',
+      headerSummary: done ? 'Nothing in the queue · 14.4 GB stored offline'
+        : stalled ? '3 items waiting for Wi-Fi · 14.4 GB stored offline'
+        : activeLeft + ' downloading · 14.4 GB stored offline',
+      totalSpeed: shown.toFixed(1) + ' MB/s',
+      queueLine: done ? 'queue empty' : stalled ? 'paused — mobile data' : 'across ' + active.length + ' transfers',
+      peakLine: 'PEAK ' + peak.toFixed(1) + ' MB/S',
+      netIcon: stalled ? '#d-cell' : '#d-wifi',
+      netLabel: stalled ? 'Mobile data' : 'Wi-Fi · Halo-5G',
+      netChipStyle: 'display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:9px;font-size:12px;font-weight:600;border:1px solid '
+        + (stalled ? 'rgba(255,159,10,.42);background:rgba(255,159,10,.14);color:#ffc46b;' : 'rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#c7cdd9;'),
+      toggleAll: () => this.setState((p) => ({ allPaused: !p.allPaused })),
+      pauseAllIcon: st.allPaused || stalled ? '#d-play' : '#d-pause',
+      pauseAllLabel: st.allPaused ? 'Resume all' : 'Pause all',
+      pauseAllStyle: 'display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;color:#f4f6fb;'
+        + 'border:1px solid rgba(255,255,255,.14);background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.045));'
+        + 'box-shadow:0 1px 0 rgba(255,255,255,.09) inset;transition:background .18s ease;',
+      spark: st.history.map((v, i) => ({
+        key: i,
+        style: 'flex:1;border-radius:3px 3px 1px 1px;min-height:2px;transition:height .5s cubic-bezier(.4,0,.2,1);height:' + Math.max(4, (v / peak) * 100).toFixed(0) + '%;'
+          + (i > st.history.length - 4
+            ? 'background:linear-gradient(180deg,#5cc4ff,#0a84ff);box-shadow:0 0 10px rgba(10,132,255,.45);'
+            : 'background:linear-gradient(180deg,rgba(92,196,255,' + (0.35 + (i / st.history.length) * 0.45).toFixed(2) + '),rgba(10,132,255,' + (0.2 + (i / st.history.length) * 0.45).toFixed(2) + '));'),
+      })),
+      storageUsedLine: '14.4 GB of downloads · 47.2 GB used',
+      storageFreeLine: '80.8 GB free of 128 GB',
+      storageDownloadsStyle: 'display:block;height:100%;width:11.2%;background:linear-gradient(90deg,#0a84ff,#54c1ff);box-shadow:0 0 10px rgba(10,132,255,.5)',
+      storageOtherStyle: 'display:block;height:100%;width:25.6%;background:rgba(255,255,255,.34)',
+      selected: {
+        title: sel.title,
+        sub: sel.sub + ' · ' + sel.dur,
+        playLabel: sel.watched > 0 && sel.watched < 1 ? 'Resume offline' : 'Play offline',
+        facts: [
+          factRow('Quality', sel.meta.split(' · ')[0]),
+          factRow('File size', sel.meta.split(' · ')[1]),
+          factRow('Audio', 'English 5.1 · Hindi 2.0'),
+          factRow('Subtitles', 'English, Hindi (embedded)'),
+          factRow('Licence', sel.expiry, true),
+        ],
+      },
+      playSelected: () => this.setState({ playing: { title: sel.title, sub: sel.sub + ' · ' + sel.meta, remaining: '-' + sel.dur } }),
+      playing: !!st.playing,
+      playingTitle: st.playing ? st.playing.title : '',
+      playingSub: st.playing ? st.playing.sub : '',
+      playingRemaining: st.playing ? st.playing.remaining : '',
+      stopPlaying: () => this.setState({ playing: null }),
+      frameStyle: 'width:' + s.w + 'px;height:' + s.h + 'px;--g:' + s.g + 'px;flex:0 0 auto;display:flex;'
+        + 'border-radius:30px;overflow:hidden;background:radial-gradient(120% 90% at 50% 0%,#101420 0%,#080a0f 62%);border:1px solid rgba(255,255,255,.11);'
+        + 'box-shadow:0 0 0 1px rgba(255,255,255,.04) inset,0 50px 110px -30px rgba(0,0,0,.95)',
+      pageTitleStyle: 'font-size:' + s.title + 'px;font-weight:800;letter-spacing:-.7px;color:#f4f6fb',
+      listPaneStyle: 'flex:1;min-width:0;overflow:auto;padding:' + (s.wide ? '30px' : '26px') + ' 0 26px;'
+        + (s.wide ? 'border-right:1px solid rgba(255,255,255,.09);' : ''),
+      detailPaneStyle: 'flex:0 0 ' + (s.w > 1300 ? '400px' : '360px') + ';overflow:auto;padding:30px 24px;display:flex;flex-direction:column;gap:16px;background:rgba(255,255,255,.025)',
+      metrics: [
+        { key: 'a', label: 'SPEED SOURCE', value: 'PlayerPort.transferStats() · 1 Hz' },
+        { key: 'b', label: 'PARTIAL PLAYBACK', value: 'plays at ≥25% contiguous buffer' },
+        { key: 'c', label: 'PAUSE SCOPE', value: 'per item + global' },
+        { key: 'd', label: 'NETWORK RULE', value: 'Wi-Fi only (default on)' },
+        { key: 'e', label: 'STORAGE', value: 'app sandbox · 14.4 GB' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>
