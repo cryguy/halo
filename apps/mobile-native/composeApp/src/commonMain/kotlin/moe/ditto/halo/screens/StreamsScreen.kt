@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,6 +64,7 @@ import moe.ditto.halo.ui.CenterMessage
 import moe.ditto.halo.ui.SelectOption
 import moe.ditto.halo.ui.SelectSheet
 import moe.ditto.halo.ui.formatBytes
+import moe.ditto.halo.ui.rememberResponsive
 import kotlinx.coroutines.launch
 
 /**
@@ -96,12 +99,71 @@ internal fun StreamsScreen(
     downloadMedia: (AddonSource, Stream, String) -> DownloadMedia,
     modifier: Modifier = Modifier,
 ) {
+    val responsive = rememberResponsive()
+
+    Box(modifier.fillMaxSize().background(HaloColors.Background)) {
+        Column(
+            Modifier
+                .fillMaxHeight()
+                // A source list stretched across a tablet puts the size of a
+                // stream a foot away from its name. Centred in the content area
+                // rather than in the window, so the navigation rail's column is
+                // not counted as space to centre in.
+                .padding(start = responsive.contentInsetStart)
+                .then(
+                    responsive.contentMaxWidth?.let { Modifier.widthIn(max = it).fillMaxWidth() }
+                        ?: Modifier.fillMaxWidth(),
+                )
+                .align(Alignment.TopCenter),
+        ) {
+            // The header outlives every state below it: a screen that swaps itself
+            // for a spinner takes its own way back with it.
+            ScreenHeader(
+                title = "Sources",
+                subtitle = title,
+                onBack = onBack,
+                modifier = Modifier.padding(horizontal = HaloSpacing.Md),
+            )
+            SourcesPicker(
+                graph = graph,
+                type = type,
+                videoId = videoId,
+                onPlay = onPlay,
+                downloadMedia = downloadMedia,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+/**
+ * One video's sources, with the download state that belongs to the video rather
+ * than to any one row.
+ *
+ * Shared by the pushed picker and by the rail the tablet layout opens over a
+ * title, so the two cannot drift apart in what a source does when it is tapped,
+ * or in what happens when one is downloaded over another.
+ */
+@Composable
+internal fun SourcesPicker(
+    graph: SignedInGraph,
+    type: String,
+    videoId: String,
+    onPlay: (AddonSource, Stream) -> Unit,
+    downloadMedia: (AddonSource, Stream, String) -> DownloadMedia,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(
+        start = HaloSpacing.Md,
+        end = HaloSpacing.Md,
+        bottom = HaloSpacing.Xl,
+    ),
+) {
     val streams by remember(graph, type, videoId) {
         graph.browse.streams(type, videoId)
     }.collectAsState(QueryState())
     val scope = rememberCoroutineScope()
 
-    // One download per video, so this is the state of the whole screen's
+    // One download per video, so this is the state of the whole picker's
     // subject rather than of any one row.
     val downloads by graph.downloads.entries.collectAsState()
     val download = remember(downloads, videoId) { downloads.firstOrNull { it.videoId == videoId } }
@@ -110,16 +172,7 @@ internal fun StreamsScreen(
     // replacement throws away bytes someone waited for. Asked, never assumed.
     var pendingReplacement by remember { mutableStateOf<DownloadMedia?>(null) }
 
-    Box(modifier.fillMaxSize().background(HaloColors.Background)) {
-    Column(Modifier.fillMaxSize()) {
-        // The header outlives every state below it: a screen that swaps itself
-        // for a spinner takes its own way back with it.
-        ScreenHeader(
-            title = "Sources",
-            subtitle = title,
-            onBack = onBack,
-            modifier = Modifier.padding(horizontal = HaloSpacing.Md),
-        )
+    Box(modifier) {
         StreamsContent(
             query = streams,
             onRetry = { scope.launch { graph.browse.retryStreams(type, videoId) } },
@@ -140,35 +193,35 @@ internal fun StreamsScreen(
                 }
             },
             refusal = refusal,
+            contentPadding = contentPadding,
             modifier = Modifier.fillMaxSize(),
         )
-    }
 
-    val replacement = pendingReplacement
-    SelectSheet(
-        visible = replacement != null,
-        title = "Replace the download?",
-        description = "This video is already downloaded from another source.",
-        options = listOf(
-            SelectOption(
-                key = ReplaceKey,
-                label = "Download this source instead",
-                detail = "The file already on the device is deleted first.",
-                destructive = true,
+        val replacement = pendingReplacement
+        SelectSheet(
+            visible = replacement != null,
+            title = "Replace the download?",
+            description = "This video is already downloaded from another source.",
+            options = listOf(
+                SelectOption(
+                    key = ReplaceKey,
+                    label = "Download this source instead",
+                    detail = "The file already on the device is deleted first.",
+                    destructive = true,
+                ),
             ),
-        ),
-        onSelect = {
-            val media = replacement
-            pendingReplacement = null
-            if (media != null) {
-                scope.launch {
-                    graph.downloads.remove(media.videoId)
-                    refusal = beginDownload(graph, media)
+            onSelect = {
+                val media = replacement
+                pendingReplacement = null
+                if (media != null) {
+                    scope.launch {
+                        graph.downloads.remove(media.videoId)
+                        refusal = beginDownload(graph, media)
+                    }
                 }
-            }
-        },
-        onClose = { pendingReplacement = null },
-    )
+            },
+            onClose = { pendingReplacement = null },
+        )
     }
 }
 
@@ -256,6 +309,15 @@ internal fun StreamsContent(
     onDownload: (AddonSource, Stream) -> Unit = { _, _ -> },
     /** Why the last download was not accepted; shown above the sources. */
     refusal: String? = null,
+    /**
+     * The list's own insets. The rail sets its own, being a narrower surface
+     * with its header outside the scroll; the pushed screen takes the default.
+     */
+    contentPadding: PaddingValues = PaddingValues(
+        start = HaloSpacing.Md,
+        end = HaloSpacing.Md,
+        bottom = HaloSpacing.Xl,
+    ),
 ) {
     when (val state = streamsContentState(query)) {
         is StreamsContentState.Loading -> Box(modifier, contentAlignment = Alignment.Center) {
@@ -286,14 +348,11 @@ internal fun StreamsContent(
             "No playable sources. Install a stream addon (e.g. a debrid-backed one) in Settings.",
             modifier,
         )
+        // No tab-bar allowance in the default padding: this screen covers the
+        // bar, and the rail it is shown in on a tablet has none to cover.
         is StreamsContentState.Sources -> LazyColumn(
             modifier = modifier,
-            // No tab-bar allowance: this screen covers the bar.
-            contentPadding = PaddingValues(
-                start = HaloSpacing.Md,
-                end = HaloSpacing.Md,
-                bottom = HaloSpacing.Xl,
-            ),
+            contentPadding = contentPadding,
         ) {
             if (refusal != null) {
                 item(key = "download-refusal") {
