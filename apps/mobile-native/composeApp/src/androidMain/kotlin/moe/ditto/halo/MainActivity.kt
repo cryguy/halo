@@ -2,6 +2,7 @@ package moe.ditto.halo
 
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,6 +32,7 @@ import java.io.File
 class MainActivity : ComponentActivity() {
 
     private lateinit var playerHost: AndroidMpvPlayerHost
+    private lateinit var playerSystemPort: AndroidPlayerSystemPort
     private lateinit var authHost: AndroidOidcAuthHost
     private lateinit var authHttpClient: HttpClient
 
@@ -48,6 +50,7 @@ class MainActivity : ComponentActivity() {
             wire = KtorAndroidOidcWire(authHttpClient),
         )
         playerHost = AndroidMpvPlayerHost(applicationContext)
+        playerSystemPort = AndroidPlayerSystemPort(this)
 
         // Automation may point at a fixture. With no override, using the shared
         // default preserves the last-successful-server prefill rule in HaloApp.
@@ -73,7 +76,7 @@ class MainActivity : ComponentActivity() {
             diagnosticsEnabled =
                 (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0,
             playerPort = AndroidPlayerPort(playerHost),
-            playerSystemPort = AndroidPlayerSystemPort(this),
+            playerSystemPort = playerSystemPort,
             videoFrameSource = AndroidVideoFrameSource(),
             bundledSubtitleFonts = SubtitleFontLibrary.bundledFamilies(),
             playerEvents = playerHost.playerEvents,
@@ -96,6 +99,16 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         authHost.handleIntent(intent)
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (::playerSystemPort.isInitialized) {
+            playerSystemPort.onPictureInPictureModeChanged(isInPictureInPictureMode)
+        }
     }
 
     override fun onDestroy() {

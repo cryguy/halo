@@ -309,6 +309,22 @@ class PlayerScreenControllerTest {
     }
 
     @Test
+    fun nativePictureInPictureHandoffHidesChromeWithoutDrawingTheFallback() = runTest {
+        val controller = PlayerScreenController(backgroundScope)
+        controller.toggleEpisodeDrawer()
+
+        controller.prepareForPictureInPicture()
+
+        assertFalse(controller.pictureInPicture)
+        assertFalse(controller.chromeVisible)
+        assertFalse(controller.episodeDrawerOpen)
+
+        controller.exitPictureInPicture()
+        assertFalse(controller.pictureInPicture)
+        assertTrue(controller.chromeVisible)
+    }
+
+    @Test
     fun usingTheTransportBringsTheChromeBackAndRearmsTheTimer() = runTest {
         val controller = PlayerScreenController(backgroundScope)
         controller.toggleChrome()

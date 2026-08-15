@@ -1,15 +1,20 @@
 package moe.ditto.halo.player
 
 import android.app.Activity
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.provider.Settings
+import android.util.Rational
 import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * Android's answers to [PlayerSystemPort], all of them attributes of the one
@@ -29,6 +34,9 @@ internal class AndroidPlayerSystemPort(private val activity: Activity) : PlayerS
     private var landscapeHolders = 0
     private var screenOnHolders = 0
     private var immersiveHolders = 0
+
+    private val mutablePictureInPictureChanges = MutableStateFlow(activity.isInPictureInPictureMode)
+    override val pictureInPictureChanges: Flow<Boolean> = mutablePictureInPictureChanges
 
     private val insets: WindowInsetsControllerCompat
         get() = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
@@ -79,6 +87,37 @@ internal class AndroidPlayerSystemPort(private val activity: Activity) : PlayerS
     }
 
     override fun volumeSteps(): Int = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+
+    /**
+     * PiP support is a device capability as well as a manifest declaration.
+     * A rejected transition is ordinary on devices without that capability,
+     * and lets common code retain the existing in-app fallback.
+     */
+    override fun enterPictureInPicture(): Boolean {
+        if (!activity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+            return false
+        }
+        if (activity.isFinishing || activity.isDestroyed) return false
+        if (activity.isInPictureInPictureMode) return true
+
+        val parameters = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(PictureInPictureWidth, PictureInPictureHeight))
+            .build()
+        return try {
+            activity.enterPictureInPictureMode(parameters)
+        } catch (_: IllegalArgumentException) {
+            false
+        } catch (_: IllegalStateException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    /** Called only by the owning Activity's platform callback. */
+    internal fun onPictureInPictureModeChanged(active: Boolean) {
+        mutablePictureInPictureChanges.value = active
+    }
 
     /**
      * Sensor landscape rather than a fixed one, so the device may still be
@@ -167,5 +206,11 @@ internal class AndroidPlayerSystemPort(private val activity: Activity) : PlayerS
          * lowest a drag can reach is dim rather than off.
          */
         const val MinimumVisibleBrightness = 0.01f
+
+        // PlayerState has no decoded video dimensions yet. A standard video
+        // window is preferable to inheriting an unusually wide phone screen,
+        // and remains inside Android's accepted PiP aspect-ratio range.
+        const val PictureInPictureWidth = 16
+        const val PictureInPictureHeight = 9
     }
 }

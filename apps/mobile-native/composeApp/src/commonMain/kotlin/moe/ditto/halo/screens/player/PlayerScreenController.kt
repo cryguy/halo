@@ -99,7 +99,7 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
     var unlockPillVisible by mutableStateOf(false)
         private set
 
-    /** The in-app stand-in for the OS picture-in-picture handoff. */
+    /** The in-app fallback shown only when the OS rejects a PiP handoff. */
     var pictureInPicture by mutableStateOf(false)
         private set
 
@@ -298,12 +298,18 @@ internal class PlayerScreenController(private val scope: CoroutineScope) {
 
     // --- Picture in picture ----------------------------------------------
 
-    fun enterPictureInPicture() {
-        pictureInPicture = true
+    /** Clears full-screen controls before either native PiP or its fallback. */
+    fun prepareForPictureInPicture() {
+        pictureInPicture = false
         chromeVisible = false
         rail = null
         episodeDrawerOpen = false
         hideJob?.cancel()
+    }
+
+    fun enterPictureInPicture() {
+        prepareForPictureInPicture()
+        pictureInPicture = true
     }
 
     fun exitPictureInPicture() {

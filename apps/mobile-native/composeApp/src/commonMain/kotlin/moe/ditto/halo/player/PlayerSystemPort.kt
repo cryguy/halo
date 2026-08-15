@@ -1,5 +1,10 @@
 package moe.ditto.halo.player
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+
+private val NoPictureInPictureChanges: Flow<Boolean> = flowOf(false)
+
 /**
  * What the player needs from the device rather than from the media engine.
  *
@@ -43,6 +48,21 @@ interface PlayerSystemPort {
      * to a precision the device does not have.
      */
     fun volumeSteps(): Int
+
+    /**
+     * Asks the operating system to move this Activity or view into its native
+     * picture-in-picture presentation. True means the handoff was accepted;
+     * false means the caller must keep the existing in-app presentation.
+     */
+    fun enterPictureInPicture(): Boolean = false
+
+    /**
+     * Native picture-in-picture state and its later changes. True is the
+     * completed handoff; false is the full app, when normal player chrome must
+     * be restored. Platforms without native PiP report false once.
+     */
+    val pictureInPictureChanges: Flow<Boolean>
+        get() = NoPictureInPictureChanges
 
     /**
      * Landscape and a display that stays awake, for as long as something needs

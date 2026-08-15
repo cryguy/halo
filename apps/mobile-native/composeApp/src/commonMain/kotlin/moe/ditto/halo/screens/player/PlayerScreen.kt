@@ -384,6 +384,19 @@ internal fun PlayerScreen(
         controller.onPausedChanged(state.status != PlaybackStatus.Playing)
     }
 
+    // Android reports both ends of the native PiP transition through its
+    // Activity callback. Entering keeps the video bare; returning restores the
+    // full-screen chrome that was deliberately hidden before the handoff.
+    LaunchedEffect(system) {
+        system.pictureInPictureChanges.collect { active ->
+            if (active) {
+                controller.prepareForPictureInPicture()
+            } else {
+                controller.exitPictureInPicture()
+            }
+        }
+    }
+
     /**
      * Leaving is asynchronous on purpose, and every way out goes through here.
      *
@@ -499,7 +512,12 @@ internal fun PlayerScreen(
                 streamBadges = streamBadges,
                 locked = controller.locked,
                 onBack = leave,
-                onPictureInPicture = controller::enterPictureInPicture,
+                onPictureInPicture = {
+                    controller.prepareForPictureInPicture()
+                    if (!system.enterPictureInPicture()) {
+                        controller.enterPictureInPicture()
+                    }
+                },
                 // Fit mode is the one utility control still waiting on
                 // something that does not exist: an mpv panscan call.
                 onToggleFit = {
