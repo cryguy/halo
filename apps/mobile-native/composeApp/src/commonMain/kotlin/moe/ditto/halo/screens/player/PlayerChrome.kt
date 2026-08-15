@@ -74,12 +74,13 @@ import moe.ditto.halo.ui.monoStyle
 // White hairlines, in the four weights the design uses. They are local because
 // they are not a palette: each one is chosen against the fill it borders, and
 // naming them globally would invite reuse in places that fill differently.
-private val BadgeBorder = Color.White.copy(alpha = 0.09f)
+private val BadgeBorder = Color.White.copy(alpha = 0.16f)
 private val ButtonBorder = Color.White.copy(alpha = 0.10f)
-private val ChromeBorder = Color.White.copy(alpha = 0.12f)
-private val PlayButtonBorder = Color.White.copy(alpha = 0.14f)
+private val SeekButtonBorder = Color.White.copy(alpha = 0.18f)
+private val ChromeBorder = Color.White.copy(alpha = 0.18f)
+private val PlayButtonBorder = Color.White.copy(alpha = 0.22f)
 
-private val BadgeFill = Color.White.copy(alpha = 0.07f)
+private val BadgeFill = Color(red = 9f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.58f)
 private val TrackFill = Color.White.copy(alpha = 0.16f)
 private val BufferedFill = Color.White.copy(alpha = 0.30f)
 private val DurationText = Color.White.copy(alpha = 0.55f)
@@ -357,7 +358,7 @@ private fun SeekButton(icon: ImageVector, contentDescription: String, onClick: (
             .size(52.dp)
             .clip(RoundedCornerShape(HaloRadius.Pill))
             .background(HaloPlayerColors.SeekButtonFill)
-            .border(1.dp, ButtonBorder, RoundedCornerShape(HaloRadius.Pill))
+            .border(1.dp, SeekButtonBorder, RoundedCornerShape(HaloRadius.Pill))
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -452,7 +453,8 @@ private fun StateChip(chip: PlayerChip, valueSize: TextUnit) {
     Column(
         modifier = sizeModifier
             .clip(shape)
-            .background(if (chip.active) HaloPlayerColors.ChipActiveFill else HaloPlayerColors.ChipFill)
+            .background(HaloPlayerColors.ChipFill)
+            .background(if (chip.active) HaloPlayerColors.ChipActiveFill else Color.Transparent)
             .border(
                 width = 1.dp,
                 color = if (chip.active) HaloPlayerColors.ChipActiveBorder else ChromeBorder,
