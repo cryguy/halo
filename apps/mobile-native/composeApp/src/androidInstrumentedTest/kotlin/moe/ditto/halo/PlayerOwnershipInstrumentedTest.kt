@@ -28,10 +28,10 @@ import org.junit.runner.RunWith
  * Compose semantics (content descriptions + text), asserting playback and the
  * core/view ownership invariants without a single hard-coded coordinate.
  *
- * Requires: the local-auth fixture server on the host plus
- * `adb reverse tcp:18788 tcp:18788`. Discovery is real, while local mode keeps
- * the app in the foreground on the debug-only gate shortcut. Player ownership
- * tests must not depend on whether a browser is installed or configured.
+ * Requires: one local-auth fixture server on the host, serving both auth and
+ * media, plus `adb reverse tcp:18788 tcp:18788`. The launch overrides below
+ * point both routes at that same fixture, so this class never silently falls
+ * back to the unrelated default server on 18787.
  */
 @RunWith(AndroidJUnit4::class)
 class PlayerOwnershipInstrumentedTest {
@@ -40,6 +40,7 @@ class PlayerOwnershipInstrumentedTest {
         MainActivity::class.java,
     ).apply {
         putExtra("serverUrl", "http://127.0.0.1:18788")
+        putExtra("mediaHttpBase", "http://127.0.0.1:18788/media")
         putExtra("resetSession", true)
     }
 
@@ -55,6 +56,25 @@ class PlayerOwnershipInstrumentedTest {
             val muted = activity.playerMutedForTest()
             assertNotNull("initialized libmpv core did not expose its mute property", muted)
             assertFalse("initialized libmpv core is muted", muted == true)
+        }
+    }
+
+    @Test
+    fun activityRecreationStartsAUsableCoreWithoutStaleCallbacks() {
+        gotoPlayer()
+        rule.waitUntil(25_000) {
+            rule.onAllNodes(hasText("Status: Playing", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+        activityRule.scenario.recreate()
+
+        // Recreation destroys a live SurfaceView while the old host is winding
+        // down. The replacement host must initialize independently of that
+        // close queue. A stale callback cannot satisfy this read because the
+        // seam belongs to the new MainActivity instance.
+        rule.waitUntil(10_000) {
+            var initialized = false
+            activityRule.scenario.onActivity { initialized = it.playerMutedForTest() != null }
+            initialized
         }
     }
 

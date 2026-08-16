@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import android.view.Surface
 import dev.jdtech.mpv.MPVLib
+import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 
 /**
  * Owned thin adapter over libmpv's Android JNI ([MPVLib], mpv-android lineage) —
@@ -20,6 +22,7 @@ import dev.jdtech.mpv.MPVLib
 internal class MpvCore private constructor(
     private val mpv: MPVLib,
     val id: String,
+    private val callbackExecutor: Executor?,
 ) {
     interface Listener {
         fun onReady(durationSeconds: Double?)
@@ -62,63 +65,99 @@ internal class MpvCore private constructor(
          * after a switch, because the track *count* has not moved.
          */
         override fun eventProperty(property: String) {
-            when (property) {
-                "sid", "aid" -> emitTracks()
-            }
+            dispatch { handleProperty(property) }
         }
 
         override fun eventProperty(property: String, value: Long) {
-            when (property) {
-                "track-list/count" -> emitTracks()
-                "cache-buffering-state" -> {
-                    cacheFillPercent = value.toInt()
-                    if (pausedForCache) emitBuffering()
-                }
-            }
+            dispatch { handleProperty(property, value) }
         }
 
         override fun eventProperty(property: String, value: Double) {
+            // These observations are already values from mpv, not property
+            // reads. Filter them before queueing so a high-frequency time-pos
+            // stream cannot starve serialized commands behind the executor.
             when (property) {
                 "time-pos" -> {
                     val second = value.toLong()
                     if (second != lastPositionSecond) {
                         lastPositionSecond = second
-                        listener?.onPosition(value)
+                        dispatch { listener?.onPosition(value) }
                     }
                 }
                 "demuxer-cache-time" -> {
                     val second = value.toLong()
                     if (second != lastBufferedSecond) {
                         lastBufferedSecond = second
-                        listener?.onBufferedPosition(value)
+                        dispatch { listener?.onBufferedPosition(value) }
                     }
                 }
             }
         }
 
         override fun eventProperty(property: String, value: Boolean) {
-            when (property) {
-                "pause" -> listener?.onPauseChanged(value)
-                "eof-reached" -> if (value && fileLifecycle.markEofReached()) {
-                    listener?.onEnded()
-                }
-                "paused-for-cache" -> {
-                    pausedForCache = value
-                    emitBuffering()
-                }
-            }
+            dispatch { handleProperty(property, value) }
         }
 
         override fun eventProperty(property: String, value: String) { /* unused */ }
 
         override fun event(eventId: Int) {
-            when (eventId) {
-                MPVLib.MpvEvent.MPV_EVENT_START_FILE -> fileLifecycle.onFileStarted()
-                MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> onFileLoaded()
-                MPVLib.MpvEvent.MPV_EVENT_END_FILE ->
-                    fileLifecycle.endFileFailure()?.let { listener?.onError(it) }
-                MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> listener?.onEnded()
+            dispatch { handleEvent(eventId) }
+        }
+    }
+
+    private fun dispatch(block: () -> Unit) {
+        val executor = callbackExecutor
+        if (executor == null) {
+            if (!destroyed) block()
+            return
+        }
+        try {
+            executor.execute {
+                if (!destroyed) block()
             }
+        } catch (_: RejectedExecutionException) {
+            // Activity shutdown can close the executor while mpv is still
+            // draining callbacks. The core is being destroyed, so dropping
+            // those stale callbacks is the safe outcome.
+        }
+    }
+
+    private fun handleProperty(property: String) {
+        when (property) {
+            "sid", "aid" -> emitTracks()
+        }
+    }
+
+    private fun handleProperty(property: String, value: Long) {
+        when (property) {
+            "track-list/count" -> emitTracks()
+            "cache-buffering-state" -> {
+                cacheFillPercent = value.toInt()
+                if (pausedForCache) emitBuffering()
+            }
+        }
+    }
+
+    private fun handleProperty(property: String, value: Boolean) {
+        when (property) {
+            "pause" -> listener?.onPauseChanged(value)
+            "eof-reached" -> if (value && fileLifecycle.markEofReached()) {
+                listener?.onEnded()
+            }
+            "paused-for-cache" -> {
+                pausedForCache = value
+                emitBuffering()
+            }
+        }
+    }
+
+    private fun handleEvent(eventId: Int) {
+        when (eventId) {
+            MPVLib.MpvEvent.MPV_EVENT_START_FILE -> fileLifecycle.onFileStarted()
+            MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> onFileLoaded()
+            MPVLib.MpvEvent.MPV_EVENT_END_FILE ->
+                fileLifecycle.endFileFailure()?.let { listener?.onError(it) }
+            MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> listener?.onEnded()
         }
     }
 
@@ -383,7 +422,7 @@ internal class MpvCore private constructor(
         private const val DefaultSubtitleFont = "sans-serif"
 
         /** Create + configure + initialize a fresh core with a stable [id]. */
-        fun create(context: Context, id: String): MpvCore {
+        fun create(context: Context, id: String, callbackExecutor: Executor? = null): MpvCore {
             val mpv = MPVLib.create(context) ?: error("MPVLib.create returned null")
             // Pre-init options (mpv-android's proven Android render/decode stack).
             mpv.setOptionString("config", "no")
@@ -409,7 +448,7 @@ internal class MpvCore private constructor(
             // Pre-init: libass builds its font provider during initialisation.
             SubtitleFontLibrary.prepare(context)?.let { mpv.setOptionString("sub-fonts-dir", it) }
 
-            val core = MpvCore(mpv, id)
+            val core = MpvCore(mpv, id, callbackExecutor)
             mpv.addLogObserver(core.logObserver)
             mpv.addObserver(core.eventObserver)
             mpv.init()

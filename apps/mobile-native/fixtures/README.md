@@ -33,6 +33,25 @@ Local-mode discovery can be exercised with `--auth-mode local`. It returns the
 exact Halo `{ "mode": "local" }` wire response and implements the fixture-only
 login and refresh contracts used by the native UI suites.
 
+## Android ownership fixture
+
+`PlayerOwnershipInstrumentedTest` intentionally uses one fixture for both
+authentication and media. Start it in local mode, with the media directory that
+contains the sample files used by the test:
+
+```powershell
+python apps/mobile-native/fixtures/fixture_server.py `
+  --port 18788 `
+  --auth-mode local `
+  --media-dir C:\path\to\media
+adb reverse tcp:18788 tcp:18788
+```
+
+The test launch supplies `serverUrl=http://127.0.0.1:18788` and the debug-only
+`mediaHttpBase=http://127.0.0.1:18788/media` override. Both routes therefore
+reach the same fixture process. The override is read only from a debuggable
+Android build and is not a production media configuration API.
+
 ## Endpoints
 
 - `GET /health` returns a minimal liveness response.

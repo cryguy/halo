@@ -68,10 +68,23 @@ class MainActivity : ComponentActivity() {
             requestNotificationPermission()
         }
 
+        val diagnosticsEnabled =
+            (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
         // Automation may point at a fixture. With no override, using the shared
         // default preserves the last-successful-server prefill rule in HaloApp.
         val serverUrl = intent?.getStringExtra("serverUrl")
             ?: PlatformDependencies.DefaultServerUrl
+        // The media base is an internal debug/test seam. A release build always
+        // keeps the normal default, even if a caller supplies this extra.
+        val mediaHttpBase = if (diagnosticsEnabled) {
+            intent?.getStringExtra("mediaHttpBase")
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: PlatformDependencies.DefaultMediaHttpBase
+        } else {
+            PlatformDependencies.DefaultMediaHttpBase
+        }
 
         val dependencies = PlatformDependencies(
             authConfigSource = KtorAuthConfigSource(authHttpClient),
@@ -90,8 +103,7 @@ class MainActivity : ComponentActivity() {
             // The manifest's own debuggable flag, so a release build cannot
             // reach the diagnostics harness. Read from ApplicationInfo rather
             // than BuildConfig, which this module does not generate.
-            diagnosticsEnabled =
-                (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0,
+            diagnosticsEnabled = diagnosticsEnabled,
             playerPort = AndroidPlayerPort(playerHost),
             playerSystemPort = playerSystemPort,
             videoFrameSource = AndroidVideoFrameSource(),
@@ -103,6 +115,7 @@ class MainActivity : ComponentActivity() {
             nativePlayerSurface = AndroidNativePlayerSurface(playerHost),
             nativeHostDiagnostics = AndroidNativeHostDiagnostics(authHost, playerHost),
             initialServerUrl = serverUrl,
+            mediaHttpBase = mediaHttpBase,
             resetPersistedSession = intent?.getBooleanExtra("resetSession", false) ?: false,
         )
 
@@ -134,6 +147,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         (application as? HaloApplication)?.backgroundDownloadPort
             ?.attachNotificationPermissionRequester(null)
+        if (::playerHost.isInitialized) playerHost.close()
         authHost.close()
         authHttpClient.close()
         super.onDestroy()

@@ -92,7 +92,7 @@ internal data class PlatformDependencies(
      * reverse both reach it); the local base has no portable default, so hosts
      * supply it from their launch environment and it stays blank otherwise.
      */
-    val mediaHttpBase: String = "http://127.0.0.1:18787/media",
+    val mediaHttpBase: String = DefaultMediaHttpBase,
     val mediaLocalBase: String = "",
     /**
      * Whether the diagnostics harness is reachable — the gate screen, its host
@@ -111,5 +111,6 @@ internal data class PlatformDependencies(
 ) {
     companion object {
         const val DefaultServerUrl = "https://halo.ditto.moe"
+        const val DefaultMediaHttpBase = "http://127.0.0.1:18787/media"
     }
 }
