@@ -1,6 +1,8 @@
 package moe.ditto.halo.screens
 
 import moe.ditto.halo.downloads.DownloadEntry
+import moe.ditto.halo.downloads.DownloadFailure
+import moe.ditto.halo.downloads.DownloadFailureCode
 import moe.ditto.halo.downloads.DownloadMedia
 import moe.ditto.halo.downloads.DownloadStatus
 import kotlin.test.Test
@@ -92,9 +94,9 @@ class DownloadsGroupingTest {
     @Test
     fun aFailureShowsWhatFailedRatherThanAByteCount() {
         val failed = movie("f", status = DownloadStatus.Failed, total = 100, done = 40)
-            .copy(failureMessage = "This source is no longer available.")
+            .copy(failure = DownloadFailure(DownloadFailureCode.SourceRejected))
 
-        assertEquals("This source is no longer available.", downloadStatusLabel(failed))
+        assertEquals("The source refused this download.", downloadStatusLabel(failed))
     }
 
     @Test

@@ -26,15 +26,18 @@ internal data class TransferProgress(
  * The transfer failed for a reason worth showing. Messages never carry the
  * source URL: resolved stream URLs routinely embed a debrid token.
  */
-internal class DownloadTransferException(message: String) : Exception(message)
+internal class DownloadTransferException(
+    val failure: DownloadFailure,
+) : Exception(failure.message) {
+    constructor(message: String) : this(DownloadFailure(DownloadFailureCode.Unknown))
+}
 
 /**
  * Moves one source's bytes onto the device.
  *
- * An interface with one shared implementation, because this is the seam the
- * background-transfer follow-up replaces: WorkManager on Android and URLSession
- * on iOS keep transfers alive after the app is killed, and neither changes the
- * index, the queue, or anything the screens see.
+ * Android runs this implementation inside its WorkManager worker. iOS uses a
+ * background URLSession instead, while preserving this file and range logic as
+ * the Android transfer boundary.
  */
 internal interface DownloadTransfer {
     /**
@@ -100,7 +103,7 @@ internal class HttpRangeTransfer(
             val written = stream(response, partFile, startAt, total, validator, onProgress)
 
             if (total > 0 && written != total) {
-                throw DownloadTransferException("The source ended this download early.")
+                throw DownloadTransferException(DownloadFailure(DownloadFailureCode.Network))
             }
             fileSystem.atomicMove(partFile, target)
             TransferProgress(downloadedBytes = written, totalBytes = if (total > 0) total else written, validator = validator)
@@ -120,13 +123,13 @@ internal class HttpRangeTransfer(
     private fun resumeOffset(response: HttpResponse, existing: Long, partFile: Path): Long {
         if (response.status == HttpStatusCode.OK) return 0L
         if (response.status != HttpStatusCode.PartialContent) {
-            throw DownloadTransferException(statusMessage(response.status))
+            throw DownloadTransferException(statusFailure(response.status))
         }
         if (existing == 0L) return 0L
         val start = response.contentRangeStart()
         if (start == existing) return existing
         fileSystem.delete(partFile, mustExist = false)
-        throw DownloadTransferException("The source could not resume this download.")
+        throw DownloadTransferException(DownloadFailure(DownloadFailureCode.InvalidRange))
     }
 
     private suspend fun stream(
@@ -154,7 +157,7 @@ internal class HttpRangeTransfer(
             while (true) {
                 val read = withTimeoutOrNull(stallTimeoutMs) {
                     channel.readAvailable(buffer, 0, buffer.size)
-                } ?: throw DownloadTransferException("The source stopped sending data.")
+                } ?: throw DownloadTransferException(DownloadFailure(DownloadFailureCode.Network))
                 if (read < 0) break
                 if (read == 0) continue
                 sink.write(buffer, 0, read)
@@ -200,12 +203,14 @@ internal class HttpRangeTransfer(
         headers[HttpHeaders.ETag]?.takeIf { it.isNotBlank() }
             ?: headers[HttpHeaders.LastModified]?.takeIf { it.isNotBlank() }
 
-    private fun statusMessage(status: HttpStatusCode): String = when {
-        status == HttpStatusCode.NotFound -> "This source is no longer available."
+    private fun statusFailure(status: HttpStatusCode): DownloadFailure = when {
         status == HttpStatusCode.Forbidden || status == HttpStatusCode.Unauthorized ->
-            "This source refused the download. The link may have expired."
-        status.value >= 500 -> "The source is having trouble (HTTP ${status.value})."
-        else -> "The source refused the download (HTTP ${status.value})."
+            DownloadFailure(DownloadFailureCode.SourceExpired)
+        status == HttpStatusCode.RequestTimeout || status == HttpStatusCode.TooManyRequests || status.value >= 500 ->
+            DownloadFailure(DownloadFailureCode.ServerUnavailable)
+        status == HttpStatusCode.RequestedRangeNotSatisfiable ->
+            DownloadFailure(DownloadFailureCode.InvalidRange)
+        else -> DownloadFailure(DownloadFailureCode.SourceRejected)
     }
 
     private companion object {

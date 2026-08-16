@@ -1,8 +1,9 @@
 package moe.ditto.halo.downloads
 
-import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.CompletableDeferred
-import okio.Path
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
 
 internal fun media(
     videoId: String = "tt0111161",
@@ -19,6 +20,7 @@ internal fun media(
     showTitle = showTitle,
     episodeTag = episodeTag,
     poster = "https://art.test/poster.jpg",
+    sourceFingerprint = sourceFingerprint(sourceUrl),
     sourceUrl = sourceUrl,
     addonId = "addon-1",
     videoSize = videoSize,
@@ -32,18 +34,21 @@ internal fun entry(
     totalBytes: Long = 100,
     downloadedBytes: Long = 100,
     createdAt: Long = 1_000,
+    jobId: String? = if (status == DownloadStatus.Done) null else "job-$videoId",
+    failure: DownloadFailure? = null,
 ): DownloadEntry = DownloadEntry(
     media = media(videoId = videoId),
     fileName = fileName,
     subtitle = subtitle,
     status = status,
+    jobId = jobId,
     totalBytes = totalBytes,
     downloadedBytes = downloadedBytes,
+    failure = failure,
     createdAt = createdAt,
     updatedAt = createdAt,
 )
 
-/** A subtitle search with a fixed answer, so the coordinator's side of it is testable. */
 internal class FixedDownloadSubtitles(private val subtitle: DownloadSubtitle?) : DownloadSubtitleSource {
     override suspend fun fetch(media: DownloadMedia): DownloadSubtitle? = subtitle
 }
@@ -58,49 +63,58 @@ internal class FakeDownloadStorage(
     override fun totalBytes(): Long? = total
 }
 
-/**
- * A transfer that does nothing until the test says so, which is what makes the
- * queue observable: while one call is outstanding, no other may have started.
- */
-internal class GatedTransfer : DownloadTransfer {
-    val calls = mutableListOf<Call>()
+internal class FakeDownloadVault : DownloadRequestVault {
+    val requests = linkedMapOf<String, ProtectedDownloadRequest>()
+    var failWrites = false
 
-    class Call(
-        val sourceUrl: String,
-        val partFile: Path,
-        val target: Path,
-        val resumeValidator: String?,
-        val onProgress: suspend (TransferProgress) -> Unit,
-    ) {
-        val gate = CompletableDeferred<TransferProgress>()
-
-        /** Set when the coordinator cancelled this call, which is how a pause reaches a transfer. */
-        var cancelled: Boolean = false
-            internal set
-
-        fun finish(downloadedBytes: Long = 100, totalBytes: Long = 100, validator: String? = null) {
-            gate.complete(TransferProgress(downloadedBytes, totalBytes, validator))
-        }
-
-        fun fail(message: String = "the source refused") {
-            gate.completeExceptionally(DownloadTransferException(message))
-        }
+    override fun write(request: ProtectedDownloadRequest): Boolean {
+        if (failWrites) return false
+        requests[request.jobId] = request
+        return true
     }
 
-    override suspend fun transfer(
-        sourceUrl: String,
-        partFile: Path,
-        target: Path,
-        resumeValidator: String?,
-        onProgress: suspend (TransferProgress) -> Unit,
-    ): TransferProgress {
-        val call = Call(sourceUrl, partFile, target, resumeValidator, onProgress)
-        calls += call
-        try {
-            return call.gate.await()
-        } catch (cancellation: CancellationException) {
-            call.cancelled = true
-            throw cancellation
-        }
+    override fun delete(jobId: String) {
+        requests.remove(jobId)
+    }
+}
+
+internal class FakeBackgroundDownloadPort(
+    override val resumesMigratedPartialFiles: Boolean = true,
+) : BackgroundDownloadPort {
+    private val channel = Channel<BackgroundDownloadEvent>(Channel.UNLIMITED)
+    override val events: Flow<BackgroundDownloadEvent> = channel.receiveAsFlow()
+
+    var reconciled = emptyList<BackgroundDownloadJob>()
+    var reconcileFailure: Throwable? = null
+    val enqueued = mutableListOf<ProtectedDownloadRequest>()
+    val resumed = mutableListOf<String>()
+    val paused = mutableListOf<String>()
+    val cancelled = mutableListOf<String>()
+    var cancelGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun reconcile(): List<BackgroundDownloadJob> {
+        reconcileFailure?.let { throw it }
+        return reconciled
+    }
+
+    override suspend fun enqueue(request: ProtectedDownloadRequest) {
+        enqueued += request
+    }
+
+    override suspend fun pause(jobId: String) {
+        paused += jobId
+    }
+
+    override suspend fun resume(jobId: String) {
+        resumed += jobId
+    }
+
+    override suspend fun cancel(jobId: String) {
+        cancelled += jobId
+        cancelGate?.await()
+    }
+
+    fun emit(event: BackgroundDownloadEvent) {
+        channel.trySend(event)
     }
 }

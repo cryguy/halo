@@ -141,6 +141,10 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                     previous is SessionState.SignedIn &&
                     screen != ShellScreen.Login
                 ) {
+                    // A rejected token and the visible sign-out button arrive
+                    // through this same transition. Both durably pause queued
+                    // and OS-owned work before the outgoing graph disappears.
+                    dependencies.downloadRuntime.pauseAllForSignOut()
                     screen = ShellScreen.Login
                 }
                 previous = state
@@ -185,6 +189,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                     onUnauthorized = { sessionController.rejectSession(sessionGeneration) },
                     keyValueStore = dependencies.keyValueStore,
                     subtitleCacheDirectory = dependencies.subtitleCacheDirectory,
+                    downloadRuntime = dependencies.downloadRuntime,
                     downloadStorage = dependencies.downloadStorage,
                 )
             }
@@ -208,6 +213,7 @@ internal fun HaloApp(dependencies: PlatformDependencies) {
                         bundledSubtitleFonts = dependencies.bundledSubtitleFonts,
                         playerSystem = dependencies.playerSystemPort,
                         videoFrames = dependencies.videoFrameSource,
+                        openDownloadsEvents = dependencies.openDownloadsEvents,
                         onSignOut = { sessionController.signOut() },
                         // Null in a shipped build, which removes the row entirely
                         // rather than hiding a live one behind a flag.

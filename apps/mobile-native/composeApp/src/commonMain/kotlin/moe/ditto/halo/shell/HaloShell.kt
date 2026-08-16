@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +59,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import kotlinx.coroutines.flow.Flow
 import dev.chrisbanes.haze.rememberHazeState
 import moe.ditto.halo.NativePlayerSurface
 import moe.ditto.halo.PlaybackHost
@@ -120,6 +122,7 @@ internal fun HaloShell(
     playerSystem: PlayerSystemPort,
     /** Frames behind the player's scrub preview; see [VideoFrameSource]. */
     videoFrames: VideoFrameSource,
+    openDownloadsEvents: Flow<Unit>,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
     /**
@@ -132,6 +135,10 @@ internal fun HaloShell(
     val navController = rememberNavController()
     val hazeState = rememberHazeState()
     val responsive = rememberResponsive()
+
+    LaunchedEffect(navController, openDownloadsEvents) {
+        openDownloadsEvents.collect { navController.switchTab(DownloadsRoute) }
+    }
 
     CompositionLocalProvider(LocalHazeState provides hazeState) {
         Box(modifier.fillMaxSize().background(HaloColors.Background)) {

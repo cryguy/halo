@@ -41,7 +41,7 @@ import moe.ditto.halo.api.WatchState
 import moe.ditto.halo.cache.QueryState
 import moe.ditto.halo.downloads.DownloadEntry
 import moe.ditto.halo.downloads.DownloadStatus
-import moe.ditto.halo.downloads.DownloadsCoordinator
+import moe.ditto.halo.downloads.DeviceDownloadRuntime
 import moe.ditto.halo.downloads.StorageSpace
 import moe.ditto.halo.ui.CenterMessage
 import moe.ditto.halo.ui.ConfirmSheet
@@ -215,7 +215,7 @@ private fun detailPaneWidth(responsive: ResponsiveInfo): Dp =
  * rather than of a recomposition.
  */
 @Composable
-private fun rememberStorageSpace(downloads: DownloadsCoordinator): StorageSpace? {
+private fun rememberStorageSpace(downloads: DeviceDownloadRuntime): StorageSpace? {
     var space by remember(downloads) { mutableStateOf(downloads.storageSpace()) }
     LaunchedEffect(downloads) {
         while (true) {
@@ -238,7 +238,7 @@ private fun DownloadsList(
     history: ThroughputHistory,
     space: StorageSpace?,
     selectedVideoId: String?,
-    downloads: DownloadsCoordinator,
+    downloads: DeviceDownloadRuntime,
     onSelect: (DownloadEntry) -> Unit,
     onPlay: (DownloadEntry) -> Unit,
     onRemove: (DownloadEntry) -> Unit,
@@ -375,7 +375,7 @@ private fun LazyListScope.readyRows(
  * source that did not work, and belongs to the card's own control rather than to
  * a button that means "carry on".
  */
-private suspend fun applyQueueControl(downloads: DownloadsCoordinator, active: List<DownloadEntry>) {
+private suspend fun applyQueueControl(downloads: DeviceDownloadRuntime, active: List<DownloadEntry>) {
     when (queueControl(active)) {
         QueueControl.PauseAll -> active.filter { it.status.isActive }
             .forEach { downloads.pause(it.videoId) }

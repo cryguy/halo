@@ -9,6 +9,7 @@ import moe.ditto.halo.auth.NoOidcSessionPort
 import moe.ditto.halo.auth.OidcSessionPort
 import moe.ditto.halo.auth.SecureStorage
 import moe.ditto.halo.downloads.DownloadStoragePort
+import moe.ditto.halo.downloads.DeviceDownloadRuntime
 import moe.ditto.halo.downloads.NoDownloadStorage
 import moe.ditto.halo.storage.KeyValueStore
 import moe.ditto.halo.player.PlayerEvent
@@ -41,6 +42,8 @@ internal data class PlatformDependencies(
      * say rather than write files somewhere the system may reclaim.
      */
     val downloadStorage: DownloadStoragePort = NoDownloadStorage,
+    /** Application-scoped owner of durable platform download jobs. */
+    val downloadRuntime: DeviceDownloadRuntime,
     /**
      * Native OIDC session owner; [NoOidcSessionPort] where the platform has
      * no OIDC host yet (Android until its port, fakes in tests).
@@ -73,6 +76,8 @@ internal data class PlatformDependencies(
     val bundledSubtitleFonts: Set<String> = emptySet(),
     val playerEvents: Flow<PlayerEvent> = emptyFlow(),
     val authEvents: Flow<AuthEvent> = emptyFlow(),
+    /** Notification taps and other host requests to reveal Downloads. */
+    val openDownloadsEvents: Flow<Unit> = emptyFlow(),
     val nativePlayerSurface: NativePlayerSurface,
     val nativeHostDiagnostics: NativeHostDiagnostics,
     /**

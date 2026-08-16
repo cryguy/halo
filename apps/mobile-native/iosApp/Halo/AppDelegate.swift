@@ -7,6 +7,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     private let playerHost = MPVPlayerHost()
     private let playerSystemHost = PlayerSystemHost()
+    private let backgroundDownloadService = BackgroundDownloadService()
     // A normal launch gets the real sign-in. Only the literal "fake" selects the
     // hermetic host, so a typo or a missing launch env fails towards production
     // auth rather than towards a build that can never sign in.
@@ -36,6 +37,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             authHost: authHost,
             playerHost: playerHost,
             playerSystemHost: playerSystemHost,
+            backgroundDownloadHost: backgroundDownloadService,
             initialServerUrl: initialServerUrl,
             mediaHttpBase: mediaHttpBase,
             mediaLocalBase: mediaLocalBase,
@@ -53,5 +55,17 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // window; the fake host ignores this.
         (authHost as? OidcAuthHost)?.anchorWindow = window
         return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        guard identifier == BackgroundDownloadService.sessionIdentifier else {
+            completionHandler()
+            return
+        }
+        backgroundDownloadService.retainBackgroundCompletionHandler(completionHandler)
     }
 }

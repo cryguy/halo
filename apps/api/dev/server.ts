@@ -22,6 +22,7 @@ import { FIXTURE_ADDONS, FIXTURE_TITLES, fixtureAddonFetch } from './fixtureAddo
  *
  *   pnpm --filter @halo/api dev:fixtures [--port 18790] [--db ./data/dev.sqlite]
  *                                        [--media ./some-video.mp4]
+ *                                        [--media-url http://127.0.0.1:18787/media/generated.bin?...]
  *
  * Sign in as `admin` / `fixture-pass` in local mode. Storage is in memory by
  * default, so every restart is an identical clean slate — which is what makes
@@ -78,6 +79,7 @@ function main(): void {
   const db = createDb(options.dbPath)
   const origin = (): string => requestOrigin.getStore() ?? `http://127.0.0.1:${options.port}`
   const mediaUrl = (): string | null => {
+    if (options.mediaUrl) return options.mediaUrl
     if (!mediaFile) return null
     return `${origin()}${MEDIA_PATH}`
   }
@@ -127,7 +129,12 @@ function main(): void {
     console.log(`  sign in     admin / ${ADMIN_PASSWORD}`)
     console.log(`  storage     ${options.dbPath === ':memory:' ? 'in memory (resets on restart)' : options.dbPath}`)
     console.log(`  addons      ${options.passthrough ? 'real, over the network' : 'canned'}`)
-    console.log(`  media       ${mediaFile ? `${mediaFile} at ${MEDIA_PATH}` : 'none (stream URLs are unreachable)'}`)
+    const mediaDescription = options.mediaUrl
+      ? 'external fixture URL enabled'
+      : mediaFile
+        ? `${mediaFile} at ${MEDIA_PATH}`
+        : 'none (stream URLs are unreachable)'
+    console.log(`  media       ${mediaDescription}`)
     console.log(`  android     adb reverse tcp:${info.port} tcp:${info.port}`)
   })
 }
@@ -138,20 +145,39 @@ interface Options {
   passthrough: boolean
   /** Video file every canned stream points at; null leaves them unreachable. */
   mediaPath: string | null
+  /** External fixture source. Never printed because a real source may contain credentials. */
+  mediaUrl: string | null
 }
 
 function parseArgs(argv: string[]): Options {
-  const options: Options = { port: DEFAULT_PORT, dbPath: ':memory:', passthrough: false, mediaPath: null }
+  const options: Options = {
+    port: DEFAULT_PORT,
+    dbPath: ':memory:',
+    passthrough: false,
+    mediaPath: null,
+    mediaUrl: null,
+  }
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index]
     if (flag === '--port') options.port = Number(argv[++index])
     else if (flag === '--db') options.dbPath = argv[++index] ?? ':memory:'
     else if (flag === '--passthrough') options.passthrough = true
     else if (flag === '--media') options.mediaPath = argv[++index] ?? null
-    else throw new Error(`unknown argument ${flag} (expected --port, --db, --passthrough or --media)`)
+    else if (flag === '--media-url') options.mediaUrl = argv[++index] ?? null
+    else throw new Error(
+      `unknown argument ${flag} (expected --port, --db, --passthrough, --media or --media-url)`,
+    )
   }
   if (!Number.isInteger(options.port) || options.port <= 0) throw new Error('--port must be a positive integer')
   if (options.mediaPath === null && argv.includes('--media')) throw new Error('--media needs a file path')
+  if (options.mediaUrl === null && argv.includes('--media-url')) throw new Error('--media-url needs a URL')
+  if (options.mediaPath && options.mediaUrl) throw new Error('--media and --media-url are mutually exclusive')
+  if (options.mediaUrl) {
+    const url = new URL(options.mediaUrl)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw new Error('--media-url must use HTTP or HTTPS')
+    }
+  }
   return options
 }
 

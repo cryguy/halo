@@ -48,7 +48,19 @@ targets:
     scheme:
       gatherCoverageData: false
       testTargets:
+        - HaloTests
         - HaloUITests
+  HaloTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: HaloTests
+    dependencies:
+      - target: Halo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: moe.ditto.halo.tests
+        GENERATE_INFOPLIST_FILE: YES
   HaloUITests:
     type: bundle.ui-testing
     platform: iOS

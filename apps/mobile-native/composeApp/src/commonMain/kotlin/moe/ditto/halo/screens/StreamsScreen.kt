@@ -54,6 +54,7 @@ import moe.ditto.halo.cache.QueryState
 import moe.ditto.halo.downloads.DownloadEntry
 import moe.ditto.halo.downloads.DownloadMedia
 import moe.ditto.halo.downloads.DownloadStartResult
+import moe.ditto.halo.downloads.sourceFingerprint
 import moe.ditto.halo.downloads.DownloadStatus
 import moe.ditto.halo.ui.HaloColors
 import moe.ditto.halo.ui.HaloIcons
@@ -185,7 +186,7 @@ internal fun SourcesPicker(
                 val url = stream.url
                 if (url != null) {
                     val media = downloadMedia(addon, stream, url)
-                    if (download != null && download.media.sourceUrl != url) {
+                    if (download != null && download.media.sourceFingerprint != sourceFingerprint(url)) {
                         pendingReplacement = media
                     } else {
                         scope.launch { refusal = beginDownload(graph, media) }
@@ -215,8 +216,7 @@ internal fun SourcesPicker(
                 pendingReplacement = null
                 if (media != null) {
                     scope.launch {
-                        graph.downloads.remove(media.videoId)
-                        refusal = beginDownload(graph, media)
+                        refusal = beginReplacement(graph, media)
                     }
                 }
             },
@@ -231,6 +231,14 @@ private const val ReplaceKey = "replace"
 private suspend fun beginDownload(graph: SignedInGraph, media: DownloadMedia): String? =
     when (val result = graph.downloads.start(media)) {
         is DownloadStartResult.NotEnoughSpace -> notEnoughSpaceMessage(result)
+        is DownloadStartResult.Failed -> result.message
+        else -> null
+    }
+
+private suspend fun beginReplacement(graph: SignedInGraph, media: DownloadMedia): String? =
+    when (val result = graph.downloads.replace(media)) {
+        is DownloadStartResult.NotEnoughSpace -> notEnoughSpaceMessage(result)
+        is DownloadStartResult.Failed -> result.message
         else -> null
     }
 
@@ -520,8 +528,11 @@ private fun AddonGroup(
                     // Only the row the download actually came from wears its
                     // state. Marking every row "downloaded" claims something
                     // about sources nobody fetched.
-                    download = download?.takeIf { it.media.sourceUrl == stream.url },
-                    heldElsewhere = download != null && download.media.sourceUrl != stream.url,
+                    download = download?.takeIf {
+                        stream.url?.let(::sourceFingerprint) == it.media.sourceFingerprint
+                    },
+                    heldElsewhere = download != null &&
+                        stream.url?.let(::sourceFingerprint) != download.media.sourceFingerprint,
                     downloadsAvailable = downloadsAvailable,
                     onDownload = { onDownload(group.addon, stream) },
                 )

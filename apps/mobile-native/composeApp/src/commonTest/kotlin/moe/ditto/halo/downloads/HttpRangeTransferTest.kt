@@ -159,7 +159,7 @@ class HttpRangeTransferTest {
 
         val failure = assertFailsWith<DownloadTransferException> { transfer.fetch() }
 
-        assertContains(assertNotNull(failure.message), "stopped sending")
+        assertEquals(DownloadFailureCode.Network, failure.failure.code)
     }
 
     @Test

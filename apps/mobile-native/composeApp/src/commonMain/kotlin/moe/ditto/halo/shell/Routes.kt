@@ -6,6 +6,7 @@ import moe.ditto.halo.api.Stream
 import moe.ditto.halo.downloads.DownloadEntry
 import moe.ditto.halo.downloads.DownloadFiles
 import moe.ditto.halo.downloads.DownloadMedia
+import moe.ditto.halo.downloads.sourceFingerprint
 import moe.ditto.halo.screens.player.EpisodeChoice
 import moe.ditto.halo.screens.player.PlaybackContext
 
@@ -250,6 +251,7 @@ internal fun StreamsRoute.downloadMedia(addon: AddonSource, stream: Stream, url:
         episodeName = episodeName,
         episodeThumbnail = episodeThumbnail,
         poster = poster,
+        sourceFingerprint = sourceFingerprint(url),
         sourceUrl = url,
         addonId = addon.id,
         bingeGroup = hints?.bingeGroup,

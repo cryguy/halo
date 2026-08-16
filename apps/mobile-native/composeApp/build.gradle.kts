@@ -138,6 +138,7 @@ kotlin {
             implementation("androidx.activity:activity-compose:1.9.3")
             implementation("androidx.browser:browser:1.8.0")
             implementation("androidx.core:core-ktx:1.13.1")
+            implementation("androidx.work:work-runtime-ktx:2.10.1")
             implementation("io.ktor:ktor-client-okhttp:3.5.1")
             // Prebuilt libmpv (mpv-android lineage): provenance-checked but
             // emulator-only. The shipping Android build replaces it with an

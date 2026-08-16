@@ -73,6 +73,7 @@ internal object DownloadPaths {
                 add(entry.fileName)
                 add(entry.partFileName)
                 entry.subtitle?.let { add(it.fileName) }
+                addAll(entry.retainedFileNames)
             }
         }
         val present = try {

@@ -45,4 +45,10 @@ object StorageKeys {
      * device it holds media it has never seen.
      */
     const val Downloads = "halo.downloads.v1"
+
+    /** URL-free download state. Resolved requests live only in a protected vault. */
+    const val DownloadsV2 = "halo.downloads.v2"
+
+    /** URL-free job identities reused if v1 migration is interrupted before v2 is durable. */
+    const val DownloadsMigration = "halo.downloads.migration.v1"
 }

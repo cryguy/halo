@@ -1,22 +1,30 @@
 package moe.ditto.halo
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import moe.ditto.halo.auth.AndroidSecureStorage
 import moe.ditto.halo.auth.KtorAndroidOidcWire
 import moe.ditto.halo.auth.KtorAuthConfigSource
 import moe.ditto.halo.downloads.AndroidDownloadStorage
+import moe.ditto.halo.downloads.AndroidDownloadNotifications
 import moe.ditto.halo.player.AndroidPlayerSystemPort
 import moe.ditto.halo.player.AndroidVideoFrameSource
 import moe.ditto.halo.player.SubtitleFontLibrary
 import moe.ditto.halo.storage.AndroidPreferencesStore
 import java.io.File
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 /**
  * Android entry point. Assembles the exact same [PlatformDependencies] the iOS
@@ -35,6 +43,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var playerSystemPort: AndroidPlayerSystemPort
     private lateinit var authHost: AndroidOidcAuthHost
     private lateinit var authHttpClient: HttpClient
+    private val openDownloads = Channel<Unit>(Channel.UNLIMITED)
+    private val notificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* A denied prompt does not block WorkManager. */ }
 
     /** Instrumentation seam that reads the initialized core, not an option list. */
     internal fun playerMutedForTest(): Boolean? = playerHost.mutedForTest
@@ -51,6 +63,10 @@ class MainActivity : ComponentActivity() {
         )
         playerHost = AndroidMpvPlayerHost(applicationContext)
         playerSystemPort = AndroidPlayerSystemPort(this)
+        val haloApplication = application as HaloApplication
+        haloApplication.backgroundDownloadPort.attachNotificationPermissionRequester {
+            requestNotificationPermission()
+        }
 
         // Automation may point at a fixture. With no override, using the shared
         // default preserves the last-successful-server prefill rule in HaloApp.
@@ -69,7 +85,8 @@ class MainActivity : ComponentActivity() {
             // filesDir, not cacheDir: the system may reclaim a cache at any
             // time, and a downloaded film is the one thing here that cannot be
             // fetched again on demand.
-            downloadStorage = AndroidDownloadStorage(applicationContext),
+            downloadStorage = haloApplication.downloadStorage,
+            downloadRuntime = haloApplication.downloadRuntime,
             // The manifest's own debuggable flag, so a release build cannot
             // reach the diagnostics harness. Read from ApplicationInfo rather
             // than BuildConfig, which this module does not generate.
@@ -82,6 +99,7 @@ class MainActivity : ComponentActivity() {
             playerEvents = playerHost.playerEvents,
             oidcSessionPort = authHost,
             authEvents = authHost.events,
+            openDownloadsEvents = openDownloads.receiveAsFlow(),
             nativePlayerSurface = AndroidNativePlayerSurface(playerHost),
             nativeHostDiagnostics = AndroidNativeHostDiagnostics(authHost, playerHost),
             initialServerUrl = serverUrl,
@@ -93,12 +111,14 @@ class MainActivity : ComponentActivity() {
         }
 
         authHost.handleIntent(intent)
+        handleDownloadNavigation(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         authHost.handleIntent(intent)
+        handleDownloadNavigation(intent)
     }
 
     override fun onPictureInPictureModeChanged(
@@ -112,8 +132,27 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        (application as? HaloApplication)?.backgroundDownloadPort
+            ?.attachNotificationPermissionRequester(null)
         authHost.close()
         authHttpClient.close()
         super.onDestroy()
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun handleDownloadNavigation(intent: Intent?) {
+        if (intent?.action == AndroidDownloadNotifications.OpenDownloadsAction) {
+            openDownloads.trySend(Unit)
+            intent.action = null
+        }
     }
 }

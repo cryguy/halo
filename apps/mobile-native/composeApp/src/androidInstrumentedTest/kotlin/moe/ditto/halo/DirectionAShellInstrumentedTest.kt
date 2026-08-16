@@ -49,7 +49,10 @@ class DirectionAShellInstrumentedTest {
         composeRule.onNode(hasText("Downloads") and hasClickAction()).performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodes(
-                hasText("Downloads will live here. The native offline transfer engine is not available yet."),
+                hasText(
+                    "Downloads live here. Pick a source on any title and tap the download icon, " +
+                        "then it plays with no network at all.",
+                ),
             ).fetchSemanticsNodes().isNotEmpty()
         }
 

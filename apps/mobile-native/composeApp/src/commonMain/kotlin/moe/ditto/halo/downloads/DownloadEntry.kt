@@ -4,6 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import moe.ditto.halo.sync.LibraryRepository
+import okio.ByteString.Companion.encodeUtf8
 
 /** Where a download has got to. */
 @Serializable
@@ -51,8 +52,18 @@ internal data class DownloadMedia(
     val episodeThumbnail: String? = null,
     /** The title's own art, for the section header this entry is grouped under. */
     val poster: String? = null,
-    /** The resolved stream URL. Resume and retry both go back to it. */
-    val sourceUrl: String,
+    /**
+     * SHA-256 of the resolved source URL, used only to recognize the selected
+     * source row without persisting its credential-bearing URL.
+     */
+    val sourceFingerprint: String = "",
+    /**
+     * Present only while a newly selected source is handed to the runtime.
+     * Serialization deliberately replaces it with an empty value, so a source
+     * URL can never enter the ordinary download index.
+     */
+    @Transient
+    val sourceUrl: String = "",
     /** The addon that offered the source, for asking the same one what follows. */
     val addonId: String,
     val bingeGroup: String? = null,
@@ -103,6 +114,8 @@ internal data class DownloadEntry(
     val fileName: String,
     val subtitle: DownloadSubtitle? = null,
     val status: DownloadStatus,
+    /** Opaque identity of the current platform-owned attempt. */
+    val jobId: String? = null,
     /** Zero when the source never declared a size, which some hosts do not. */
     val totalBytes: Long = 0,
     val downloadedBytes: Long = 0,
@@ -111,9 +124,16 @@ internal data class DownloadEntry(
      * resuming. A source that changed answers 200 instead of 206, and the
      * transfer restarts rather than splicing two different files together.
      */
+    @Transient
     val resumeValidator: String? = null,
-    /** Set only while [status] is [DownloadStatus.Failed]. Never carries a URL. */
-    val failureMessage: String? = null,
+    /** Set only while [status] is [DownloadStatus.Failed]. */
+    val failure: DownloadFailure? = null,
+    /**
+     * Files from a replaced attempt. They remain until the replacement has
+     * completed, so cancellation or a stale callback cannot destroy the only
+     * bytes the user already had.
+     */
+    val retainedFileNames: List<String> = emptyList(),
     val createdAt: Long,
     val updatedAt: Long,
     /**
@@ -150,4 +170,10 @@ internal data class DownloadEntry(
             if (remaining <= 0) return null
             return remaining / bytesPerSecond
         }
+
+    val failureMessage: String? get() = failure?.message
 }
+
+/** A stable, URL-free identity for matching a picker row to an entry. */
+internal fun sourceFingerprint(sourceUrl: String): String =
+    sourceUrl.encodeUtf8().sha256().hex()

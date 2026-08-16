@@ -184,19 +184,24 @@ internal fun DownloadTransferCard(
                     RowTitles(entry, Modifier.weight(1f))
                     val resumable =
                         entry.status == DownloadStatus.Paused || entry.status == DownloadStatus.Failed
-                    CircleAction(
-                        icon = when {
-                            entry.status == DownloadStatus.Failed -> HaloIcons.Refresh
-                            resumable -> HaloIcons.Play
-                            else -> HaloIcons.Pause
-                        },
-                        description = when {
-                            entry.status == DownloadStatus.Failed -> "Retry download"
-                            resumable -> "Resume download"
-                            else -> "Pause download"
-                        },
-                        onClick = if (resumable) onResume else onPause,
-                    )
+                    // Expired or unreadable protected requests cannot resume by
+                    // design. Do not present a control whose handler must reject
+                    // the tap; the failure text directs the viewer to Sources.
+                    if (entry.failure?.requiresNewSource != true) {
+                        CircleAction(
+                            icon = when {
+                                entry.status == DownloadStatus.Failed -> HaloIcons.Refresh
+                                resumable -> HaloIcons.Play
+                                else -> HaloIcons.Pause
+                            },
+                            description = when {
+                                entry.status == DownloadStatus.Failed -> "Retry download"
+                                resumable -> "Resume download"
+                                else -> "Pause download"
+                            },
+                            onClick = if (resumable) onResume else onPause,
+                        )
+                    }
                     CircleAction(
                         icon = HaloIcons.Trash,
                         description = "Delete download",
